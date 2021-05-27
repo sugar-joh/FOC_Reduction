@@ -1,0 +1,140 @@
+#!/usr/bin/python
+#-*- coding:utf-8 -*-
+"""
+Main script where are progressively added the steps for the FOC pipeline reduction.
+"""
+
+#Project libraries
+import sys
+import numpy as np
+import copy
+import lib.fits as proj_fits        #Functions to handle fits files
+import lib.reduction as proj_red    #Functions used in reduction pipeline
+import lib.plots as proj_plots      #Functions for plotting data
+
+
+def main():
+    ##### User inputs
+    ## Input and output locations
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+
+#    globals()['data_folder'] = "../data/NGC1068_x14w010/"
+#    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
+#            'x14w0104t_c0f.fits','x14w0105p_c0f.fits','x14w0106t_c0f.fits']
+#    infiles = ['x14w0101t_c1f.fits','x14w0102t_c1f.fits','x14w0103t_c1f.fits',
+#            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
+#    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
+
+#    globals()['data_folder'] = "../data/3C405_x136060/"
+#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+#    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
+#    globals()['plots_folder'] = "../plots/3C405_x136060/"
+
+#    globals()['data_folder'] = "../data/CygnusA_x43w0/"
+#    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
+#            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
+#            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
+#            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
+#            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
+
+    ## Reduction parameters
+    # Deconvolution
+    deconvolve = True
+    if deconvolve:
+        psf = 'gaussian'  #Can be user-defined as well
+        psf_FWHM = 0.10
+        psf_scale = 'arcsec'
+        psf_shape=(9,9)
+        iterations = 10
+    # Error estimation
+    error_sub_shape = (50,50)
+    display_error = False
+    # Data binning
+    rebin = True
+    if rebin:
+        pxsize = 0.10
+        px_scale = 'arcsec'         #pixel or arcsec
+        rebin_operation = 'sum'     #sum or average
+    # Alignement
+    align_center = 'maxflux'        #If None will align image to image center
+    display_data = True
+    # Smoothing
+    smoothing_function = 'combine'  #gaussian or combine
+    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_scale = 'pixel'       #pixel or arcsec
+    # Rotation
+    rotate = False                  #rotation to North convention can give erroneous results
+    rotate_library = 'scipy'        #scipy or pillow
+    # Polarization map output
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = ''    #additionnal informations
+    SNRp_cut = 3    #P measurments with SNR>3
+    SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
+
+    ##### Pipeline start
+    ## Step 1:
+    # Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
+    data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
+    # Crop data to remove outside blank margins.
+    data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
+    # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
+    headers2 = copy.deepcopy(headers)
+    if deconvolve:
+        data_array2 = proj_red.deconvolve_array(data_array, headers2, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
+    # Estimate error from data background, estimated from sub-image of desired sub_shape.
+    data_array, error_array = proj_red.get_error(data_array, sub_shape=error_sub_shape, display=display_error, headers=headers, savename=figname+"_errors", plots_folder=plots_folder)
+    data_array2, error_array2 = proj_red.get_error(data_array2, sub_shape=error_sub_shape, display=display_error, headers=headers2, savename=figname+"_errors", plots_folder=plots_folder)
+    # Rebin data to desired pixel size.
+    if rebin:
+        data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
+        data_array2, error_array2, headers2, Dxy = proj_red.rebin_array(data_array2, error_array2, headers2, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
+    #Align and rescale images with oversampling.
+    data_array, error_array = proj_red.align_data(data_array, error_array, upsample_factor=np.min(Dxy).astype(int), ref_center=align_center, return_shifts=False)
+    data_array2, error_array2 = proj_red.align_data(data_array2, error_array2, upsample_factor=np.min(Dxy).astype(int), ref_center=align_center, return_shifts=False)
+
+    #Plot array for checking output
+    if display_data:
+        proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_center_"+align_center, plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array2, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_deconv_center_"+align_center, plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array/data_array2, headers, vmin=0., vmax=10., savename=figname+"_ratio_deconv_center_"+align_center, plots_folder=plots_folder)
+
+    ## Step 2:
+    # Compute Stokes I, Q, U with smoothed polarized images
+    # SMOOTHING DISCUSSION :
+    # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
+    # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
+    # Bibcode : 1995chst.conf...10J
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+
+    ## Step 3:
+    # Rotate images to have North up
+    if rotate:
+        ref_header = copy.deepcopy(headers[0])
+        if rotate_library.lower() in ['scipy','scipy.ndimage']:
+            I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
+        if rotate_library.lower() in ['pillow','pil']:
+            I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
+    # Compute polarimetric parameters (polarization degree and angle).
+    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
+
+    ## Step 4:
+    # Save image to FITS.
+    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers[0], figname+figtype, data_folder=data_folder, return_hdul=True)
+
+    ## Step 5:
+    # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
