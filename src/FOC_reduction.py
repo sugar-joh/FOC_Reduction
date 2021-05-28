@@ -16,11 +16,11 @@ import lib.plots as proj_plots      #Functions for plotting data
 def main():
     ##### User inputs
     ## Input and output locations
-    globals()['data_folder'] = "../data/NGC1068_x274020/"
-    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+#    globals()['data_folder'] = "../data/NGC1068_x274020/"
+#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -29,10 +29,10 @@ def main():
 #            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-#    globals()['data_folder'] = "../data/3C405_x136060/"
-#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+    globals()['data_folder'] = "../data/3C405_x136060/"
+    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
 #    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
-#    globals()['plots_folder'] = "../plots/3C405_x136060/"
+    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
 #    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
@@ -44,7 +44,7 @@ def main():
 
     ## Reduction parameters
     # Deconvolution
-    deconvolve = True
+    deconvolve = False
     if deconvolve:
         psf = 'gaussian'  #Can be user-defined as well
         psf_FWHM = 0.10
@@ -52,27 +52,27 @@ def main():
         psf_shape=(9,9)
         iterations = 10
     # Error estimation
-    error_sub_shape = (50,50)
+    error_sub_shape = (100,100)
     display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.30
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
-    align_center = 'maxflux'        #If None will align image to image center
-    display_data = True
+    align_center = 'image'        #If None will align image to image center
+    display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_FWHM = 2           #If None, no smoothing is done
     smoothing_scale = 'pixel'       #pixel or arcsec
     # Rotation
     rotate = False                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = ''    #additionnal informations
+    figname = '3C405_FOC'         #target/intrument name
+    figtype = '_combine_FWHM2'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
