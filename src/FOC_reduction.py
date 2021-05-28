@@ -84,25 +84,19 @@ def main():
     # Crop data to remove outside blank margins.
     data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
-    headers2 = copy.deepcopy(headers)
     if deconvolve:
-        data_array2 = proj_red.deconvolve_array(data_array, headers2, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
+        data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     data_array, error_array = proj_red.get_error(data_array, sub_shape=error_sub_shape, display=display_error, headers=headers, savename=figname+"_errors", plots_folder=plots_folder)
-    data_array2, error_array2 = proj_red.get_error(data_array2, sub_shape=error_sub_shape, display=display_error, headers=headers2, savename=figname+"_errors", plots_folder=plots_folder)
     # Rebin data to desired pixel size.
     if rebin:
         data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
-        data_array2, error_array2, headers2, Dxy = proj_red.rebin_array(data_array2, error_array2, headers2, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
     #Align and rescale images with oversampling.
     data_array, error_array = proj_red.align_data(data_array, error_array, upsample_factor=np.min(Dxy).astype(int), ref_center=align_center, return_shifts=False)
-    data_array2, error_array2 = proj_red.align_data(data_array2, error_array2, upsample_factor=np.min(Dxy).astype(int), ref_center=align_center, return_shifts=False)
 
     #Plot array for checking output
     if display_data:
         proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_center_"+align_center, plots_folder=plots_folder)
-        proj_plots.plot_obs(data_array2, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_deconv_center_"+align_center, plots_folder=plots_folder)
-        proj_plots.plot_obs(data_array/data_array2, headers, vmin=0., vmax=10., savename=figname+"_ratio_deconv_center_"+align_center, plots_folder=plots_folder)
 
     ## Step 2:
     # Compute Stokes I, Q, U with smoothed polarized images
