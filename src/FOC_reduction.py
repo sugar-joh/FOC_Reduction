@@ -29,18 +29,18 @@ def main():
 #            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-    globals()['data_folder'] = "../data/3C405_x136060/"
-    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+#    globals()['data_folder'] = "../data/3C405_x136060/"
+#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
 #    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
-    globals()['plots_folder'] = "../plots/3C405_x136060/"
+#    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
-#    globals()['data_folder'] = "../data/CygnusA_x43w0/"
-#    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
-#            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
-#            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
-#            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
-#            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
+    globals()['data_folder'] = "../data/CygnusA_x43w0/"
+    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
+            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
+            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
+            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
+            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
+    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
 
     ## Reduction parameters
     # Deconvolution
@@ -71,7 +71,7 @@ def main():
     rotate = False                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
-    figname = '3C405_FOC'         #target/intrument name
+    figname = 'CygnusA_FOC'         #target/intrument name
     figtype = '_combine_FWHM2'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
