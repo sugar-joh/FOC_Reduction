@@ -16,11 +16,11 @@ import lib.plots as proj_plots      #Functions for plotting data
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -34,13 +34,13 @@ def main():
 #    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
-    globals()['data_folder'] = "../data/CygnusA_x43w0/"
-    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
-            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
-            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
-            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
-            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
-    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
+#    globals()['data_folder'] = "../data/CygnusA_x43w0/"
+#    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
+#            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
+#            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
+#            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
+#            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
 
     ## Reduction parameters
     # Deconvolution
@@ -50,29 +50,29 @@ def main():
         psf_FWHM = 0.10
         psf_scale = 'arcsec'
         psf_shape=(9,9)
-        iterations = 10
+        iterations = 5
     # Error estimation
-    error_sub_shape = (100,100)
+    error_sub_shape = (50,50)
     display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.30
+        pxsize = 0.10
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
-    align_center = 'image'        #If None will align image to image center
+    align_center = 'maxflux'        #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian or combine
     smoothing_FWHM = 2           #If None, no smoothing is done
     smoothing_scale = 'pixel'       #pixel or arcsec
     # Rotation
-    rotate = False                  #rotation to North convention can give erroneous results
+    rotate = True                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
-    figname = 'CygnusA_FOC'         #target/intrument name
-    figtype = '_combine_FWHM2'    #additionnal informations
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_combine_FWHM2_rot2'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
