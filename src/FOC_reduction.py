@@ -42,9 +42,25 @@ def main():
 #            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
 
-    globals()['data_folder'] = "../data/3C109_x3mc010/"
-    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
-    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
+#    globals()['data_folder'] = "../data/3C109_x3mc010/"
+#    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
+#    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
+
+    globals()['data_folder'] = "../data/PGN1630377_x39510/"
+    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
+            'x3995105r_c0f.fits', 'x3995109r_c0f.fits', 'x3995201r_c0f.fits',
+            'x3995205r_c0f.fits', 'x3990202m_c0f.fits', 'x3990206m_c0f.fits',
+            'x3995102r_c0f.fits', 'x3995106r_c0f.fits', 'x399510ar_c0f.fits',
+            'x3995202r_c0f.fits','x3995206r_c0f.fits']
+    globals()['plots_folder'] = "../plots/PGN1630377_x39510/"
+
+#    globals()['data_folder'] = "../data/MKN463_x2rp030/"
+#    infiles = ['x2rp0201t_c0f.fits', 'x2rp0203t_c0f.fits', 'x2rp0205t_c0f.fits',
+#            'x2rp0207t_c0f.fits', 'x2rp0302t_c0f.fits', 'x2rp0304t_c0f.fits',
+#            'x2rp0306t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0204t_c0f.fits',
+#            'x2rp0206t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0303t_c0f.fits',
+#            'x2rp0305t_c0f.fits', 'x2rp0307t_c0f.fits']
+#    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
 
     ## Reduction parameters
     # Deconvolution
@@ -57,7 +73,7 @@ def main():
         iterations = 5
     # Error estimation
     error_sub_shape = (100,100)
-    display_error = False
+    display_error = True
     # Data binning
     rebin = True
     if rebin:
@@ -66,17 +82,17 @@ def main():
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = False
+    display_data = True
     # Smoothing
-    smoothing_function = 'gaussian'  #gaussian or combine
-    smoothing_FWHM = 2           #If None, no smoothing is done
+    smoothing_function = 'combine'  #gaussian or combine
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'pixel'       #pixel or arcsec
     # Rotation
     rotate = False                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
-    figname = '3C109_FOC'         #target/intrument name
-    figtype = '_gaussian_FWHM2'    #additionnal informations
+    figname = 'PGN1630+377_FOC'         #target/intrument name
+    figtype = ''    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
