@@ -16,11 +16,11 @@ import lib.plots as proj_plots      #Functions for plotting data
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -29,10 +29,10 @@ def main():
 #            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-    globals()['data_folder'] = "../data/3C405_x136060/"
-    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
-    globals()['plots_folder'] = "../plots/3C405_x136060/"
+#    globals()['data_folder'] = "../data/3C405_x136060/"
+#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+#    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
+#    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
 #    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
@@ -149,6 +149,5 @@ def main():
 
     return 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())
+#if __name__ == "__main__":
+#    sys.exit(main())
