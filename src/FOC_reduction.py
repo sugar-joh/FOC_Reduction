@@ -29,10 +29,10 @@ def main():
 #            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-#    globals()['data_folder'] = "../data/3C405_x136060/"
-#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-#    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
-#    globals()['plots_folder'] = "../plots/3C405_x136060/"
+    globals()['data_folder'] = "../data/3C405_x136060/"
+    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
+    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
 #    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
@@ -46,14 +46,6 @@ def main():
 #    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
 #    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
 
-    globals()['data_folder'] = "../data/PGN1630377_x39510/"
-    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
-            'x3995105r_c0f.fits', 'x3995109r_c0f.fits', 'x3995201r_c0f.fits',
-            'x3995205r_c0f.fits', 'x3990202m_c0f.fits', 'x3990206m_c0f.fits',
-            'x3995102r_c0f.fits', 'x3995106r_c0f.fits', 'x399510ar_c0f.fits',
-            'x3995202r_c0f.fits','x3995206r_c0f.fits']
-    globals()['plots_folder'] = "../plots/PGN1630377_x39510/"
-
 #    globals()['data_folder'] = "../data/MKN463_x2rp030/"
 #    infiles = ['x2rp0201t_c0f.fits', 'x2rp0203t_c0f.fits', 'x2rp0205t_c0f.fits',
 #            'x2rp0207t_c0f.fits', 'x2rp0302t_c0f.fits', 'x2rp0304t_c0f.fits',
@@ -61,6 +53,14 @@ def main():
 #            'x2rp0206t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0303t_c0f.fits',
 #            'x2rp0305t_c0f.fits', 'x2rp0307t_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
+
+#    globals()['data_folder'] = "../data/PG1630+377_x39510/"
+#    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
+#            'x3995105r_c0f.fits', 'x3995109r_c0f.fits', 'x3995201r_c0f.fits',
+#            'x3995205r_c0f.fits', 'x3990202m_c0f.fits', 'x3990206m_c0f.fits',
+#            'x3995102r_c0f.fits', 'x3995106r_c0f.fits', 'x399510ar_c0f.fits',
+#            'x3995202r_c0f.fits','x3995206r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
     ## Reduction parameters
     # Deconvolution
@@ -70,28 +70,28 @@ def main():
         psf_FWHM = 0.10
         psf_scale = 'arcsec'
         psf_shape=(9,9)
-        iterations = 5
+        iterations = 10
     # Error estimation
-    error_sub_shape = (100,100)
-    display_error = True
+    error_sub_shape = (200,200)
+    display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.35
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = True
+    display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian or combine
     smoothing_FWHM = None           #If None, no smoothing is done
-    smoothing_scale = 'pixel'       #pixel or arcsec
+    smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate = False                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
-    figname = 'PGN1630+377_FOC'         #target/intrument name
+    figname = '3C405_FOC'         #target/intrument name
     figtype = ''    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.

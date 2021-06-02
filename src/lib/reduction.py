@@ -716,7 +716,7 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
         return rescaled_image, rescaled_error
 
 
-def smooth_data(data_array, error_array, FWHM=1., scale='pixel',
+def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
         smoothing='gaussian'):
     """
     Smooth a data_array using selected function.
@@ -727,6 +727,8 @@ def smooth_data(data_array, error_array, FWHM=1., scale='pixel',
     error_array : numpy.ndarray
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
+    headers : header list
+        List of headers corresponding to the images in data_array.
     FWHM : float, optional
         Full Width at Half Maximum for desired smoothing in 'scale' units.
         Defaults to 1.
@@ -887,14 +889,18 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
         err60_array = error_array[is_pol60]
         err120_array = error_array[is_pol120]
 
+        headers0 = [header for header in headers if header['filtnam1']=='POL0']
+        headers60 = [header for header in headers if header['filtnam1']=='POL60']
+        headers120 = [header for header in headers if header['filtnam1']=='POL120']
+
         if not(FWHM is None) and (smoothing.lower() in ['combine','combining']):
             # Smooth by combining each polarizer images
-            pol0, err0 = smooth_data(pol0_array, err0_array, FWHM=FWHM,
-                    scale=scale, smoothing=smoothing)
-            pol60, err60 = smooth_data(pol60_array, err60_array, FWHM=FWHM,
-                    scale=scale, smoothing=smoothing)
-            pol120, err120 = smooth_data(pol120_array, err120_array, FWHM=FWHM,
-                    scale=scale, smoothing=smoothing)
+            pol0, err0 = smooth_data(pol0_array, err0_array, headers0,
+                    FWHM=FWHM, scale=scale, smoothing=smoothing)
+            pol60, err60 = smooth_data(pol60_array, err60_array, headers60,
+                    FWHM=FWHM, scale=scale, smoothing=smoothing)
+            pol120, err120 = smooth_data(pol120_array, err120_array, headers120,
+                    FWHM=FWHM, scale=scale, smoothing=smoothing)
 
         else:
             # Average on each polarization filter.
@@ -908,10 +914,12 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
             err60 = np.mean(err60_array,axis=0)/np.sqrt(err60_array.shape[0])
             err120 = np.mean(err120_array,axis=0)/np.sqrt(err120_array.shape[0])
             polerr_array = np.array([err0, err60, err120])
+
+            headers_array = headers0 + headers60 + headers120
             if not(FWHM is None):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
-                        FWHM=FWHM, scale=scale)
+                        headers_array, FWHM=FWHM, scale=scale)
                 pol0, pol60, pol120 = pol_array
                 err0, err60, err120 = polerr_array
 
