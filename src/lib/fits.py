@@ -50,7 +50,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
 
 def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
-        s_P_P, PA, s_PA, s_PA_P, ref_header, filename, data_folder="",
+        s_P_P, PA, s_PA, s_PA_P, headers, filename, data_folder="",
         return_hdul=False):
     """
     Save computed polarimetry parameters to a single fits file,
@@ -64,9 +64,9 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         its error propagated and assuming Poisson noise.
     Stokes_cov : numpy.ndarray
         Covariance matrix of the Stokes parameters I, Q, U.
-    ref_header : astropy.io.fits.header.Header
+    headers : header list
         Header of reference some keywords will be copied from (CRVAL, CDELT,
-        INSTRUME, PROPOSID, TARGNAME, ORIENTAT).
+        INSTRUME, PROPOSID, TARGNAME, ORIENTAT, EXPTOT).
     filename : str
         Name that will be given to the file on writing (will appear in header).
     data_folder : str, optional
@@ -85,6 +85,8 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         Only returned if return_hdul is True.
     """
     #Create new WCS object given the modified images
+    ref_header = headers[0]
+    exp_tot = np.array([header['exptime'] for header in headers]).sum()
     new_wcs = wcs.WCS(ref_header).deepcopy()
     if new_wcs.wcs.has_cd():
         del new_wcs.wcs.cd
@@ -106,6 +108,8 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     header = new_wcs.to_header()
     header['instrume'] = (ref_header['instrume'], 'Instrument from which data is reduced')
     header['photplam'] = (ref_header['photplam'], 'Pivot Wavelength')
+    header['photflam'] = (ref_header['photflam'], 'Inverse Sensitivity in DN/sec/cm**2/Angst')
+    header['exptot'] = (exp_tot, 'Total exposure time in sec')
     header['proposid'] = (ref_header['proposid'], 'PEP proposal identifier for observation')
     header['targname'] = (ref_header['targname'], 'Target name')
     header['orientat'] = (ref_header['orientat'], 'Angle between North and the y-axis of the image')
