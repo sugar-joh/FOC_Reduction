@@ -129,19 +129,21 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     stk_cov = Stokes[np.argmax([Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])]
     pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg' for i in range(len(Stokes))])]
     pol_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])]
-    #pol_err_Poisson = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err_Poisson_noise' for i in range(len(Stokes))])]
+    pol_err_Poisson = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err_Poisson_noise' for i in range(len(Stokes))])]
     pang = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])]
     pang_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes))])]
 
     pivot_wav = Stokes[0].header['photplam']
+    convert_flux = Stokes[0].header['photflam']/Stokes[0].header['exptot']
     wcs = WCS(Stokes[0]).deepcopy()
 
     #Compute SNR and apply cuts
     pol.data[pol.data == 0.] = np.nan
-    SNRp = pol.data/pol_err.data
-    #SNRp = pol.data/pol_err_Poisson.data
+    #SNRp = pol.data/pol_err.data
+    SNRp = pol.data/pol_err_Poisson.data
     pol.data[SNRp < SNRp_cut] = np.nan
-    SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+    #SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+    SNRi = stkI.data/np.std(stkI.data[0:10,0:10])
     pol.data[SNRi < SNRi_cut] = np.nan
 
     mask = (SNRp < SNRp_cut) * (SNRi < SNRi_cut)
@@ -162,10 +164,10 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
 
     if display is None:
         # If no display selected, show intensity map
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.])
-        im = ax.imshow(stkI.data,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        im = ax.imshow(stkI.data*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
+        levelsI = np.linspace(SNRi_cut, SNRi.max(), 10)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
@@ -179,10 +181,10 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
-        vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
+        vmin, vmax = 0., SNRi.max()
         im = ax.imshow(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
-        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
+        levelsI = np.linspace(SNRi_cut, SNRi.max(), 20)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
@@ -193,11 +195,11 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
         cont = ax.contour(SNRp, extent=[-SNRp.shape[1]/2.,SNRp.shape[1]/2.,-SNRp.shape[0]/2.,SNRp.shape[0]/2.], levels=levelsP, colors='grey', linewidths=0.5)
     else:
         # Defaults to intensity map
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.])
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
         levelsI = np.linspace(SNRi_cut, SNRi.max(), 10)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
-        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
     px_size = wcs.wcs.get_cdelt()[0]
     px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
@@ -221,12 +223,12 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     QU_int_err = np.sqrt(np.sum(stk_cov.data[1,2][mask]**2))
 
     P_int = np.sqrt(Q_int**2+U_int**2)/I_int*100.
-    P_int_err = (100./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
+    P_int_err = np.sqrt(2.)*(I_int)**(-0.5)*100.#(100./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
 
     PA_int = (90./np.pi)*np.arctan2(U_int,Q_int)+90.
-    PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
+    PA_int_err = P_int_err/(P_int)*180./np.pi#(90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
 
-    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1:.1e} $\pm$ {2:.1e} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,I_int,I_int_err)+"\n"+r"$P^{{int}}$ = {0:.2f} $\pm$ {1:.2f} %".format(P_int,P_int_err)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.2f} $\pm$ {1:.2f} °".format(PA_int,PA_int_err), color='white', fontsize=11, xy=(0.01, 0.94), xycoords='axes fraction')
+    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1:.1e} $\pm$ {2:.1e} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,I_int*convert_flux,I_int_err*convert_flux)+"\n"+r"$P^{{int}}$ = {0:.2f} $\pm$ {1:.2f} %".format(P_int,P_int_err)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.2f} $\pm$ {1:.2f} °".format(PA_int,PA_int_err), color='white', fontsize=11, xy=(0.01, 0.94), xycoords='axes fraction')
 
     ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')

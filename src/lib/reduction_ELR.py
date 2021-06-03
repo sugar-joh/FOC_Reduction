@@ -428,7 +428,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         #error_array[i] *= np.std(sub_image)    # Previously computed using standard deviation over the background
         error_array[i] *= np.sqrt(np.sum(sub_image**2)/sub_image.size)
         background[i] = sub_image.sum()
-        data_array[i] = np.abs(data_array[i] - sub_image.mean())
+        #data_array[i] = np.abs(data_array[i] - sub_image.mean())
 
     if display:
 
@@ -682,7 +682,9 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     shape = data_array.shape
     res_shape = int(np.ceil(np.sqrt(2)*np.max(shape[1:])))
     rescaled_image = np.ones((shape[0],res_shape,res_shape))
+    cropped_image = np.ones(shape)
     rescaled_error = np.ones((shape[0],res_shape,res_shape))
+    cropped_error = np.ones(shape)
     res_center = (np.array(rescaled_image.shape[1:])/2).astype(int)
 
     shifts, errors = [], []
@@ -704,6 +706,9 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
         rescaled_image[i] = sc_shift(rescaled_image[i], shift, cval=0.1*background[i])
         rescaled_error[i] = sc_shift(rescaled_error[i], shift, cval=background[i])
 
+        cropped_image[i] = rescaled_image[i,res_center[0]-int(shape[1]/2):res_center[0]+int(shape[1]/2),res_center[1]-int(shape[2]/2):res_center[1]+int(shape[2]/2)]
+        cropped_error[i] = rescaled_error[i,res_center[0]-int(shape[1]/2):res_center[0]+int(shape[1]/2),res_center[1]-int(shape[2]/2):res_center[1]+int(shape[2]/2)]
+
         shifts.append(shift)
         errors.append(error)
 
@@ -711,9 +716,9 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     errors = np.array(errors)
 
     if return_shifts:
-        return rescaled_image, rescaled_error, shifts, errors
+        return cropped_image, cropped_error, shifts, errors
     else:
-        return rescaled_image, rescaled_error
+        return cropped_image, cropped_error
 
 
 def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
@@ -903,26 +908,26 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
                     FWHM=FWHM, scale=scale, smoothing=smoothing)
 
         else:
-            # Average on each polarization filter.
-            pol0 = pol0_array.mean(axis=0)
-            pol60 = pol60_array.mean(axis=0)
-            pol120 = pol120_array.mean(axis=0)
-            pol_array = np.array([pol0, pol60, pol120])
+            if not(FWHM is None):
+                # Smooth by convoluting with a gaussian each polX image.
+                pol0, err0 = smooth_data(pol0_array, err0_array, headers0,
+                        FWHM=FWHM, scale=scale)
+                pol60, err60 = smooth_data(pol60_array, err60_array, headers60,
+                        FWHM=FWHM, scale=scale)
+                pol120, err120 = smooth_data(pol120_array, err120_array, headers120,
+                        FWHM=FWHM, scale=scale)
+
+            # Sum on each polarization filter.
+            pol0 = pol0.sum(axis=0)
+            pol60 = pol60.sum(axis=0)
+            pol120 = pol120.sum(axis=0)
 
             # Propagate uncertainties quadratically
             err0 = np.mean(err0_array,axis=0)/np.sqrt(err0_array.shape[0])
             err60 = np.mean(err60_array,axis=0)/np.sqrt(err60_array.shape[0])
             err120 = np.mean(err120_array,axis=0)/np.sqrt(err120_array.shape[0])
-            polerr_array = np.array([err0, err60, err120])
 
             headers_array = headers0 + headers60 + headers120
-            if not(FWHM is None):
-                # Smooth by convoluting with a gaussian each polX image.
-                pol_array, polerr_array = smooth_data(pol_array, polerr_array,
-                        headers_array, FWHM=FWHM, scale=scale)
-                pol0, pol60, pol120 = pol_array
-                err0, err60, err120 = polerr_array
-
         # Get image shape
         shape = pol0.shape
 
@@ -1086,7 +1091,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     N_obs = I_stokes/np.array([header['photflam'] for header in headers]).mean()*exp_tot
 
     #Errors on P, PA supposing Poisson noise
-    s_P_P = np.sqrt(2.)*(N_obs)**(-0.5)*100.
+    s_P_P = np.sqrt(2.)*(I_stokes)**(-0.5)*100.
     s_PA_P = s_P_P/(2.*P/100.)*180./np.pi
 
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P

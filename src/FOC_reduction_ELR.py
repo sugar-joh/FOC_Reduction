@@ -96,7 +96,7 @@ infiles = {'data_folder':'../data/NGC1068_x274020/',\
             'filenames':['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',\
                         'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits','x274020gt.c0f.fits',\
                         'x274020ht.c0f.fits','x274020it.c0f.fits']}
- 
+
 config = {'conserve_flux':True,'upsample_factor':1,\
             'downsample_factor':8}
 

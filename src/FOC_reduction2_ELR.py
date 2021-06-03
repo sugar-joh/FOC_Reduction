@@ -9,8 +9,8 @@ import sys
 import numpy as np
 import copy
 import lib.fits as proj_fits        #Functions to handle fits files
-import lib.reduction as proj_red    #Functions used in reduction pipeline
-import lib.plots as proj_plots      #Functions for plotting data
+import lib.reduction_ELR as proj_red    #Functions used in reduction pipeline
+import lib.plots_ELR as proj_plots      #Functions for plotting data
 
 
 def main():
@@ -77,32 +77,32 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.1
-        px_scale = 'arcsec'         #pixel or arcsec
-        rebin_operation = 'sum'     #sum or average
+        pxsize = 8
+        px_scale = 'pixel'         #pixel or arcsec
+        rebin_operation = 'average'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'combine'  #gaussian or combine
-    smoothing_FWHM = 0.1           #If None, no smoothing is done
-    smoothing_scale = 'arcsec'       #pixel or arcsec
+    smoothing_function = 'gaussian'  #gaussian or combine
+    smoothing_FWHM = 1           #If None, no smoothing is done
+    smoothing_scale = 'pixel'       #pixel or arcsec
     # Rotation
     rotate = False                  #rotation to North convention can give erroneous results
     rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010'    #additionnal informations
+    figtype = '_ELR_same_param_same_op_sP100'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
-    SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRi_cut = 4   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
     ## Step 1:
     # Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
-    data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
+    data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=False)
     # Crop data to remove outside blank margins.
-    data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
+    #data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
