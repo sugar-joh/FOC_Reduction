@@ -98,10 +98,11 @@ infiles = {'data_folder':'../data/NGC1068_x274020/',\
                         'x274020ht.c0f.fits','x274020it.c0f.fits']}
 
 config = {'conserve_flux':True,'upsample_factor':1,\
-            'downsample_factor':8}
+            'downsample_factor':8,\
+            'rotate':True,'reshape':True}
 
 fig = {'cmap':'magma','vmin':-20,'vmax':200,'font_size':40.0,'label_size':20,'lw':3,\
-        'SNRp_cut':3,'SNRi_cut':4,'scalevec':0.05,'step_vec':1,\
+        'SNRp_cut':1,'SNRi_cut':4,'scalevec':0.05,'step_vec':1,\
         'vec_legend':10,'figname':'NGC1068_FOC_ELR'}
 #####################
 
@@ -116,41 +117,46 @@ data_array_c = cross_corr(data_array)
 #resample image
 print('--- Downsample image')
 data_array_cr_m, data_array_cr_s = rebin_array(data_array_c,config)
-#smoothing
-print('--- Smoothing')
-kernel = Gaussian2DKernel(x_stddev=1)
-data_array_crs_m = []
-data_array_crs_s = []
-for ii in range(len(data_array_cr_m)):
-    data_array_crs_m.append(convolve(data_array_cr_m[ii], kernel))
-    data_array_crs_s.append(convolve(data_array_cr_m[ii], kernel))
-
+#compute stokes
+print('--- Combine HWP PAs')
 #combine HWP PAs
-pol0   = (data_array_crs_m[0]+data_array_crs_m[1]+data_array_crs_m[2])
-pol60  = (data_array_crs_m[3]+data_array_crs_m[4]+data_array_crs_m[5]+data_array_crs_m[6])
-pol120 = (data_array_crs_m[7]+data_array_crs_m[8])
-
-#Stokes parameters
+pol0   = (data_array_cr_m[0]+data_array_cr_m[1]+data_array_cr_m[2])
+pol60  = (data_array_cr_m[3]+data_array_cr_m[4]+data_array_cr_m[5]+data_array_cr_m[6])
+pol120 = (data_array_cr_m[7]+data_array_cr_m[8])
+#Stokes
+print('--- Compute Stokes')
 I_stokes = (2./3.)*(pol0 + pol60 + pol120)
 Q_stokes = (2./3.)*(2*pol0 - pol60 - pol120)
 U_stokes = (2./np.sqrt(3.))*(pol60 - pol120)
-
-#rotate Stokes
-#PA = 46.81 #deg
-#I_stokes = ndimage.rotate(I_stokes,-PA,reshape=True)
-#Q_stokes = ndimage.rotate(Q_stokes,-PA,reshape=True)
-#U_stokes = ndimage.rotate(U_stokes,-PA,reshape=True)
-#Q_stokes = Q_stokes*np.cos(np.deg2rad(PA)) - U_stokes*np.sin(np.deg2rad(PA))
-#U_stokes = Q_stokes*np.sin(np.deg2rad(PA)) + U_stokes*np.cos(np.deg2rad(PA))
-
+#Rotate Stokes
+if config['rotate']:
+    print('--- Rotate Stokes')
+    ima = fits.open(infiles['data_folder']+infiles['filenames'][0])
+    PA = ima[0].header['ORIENTAT']
+    #roate images
+    I_stokes = ndimage.rotate(I_stokes,-PA,reshape=config['reshape'])
+    Q_stokes = ndimage.rotate(Q_stokes,-PA,reshape=config['reshape'])
+    U_stokes = ndimage.rotate(U_stokes,-PA,reshape=config['reshape'])
+    #rotate stokes
+    Q_stokes = Q_stokes*np.cos(np.deg2rad(PA)) - U_stokes*np.sin(np.deg2rad(PA))
+    U_stokes = Q_stokes*np.sin(np.deg2rad(PA)) + U_stokes*np.cos(np.deg2rad(PA))
+#smoothing
+print('--- Smoothing')
+kernel = Gaussian2DKernel(x_stddev=1)
+I_stokes = convolve(I_stokes,kernel)
+Q_stokes = convolve(Q_stokes,kernel)
+U_stokes = convolve(U_stokes,kernel)
+#remove annoying pixels due to rotation
+I_stokes[I_stokes == 0] = np.nan
+Q_stokes[Q_stokes == 0] = np.nan
+U_stokes[U_stokes == 0] = np.nan
 
 #Polarimetry
 PI  = np.sqrt(Q_stokes*Q_stokes + U_stokes*U_stokes)
 P   = PI/I_stokes*100
 PA  = 0.5*arctan2(U_stokes,Q_stokes)*180./np.pi+90
-s_P  = np.sqrt(2.)*(I_stokes)**(-0.5)
+s_P  = (np.sqrt(2.)*(I_stokes)**(-0.5)) ### Correct this line!!!
 s_PA = s_P/(P/100.)*180./np.pi
-
 
 ### STEP 6. image to FITS with updated WCS
 img = fits.open(infiles['data_folder']+infiles['filenames'][0])
@@ -162,7 +168,6 @@ new_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
 new_wcs.wcs.cdelt = [img[0].header['CD1_1']*config['downsample_factor'],\
                      img[0].header['CD1_2']*config['downsample_factor']]
 
-#hdu_ori = WCS(img[0])
 stkI=fits.PrimaryHDU(data=I_stokes,header=new_wcs.to_header())
 pol=fits.PrimaryHDU(data=P,header=new_wcs.to_header())
 pang=fits.PrimaryHDU(data=PA,header=new_wcs.to_header())
@@ -175,19 +180,16 @@ pang_err=fits.PrimaryHDU(data=s_PA,header=new_wcs.to_header())
 pxscale = stkI.header['CDELT1']
 
 #apply quality cuts
-SNRp = pol.data/pol_err.data
-pol.data[SNRp < fig['SNRp_cut']] = np.nan
+pol.data[stkI.data < 10] = np.nan
 
-SNRi = stkI.data/np.std(stkI.data[0:10,0:10])
-SNRi = fits.PrimaryHDU(SNRi,header=stkI.header)
-pol.data[SNRi.data < fig['SNRi_cut']] = np.nan
 
-levelsI = 2**(np.arange(2,20,0.5))
+#levelsI = 2**(np.arange(2,20,0.5))
+levelsI = 2**(np.arange(3,20,0.5))
 
 fig1 = plt.figure(figsize=(11,10))
 gc = FITSFigure(stkI,figure=fig1)
 gc.show_colorscale(cmap=fig['cmap'],vmin=fig['vmin'],vmax=fig['vmax'])
-gc.show_contour(SNRi,levels=levelsI,colors='grey',linewidths=0.5)
+gc.show_contour(levels=levelsI,colors='grey',linewidths=0.5)
 gc.show_vectors(pol,pang,scale=fig['scalevec'],\
                 step=fig['step_vec'],color='black',linewidth=2.0)
 gc.show_vectors(pol,pang,scale=fig['scalevec'],\
