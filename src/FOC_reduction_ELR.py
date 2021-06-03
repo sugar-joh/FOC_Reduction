@@ -174,10 +174,9 @@ pang=fits.PrimaryHDU(data=PA,header=new_wcs.to_header())
 pol_err=fits.PrimaryHDU(data=s_P,header=new_wcs.to_header())
 pang_err=fits.PrimaryHDU(data=s_PA,header=new_wcs.to_header())
 
-
 ### STEP 7. polarization map
 #quality cuts
-pxscale = stkI.header['CDELT1']
+pxscale = stkI.header['CDELT2']
 
 #apply quality cuts
 pol.data[stkI.data < 10] = np.nan
