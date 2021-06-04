@@ -196,7 +196,7 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     else:
         # Defaults to intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = ax.imshow(stkI.data,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
         levelsI = np.linspace(SNRi_cut, SNRi.max(), 10)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)

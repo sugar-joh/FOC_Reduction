@@ -43,8 +43,8 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
     if compute_flux:
         for i in range(len(infiles)):
-            # Compute the flux in ergs/cm²/s.angstrom
-            data_array[i] *= headers[i]['PHOTFLAM']/headers[i]['EXPTIME']
+            # Compute the flux in counts/sec
+            data_array[i] /= headers[i]['EXPTIME']
 
     return data_array, headers
 

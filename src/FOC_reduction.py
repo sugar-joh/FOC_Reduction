@@ -77,22 +77,21 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.1
+        pxsize = 0.10
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'combine'  #gaussian or combine
-    smoothing_FWHM = 0.1           #If None, no smoothing is done
+    smoothing_function = 'gaussian_after'  #gaussian_after, gaussian or combine
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate = False                  #rotation to North convention can give erroneous results
-    rotate_library = 'scipy'        #scipy or pillow
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010'    #additionnal informations
+    figtype = '_gaussian_after_FWHM010'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -130,10 +129,7 @@ def main():
     # Rotate images to have North up
     if rotate:
         ref_header = copy.deepcopy(headers[0])
-        if rotate_library.lower() in ['scipy','scipy.ndimage']:
-            I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
-        if rotate_library.lower() in ['pillow','pil']:
-            I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
@@ -144,12 +140,12 @@ def main():
     ## Step 5:
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    #proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    #proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
 
     return 0
 
-#if __name__ == "__main__":
-#    sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main())

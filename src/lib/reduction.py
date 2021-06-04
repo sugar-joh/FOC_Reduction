@@ -33,19 +33,12 @@ prototypes :
         Compute polarization degree (in %) and angle (in degree) and their
         respective errors
 
-    - rotate_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, headers
+    - rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, headers
         Rotate I, Q, U given an angle in degrees using scipy functions.
 
-    - rotate_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, headers
-        Rotate I, Q, U given an angle in degrees using Pillow function.
-
-    - rotate2_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers
+    - rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers
         Rotate I, Q, U, P, PA and associated errors given an angle in degrees
         using scipy functions.
-
-    - rotate2_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers
-        Rotate I, Q, U, P, PA and associated errors given an angle in degrees
-        using Pillow function.
 """
 
 import copy
@@ -55,42 +48,11 @@ import matplotlib.dates as mdates
 from datetime import datetime
 from scipy.ndimage import rotate as sc_rotate
 from scipy.ndimage import shift as sc_shift
-from PIL import Image
 from astropy.wcs import WCS
 from lib.deconvolve import deconvolve_im, gaussian_psf
 from lib.convex_hull import image_hull
 from lib.plots import plot_obs
 from lib.cross_correlation import phase_cross_correlation
-
-
-def PIL_rotate(ndarray, angle, reshape=False, cval=0.):
-    """
-    Define Function with similar parameters as scipy.ndimage.rotate making use
-    of the Pillow library.
-    ----------
-    Inputs:
-    ndarray : numpy.ndarray
-        2D float array to be rotated using Pillow library functions.
-    angle : float
-        Counter-clockwise ngle in degrees that the input array should be
-        rotated to.
-    reshape : boolean, optional
-        If True, output image will be of shape such that the full rotated
-        input array is displayed. If False, output array will be of same
-        shape than input array, cutting rotated edges.
-        Defaults to False.
-    cval : float, optional
-        Values with which will be filled pixels entering the output array by
-        rotation of the input array.
-        Dafaults to 0.
-    ----------
-    Returns:
-    rotated_array : numpy.ndarray
-        Rotated array using Pillow functions.
-    """
-    image = Image.fromarray(ndarray)
-    rotated = image.rotate(angle, expand=reshape, fillcolor=cval)
-    return np.asarray(rotated)
 
 
 def get_row_compressor(old_dimension, new_dimension, operation='sum'):
@@ -660,8 +622,8 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     full_array = np.concatenate((data_array,[ref_data]),axis=0)
     err_array = np.concatenate((error_array,[np.zeros(ref_data.shape)]),axis=0)
 
-    #full_array, err_array = crop_array(full_array, err_array, step=5,
-    #        inside=False)
+    full_array, err_array = crop_array(full_array, err_array, step=5,
+            inside=False)
 
     data_array, ref_data = full_array[:-1], full_array[-1]
     error_array = err_array[:-1]
@@ -772,7 +734,7 @@ def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
                     px_dim[0] = 50.
                 w.wcs.cdelt = 206.3*px_dim/(f_ratio*HST_aper)
             header.update(w.to_header())
-            pxsize[i] = np.round(w.wcs.cdelt,5)
+            pxsize[i] = np.round(w.wcs.cdelt,4)
         if (pxsize != pxsize[0]).any():
             raise ValueError("Not all images in array have same pixel size")
         FWHM /= pxsize[0].min()
@@ -915,8 +877,17 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
             err120 = np.mean(err120_array,axis=0)/np.sqrt(err120_array.shape[0])
             polerr_array = np.array([err0, err60, err120])
 
-            headers_array = headers0 + headers60 + headers120
-            if not(FWHM is None):
+            # Update headers
+            for header in headers:
+                if header['filtnam1']=='POL0':
+                    list_head = headers0
+                elif header['filtnam1']=='POL60':
+                    list_head = headers60
+                else:
+                    list_head = headers120
+                header['exptime'] = np.mean([head['exptime'] for head in list_head])/len(list_head)
+            headers_array = [headers0[0], headers60[0], headers120[0]]
+            if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
                         headers_array, FWHM=FWHM, scale=scale)
@@ -943,7 +914,7 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
 
 
 def compute_Stokes(data_array, error_array, headers, FWHM=None,
-        scale='pixel', smoothing='gaussian'):
+        scale='pixel', smoothing='gaussian_after'):
     """
     Compute the Stokes parameters I, Q and U for a given data_set
     ----------
@@ -970,7 +941,9 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
           weighted pixels (inverse square of errors).
         -'gaussian' convolve any input image with a gaussian of standard
           deviation stdev = FWHM/(2*sqrt(2*log(2))).
-        Defaults to 'gaussian'. Won't be used if FWHM is None.
+        -'gaussian_after' convolve output Stokes I/Q/U with a gaussian of
+          standard deviation stdev = FWHM/(2*sqrt(2*log(2))).
+        Defaults to 'gaussian_after'. Won't be used if FWHM is None.
     ----------
     Returns:
     I_stokes : numpy.ndarray
@@ -1020,6 +993,17 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
         I_stokes[np.isnan(I_stokes)]=0.
         Q_stokes[np.isnan(Q_stokes)]=0.
         U_stokes[np.isnan(U_stokes)]=0.
+
+        if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
+            Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
+            Stokes_error = np.array([np.sqrt(Stokes_cov[i,i]) for i in range(3)])
+            Stokes_headers = headers[0:3]
+
+            Stokes_array, Stokes_error = smooth_data(Stokes_array, Stokes_error,
+                    headers=Stokes_headers, FWHM=FWHM, scale=scale)
+
+            I_stokes, Q_stokes, U_stokes = Stokes_array
+            Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
 
     return I_stokes, Q_stokes, U_stokes, Stokes_cov
 
@@ -1092,7 +1076,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
 
-def rotate_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
+def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1184,99 +1168,7 @@ def rotate_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers
 
 
-def rotate_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
-    """
-    Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
-    matrix to rotate Q, U of a given angle in degrees and update header
-    orientation keyword.
-    ----------
-    Inputs:
-    I_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        total intensity
-    Q_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        vertical/horizontal linear polarization intensity
-    U_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        +45/-45deg linear polarization intensity
-    Stokes_cov : numpy.ndarray
-        Covariance matrix of the Stokes parameters I, Q, U.
-    headers : header list
-        List of headers corresponding to the reduced images.
-    ang : float
-        Rotation angle (in degrees) that should be applied to the Stokes
-        parameters
-    ----------
-    Returns:
-    new_I_stokes : numpy.ndarray
-        Rotated mage (2D floats) containing the rotated Stokes parameters
-        accounting for total intensity
-    new_Q_stokes : numpy.ndarray
-        Rotated mage (2D floats) containing the rotated Stokes parameters
-        accounting for vertical/horizontal linear polarization intensity
-    new_U_stokes : numpy.ndarray
-        Rotated image (2D floats) containing the rotated Stokes parameters
-        accounting for +45/-45deg linear polarization intensity.
-    new_Stokes_cov : numpy.ndarray
-        Updated covariance matrix of the Stokes parameters I, Q, U.
-    new_headers : header list
-        Updated list of headers corresponding to the reduced images accounting
-        for the new orientation angle.
-    """
-    #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
-    alpha = ang*np.pi/180.
-    new_I_stokes = 1.*I_stokes
-    new_Q_stokes = np.cos(2*alpha)*Q_stokes + np.sin(2*alpha)*U_stokes
-    new_U_stokes = -np.sin(2*alpha)*Q_stokes + np.cos(2*alpha)*U_stokes
-
-    #Compute new covariance matrix on rotated parameters
-    new_Stokes_cov = copy.deepcopy(Stokes_cov)
-    new_Stokes_cov[1,1] = np.cos(2.*alpha)**2*Stokes_cov[1,1] + np.sin(2.*alpha)**2*Stokes_cov[2,2] + 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
-    new_Stokes_cov[2,2] = np.sin(2.*alpha)**2*Stokes_cov[1,1] + np.cos(2.*alpha)**2*Stokes_cov[2,2] - 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
-    new_Stokes_cov[0,1] = new_Stokes_cov[1,0] = np.cos(2.*alpha)*Stokes_cov[0,1] + np.sin(2.*alpha)*Stokes_cov[0,2]
-    new_Stokes_cov[0,2] = new_Stokes_cov[2,0] = -np.sin(2.*alpha)*Stokes_cov[0,1] + np.cos(2.*alpha)*Stokes_cov[0,2]
-    new_Stokes_cov[1,2] = new_Stokes_cov[2,1] = np.cos(2.*alpha)*np.sin(2.*alpha)*(Stokes_cov[2,2] - Stokes_cov[1,1]) + (np.cos(2.*alpha)**2 - np.sin(2.*alpha)**2)*Stokes_cov[1,2]
-
-    #Rotate original images using scipy.ndimage.rotate
-    new_I_stokes = PIL_rotate(new_I_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[0,0][0,0]))
-    new_Q_stokes = PIL_rotate(new_Q_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[1,1][0,0]))
-    new_U_stokes = PIL_rotate(new_U_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[2,2][0,0]))
-    for i in range(3):
-        for j in range(3):
-            new_Stokes_cov[i,j] = PIL_rotate(new_Stokes_cov[i,j], ang,
-                    reshape=False, cval=new_Stokes_cov[i,j].mean())
-
-    #Update headers to new angle
-    new_headers = []
-    mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
-        [np.sin(-alpha), np.cos(-alpha)]])
-    for header in headers:
-        new_header = copy.deepcopy(header)
-        new_header['orientat'] = header['orientat'] + ang
-
-        new_wcs = WCS(header).deepcopy()
-        if new_wcs.wcs.has_cd():    # CD matrix
-            del w.wcs.cd
-            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
-            for key in keys:
-                new_header.remove(key, ignore_missing=True)
-            w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
-        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
-            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
-            new_wcs.wcs.pc = newpc
-        new_wcs.wcs.set()
-        new_header.update(new_wcs.to_header())
-
-        new_headers.append(new_header)
-
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers
-
-
-def rotate2_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
+def rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1365,123 +1257,6 @@ def rotate2_sc_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     for i in range(3):
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
-                    reshape=False, cval=new_Stokes_cov[i,j].mean())
-
-    #Update headers to new angle
-    new_headers = []
-    mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
-        [np.sin(-alpha), np.cos(-alpha)]])
-    for header in headers:
-        new_header = copy.deepcopy(header)
-        new_header['orientat'] = header['orientat'] + ang
-
-        new_wcs = WCS(header).deepcopy()
-        if new_wcs.wcs.has_cd():    # CD matrix
-            del w.wcs.cd
-            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
-            for key in keys:
-                new_header.remove(key, ignore_missing=True)
-            w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
-        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
-            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
-            new_wcs.wcs.pc = newpc
-        new_wcs.wcs.set()
-        new_header.update(new_wcs.to_header())
-
-        new_headers.append(new_header)
-
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, new_headers
-
-
-def rotate2_PIL_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
-    """
-    Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
-    matrix to rotate Q, U of a given angle in degrees and update header
-    orientation keyword.
-    ----------
-    Inputs:
-    I_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        total intensity
-    Q_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        vertical/horizontal linear polarization intensity
-    U_stokes : numpy.ndarray
-        Image (2D floats) containing the Stokes parameters accounting for
-        +45/-45deg linear polarization intensity
-    Stokes_cov : numpy.ndarray
-        Covariance matrix of the Stokes parameters I, Q, U.
-    headers : header list
-        List of headers corresponding to the reduced images.
-    ang : float
-        Rotation angle (in degrees) that should be applied to the Stokes
-        parameters
-    ----------
-    Returns:
-    new_I_stokes : numpy.ndarray
-        Rotated mage (2D floats) containing the rotated Stokes parameters
-        accounting for total intensity
-    new_Q_stokes : numpy.ndarray
-        Rotated mage (2D floats) containing the rotated Stokes parameters
-        accounting for vertical/horizontal linear polarization intensity
-    new_U_stokes : numpy.ndarray
-        Rotated image (2D floats) containing the rotated Stokes parameters
-        accounting for +45/-45deg linear polarization intensity.
-    new_Stokes_cov : numpy.ndarray
-        Updated covariance matrix of the Stokes parameters I, Q, U.
-    P : numpy.ndarray
-        Image (2D floats) containing the polarization degree (in %).
-    s_P : numpy.ndarray
-        Image (2D floats) containing the error on the polarization degree.
-    PA : numpy.ndarray
-        Image (2D floats) containing the polarization angle.
-    s_PA : numpy.ndarray
-        Image (2D floats) containing the error on the polarization angle.
-    debiased_P : numpy.ndarray
-        Image (2D floats) containing the debiased polarization degree (in %).
-    s_P_P : numpy.ndarray
-        Image (2D floats) containing the Poisson noise error on the
-        polarization degree.
-    s_PA_P : numpy.ndarray
-        Image (2D floats) containing the Poisson noise error on the
-        polarization angle.
-    """
-    # Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
-    alpha = ang*np.pi/180.
-    new_I_stokes = 1.*I_stokes
-    new_Q_stokes = np.cos(2*alpha)*Q_stokes + np.sin(2*alpha)*U_stokes
-    new_U_stokes = -np.sin(2*alpha)*Q_stokes + np.cos(2*alpha)*U_stokes
-
-    # Compute new covariance matrix on rotated parameters
-    new_Stokes_cov = copy.deepcopy(Stokes_cov)
-    new_Stokes_cov[1,1] = np.cos(2.*alpha)**2*Stokes_cov[1,1] + np.sin(2.*alpha)**2*Stokes_cov[2,2] + 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
-    new_Stokes_cov[2,2] = np.sin(2.*alpha)**2*Stokes_cov[1,1] + np.cos(2.*alpha)**2*Stokes_cov[2,2] - 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
-    new_Stokes_cov[0,1] = new_Stokes_cov[1,0] = np.cos(2.*alpha)*Stokes_cov[0,1] + np.sin(2.*alpha)*Stokes_cov[0,2]
-    new_Stokes_cov[0,2] = new_Stokes_cov[2,0] = -np.sin(2.*alpha)*Stokes_cov[0,1] + np.cos(2.*alpha)*Stokes_cov[0,2]
-    new_Stokes_cov[1,2] = new_Stokes_cov[2,1] = np.cos(2.*alpha)*np.sin(2.*alpha)*(Stokes_cov[2,2] - Stokes_cov[1,1]) + (np.cos(2.*alpha)**2 - np.sin(2.*alpha)**2)*Stokes_cov[1,2]
-
-    # Compute new polarization parameters
-    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = compute_pol(new_I_stokes,
-            new_Q_stokes, new_U_stokes, new_Stokes_cov, headers)
-
-    # Rotate original images using scipy.ndimage.rotate
-    new_I_stokes = PIL_rotate(new_I_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[0,0][0,0]))
-    new_Q_stokes = PIL_rotate(new_Q_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[1,1][0,0]))
-    new_U_stokes = PIL_rotate(new_U_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[2,2][0,0]))
-    P = PIL_rotate(P, ang, reshape=False, cval=P.mean())+0.
-    debiased_P = PIL_rotate(debiased_P, ang, reshape=False,
-            cval=debiased_P.mean())
-    s_P = PIL_rotate(s_P, ang, reshape=False, cval=s_P.mean())
-    s_P_P = PIL_rotate(s_P_P, ang, reshape=False, cval=s_P_P.mean())
-    PA = PIL_rotate(PA, ang, reshape=False, cval=PA.mean())
-    s_PA = PIL_rotate(s_PA, ang, reshape=False, cval=s_PA.mean())
-    s_PA_P = PIL_rotate(s_PA_P, ang, reshape=False, cval=s_PA_P.mean())
-    for i in range(3):
-        for j in range(3):
-            new_Stokes_cov[i,j] = PIL_rotate(new_Stokes_cov[i,j], ang,
                     reshape=False, cval=new_Stokes_cov[i,j].mean())
 
     #Update headers to new angle
