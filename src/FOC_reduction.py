@@ -70,9 +70,14 @@ def main():
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
 
-    globals()['data_folder'] = "../data/MKN78_x3nl020/"
-    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
-    globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
+    globals()['data_folder'] = "../data/MKN3_x3md010/"
+#    infiles = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
+    infiles = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
+    globals()['plots_folder'] = "../plots/MKN3_x3md010/"
+
+#    globals()['data_folder'] = "../data/MKN78_x3nl020/"
+#    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
 
     ## Reduction parameters
     # Deconvolution
@@ -85,7 +90,7 @@ def main():
         iterations = 10
     # Error estimation
     error_sub_shape = (75,75)
-    display_error = False
+    display_error = True
     # Data binning
     rebin = True
     if rebin:
@@ -94,16 +99,16 @@ def main():
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = False
+    display_data = True
     # Smoothing
-    smoothing_function = 'gaussian_after'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 2           #If None, no smoothing is done
-    smoothing_scale = 'pixel'       #pixel or arcsec
+    smoothing_function = 'combine'  #gaussian_after, gaussian or combine
+    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate = True                  #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'MKN78_FOC'         #target/intrument name
-    figtype = '_gaussian_after_FWHM2_rot'    #additionnal informations
+    figname = 'MKN3_2_FOC'         #target/intrument name
+    figtype = ''    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
