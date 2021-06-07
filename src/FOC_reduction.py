@@ -62,18 +62,18 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
 
-    globals()['data_folder'] = "../data/MKN3_x3md010/"
+#    globals()['data_folder'] = "../data/MKN3_x3md010/"
 #    infiles = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
-    infiles = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
-    globals()['plots_folder'] = "../plots/MKN3_x3md010/"
+#    infiles = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/MKN3_x3md010/"
 
 #    globals()['data_folder'] = "../data/MKN78_x3nl020/"
 #    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
@@ -89,26 +89,26 @@ def main():
         psf_shape=(9,9)
         iterations = 10
     # Error estimation
-    error_sub_shape = (75,75)
-    display_error = True
+    error_sub_shape = (100,100)
+    display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.1
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = True
+    display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate = True                  #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'MKN3_2_FOC'         #target/intrument name
-    figtype = ''    #additionnal informations
+    figname = 'IC5063_FOC'         #target/intrument name
+    figtype = '_combine_FWHM020_rot'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
