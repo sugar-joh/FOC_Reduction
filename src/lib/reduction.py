@@ -391,7 +391,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         error = np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_array[i] *= error
         background[i] = sub_image.sum()
-        data_array[i] = np.abs(data_array[i] - error)
+        data_array[i] = np.abs(data_array[i] - sub_image.mean())
 
     if display:
 
