@@ -35,24 +35,24 @@ def main():
 #    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
-#    infiles = ['x43w0101r_c0f.fits', 'x43w0104r_c0f.fits', 'x43w0107r_c0f.fits',
-#            'x43w0201r_c0f.fits', 'x43w0204r_c0f.fits', 'x43w0102r_c0f.fits',
-#            'x43w0105r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0202r_c0f.fits',
-#            'x43w0205r_c0f.fits', 'x43w0103r_c0f.fits', 'x43w0106r_c0f.fits',
-#            'x43w0109r_c0f.fits', 'x43w0203r_c0f.fits', 'x43w0206r_c0f.fits']
+#    infiles = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
+#            'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
+#            'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
+#    infiles = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
+#            'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
 
 #    globals()['data_folder'] = "../data/3C109_x3mc010/"
 #    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
 #    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
 
-#    globals()['data_folder'] = "../data/MKN463_x2rp030/"
-#    infiles = ['x2rp0201t_c0f.fits', 'x2rp0203t_c0f.fits', 'x2rp0205t_c0f.fits',
-#            'x2rp0207t_c0f.fits', 'x2rp0302t_c0f.fits', 'x2rp0304t_c0f.fits',
-#            'x2rp0306t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0204t_c0f.fits',
-#            'x2rp0206t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0303t_c0f.fits',
-#            'x2rp0305t_c0f.fits', 'x2rp0307t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
+    globals()['data_folder'] = "../data/MKN463_x2rp030/"
+    infiles = ['x2rp0201t_c0f.fits', 'x2rp0203t_c0f.fits', 'x2rp0205t_c0f.fits',
+            'x2rp0207t_c0f.fits', 'x2rp0302t_c0f.fits', 'x2rp0304t_c0f.fits',
+            'x2rp0306t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0204t_c0f.fits',
+            'x2rp0206t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0303t_c0f.fits',
+            'x2rp0305t_c0f.fits', 'x2rp0307t_c0f.fits']
+    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
 
 #    globals()['data_folder'] = "../data/PG1630+377_x39510/"
 #    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
@@ -62,9 +62,9 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
@@ -94,7 +94,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.1
+        pxsize = 0.10
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -107,7 +107,7 @@ def main():
     # Rotation
     rotate = True                  #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
+    figname = 'MKN463_FOC'         #target/intrument name
     figtype = '_combine_FWHM020_rot'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
