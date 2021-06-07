@@ -1132,15 +1132,15 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
 
     #Rotate original images using scipy.ndimage.rotate
     new_I_stokes = sc_rotate(new_I_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[0,0][0,0]))
+            cval=0.10*np.sqrt(new_Stokes_cov[0,0][0,0]))
     new_Q_stokes = sc_rotate(new_Q_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[1,1][0,0]))
+            cval=0.10*np.sqrt(new_Stokes_cov[1,1][0,0]))
     new_U_stokes = sc_rotate(new_U_stokes, ang, reshape=False,
-            cval=np.sqrt(new_Stokes_cov[2,2][0,0]))
+            cval=0.10*np.sqrt(new_Stokes_cov[2,2][0,0]))
     for i in range(3):
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang, reshape=False,
-                    cval=new_Stokes_cov[i,j].mean())
+                    cval=0.10*new_Stokes_cov[i,j].mean())
 
     #Update headers to new angle
     new_headers = []

@@ -29,10 +29,9 @@ def main():
 #            'x14w0104t_c1f.fits','x14w0105p_c1f.fits','x14w0106t_c1f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-#    globals()['data_folder'] = "../data/3C405_x136060/"
-#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-#    infiles = ['x1360601t_c1f.fits','x1360602t_c1f.fits','x1360603t_c1f.fits']
-#    globals()['plots_folder'] = "../plots/3C405_x136060/"
+    globals()['data_folder'] = "../data/3C405_x136060/"
+    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
 #    infiles = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
@@ -46,13 +45,13 @@ def main():
 #    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
 #    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
 
-    globals()['data_folder'] = "../data/MKN463_x2rp030/"
-    infiles = ['x2rp0201t_c0f.fits', 'x2rp0203t_c0f.fits', 'x2rp0205t_c0f.fits',
-            'x2rp0207t_c0f.fits', 'x2rp0302t_c0f.fits', 'x2rp0304t_c0f.fits',
-            'x2rp0306t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0204t_c0f.fits',
-            'x2rp0206t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0303t_c0f.fits',
-            'x2rp0305t_c0f.fits', 'x2rp0307t_c0f.fits']
-    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
+#    globals()['data_folder'] = "../data/MKN463_x2rp030/"
+#    infiles = ['x2rp0201t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0203t_c0f.fits',
+#            'x2rp0204t_c0f.fits', 'x2rp0205t_c0f.fits', 'x2rp0206t_c0f.fits',
+#            'x2rp0207t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0302t_c0f.fits',
+#            'x2rp0303t_c0f.fits', 'x2rp0304t_c0f.fits', 'x2rp0305t_c0f.fits',
+#            'x2rp0306t_c0f.fits', 'x2rp0307t_c0f.fits']
+#    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
 
 #    globals()['data_folder'] = "../data/PG1630+377_x39510/"
 #    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
@@ -89,12 +88,12 @@ def main():
         psf_shape=(9,9)
         iterations = 10
     # Error estimation
-    error_sub_shape = (100,100)
+    error_sub_shape = (150,150)
     display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.50
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -102,13 +101,13 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 1.00           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate = True                  #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'MKN463_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020_rot'    #additionnal informations
+    figname = '3C405_FOC'         #target/intrument name
+    figtype = '_combine_FWHM100_rot'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
