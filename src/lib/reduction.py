@@ -378,15 +378,15 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         # Find the sub-image of smallest integrated flux (suppose no source)
         #sub-image dominated by background
         for r in range(temp.shape[1]):
-            for c in range(temp.shape[0]):
+            for c in range(temp.shape[2]):
                 temp[i][r,c] = image[r:r+diff[0],c:c+diff[1]].sum()
 
     minima = np.unravel_index(np.argmin(temp.sum(axis=0)),temp.shape[1:])
 
     for i, image in enumerate(data):
-        rectangle[i] = minima[0], minima[1], sub_shape[0], sub_shape[1]
+        rectangle[i] = minima[1], minima[0], sub_shape[0], sub_shape[1]
         # Compute error : root mean square of the background
-        sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
+        sub_image = image[minima[1]:minima[1]+sub_shape[0],minima[0]:minima[0]+sub_shape[1]]
         #error_array[i] *= np.std(sub_image)    # Previously computed using standard deviation over the background
         error_array[i] *= np.sqrt(np.sum(sub_image**2)/sub_image.size)
         background[i] = sub_image.sum()
