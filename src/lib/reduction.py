@@ -387,10 +387,11 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         rectangle[i] = minima[1], minima[0], sub_shape[0], sub_shape[1]
         # Compute error : root mean square of the background
         sub_image = image[minima[1]:minima[1]+sub_shape[0],minima[0]:minima[0]+sub_shape[1]]
-        #error_array[i] *= np.std(sub_image)    # Previously computed using standard deviation over the background
-        error_array[i] *= np.sqrt(np.sum(sub_image**2)/sub_image.size)
+        #error =  np.std(sub_image)    # Previously computed using standard deviation over the background
+        error = np.sqrt(np.sum(sub_image**2)/sub_image.size)
+        error_array[i] *= error
         background[i] = sub_image.sum()
-        data_array[i] = np.abs(data_array[i] - sub_image.mean())
+        data_array[i] = np.abs(data_array[i] - error)
 
     if display:
 
