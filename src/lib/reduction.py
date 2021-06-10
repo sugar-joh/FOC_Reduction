@@ -391,7 +391,10 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         error = np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_array[i] *= error
         background[i] = sub_image.sum()
-        data_array[i] = np.abs(data_array[i] - sub_image.mean())
+        data_array[i] = data_array[i] - sub_image.mean()
+        data_array[i][data_array[i] < 0.] = 0.
+        if (data_array[i] < 0.).any():
+            print(data_array[i])
 
     if display:
 
@@ -651,7 +654,7 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     shifts, errors = [], []
     for i,image in enumerate(data_array):
         # Initialize rescaled images to background values
-        rescaled_image[i] *= 0.1*background[i]
+        rescaled_image[i] *= 0.*background[i]
         rescaled_error[i] *= background[i]
         # Get shifts and error by cross-correlation to ref_data
         shift, error, phase_diff = phase_cross_correlation(ref_data, image,
@@ -664,8 +667,10 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = copy.deepcopy(error_array[i])
         # Shift images to align
-        rescaled_image[i] = sc_shift(rescaled_image[i], shift, cval=0.1*background[i])
+        rescaled_image[i] = sc_shift(rescaled_image[i], shift, cval=0.)
         rescaled_error[i] = sc_shift(rescaled_error[i], shift, cval=background[i])
+
+        rescaled_image[i][rescaled_image[i] < 0.] = 0.
 
         shifts.append(shift)
         errors.append(error)
@@ -867,15 +872,27 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
 
         else:
             # Average on each polarization filter.
-            pol0 = pol0_array.mean(axis=0)
-            pol60 = pol60_array.mean(axis=0)
-            pol120 = pol120_array.mean(axis=0)
+            #pol0 = pol0_array.mean(axis=0)
+            #pol60 = pol60_array.mean(axis=0)
+            #pol120 = pol120_array.mean(axis=0)
+            # Sum on each polarization filter.
+            print("Exposure time for polarizer 0°/60°/120° : ",
+                    np.sum([header['exptime'] for header in headers0]),
+                    np.sum([header['exptime'] for header in headers60]),
+                    np.sum([header['exptime'] for header in headers120]))
+            pol0 = pol0_array.sum(axis=0)
+            pol60 = pol60_array.sum(axis=0)
+            pol120 = pol120_array.sum(axis=0)
             pol_array = np.array([pol0, pol60, pol120])
 
+
             # Propagate uncertainties quadratically
-            err0 = np.mean(err0_array,axis=0)/np.sqrt(err0_array.shape[0])
-            err60 = np.mean(err60_array,axis=0)/np.sqrt(err60_array.shape[0])
-            err120 = np.mean(err120_array,axis=0)/np.sqrt(err120_array.shape[0])
+            #err0 = np.mean(err0_array,axis=0)/np.sqrt(err0_array.shape[0])
+            #err60 = np.mean(err60_array,axis=0)/np.sqrt(err60_array.shape[0])
+            #err120 = np.mean(err120_array,axis=0)/np.sqrt(err120_array.shape[0])
+            err0 = np.sum(err0_array,axis=0)*np.sqrt(err0_array.shape[0])
+            err60 = np.sum(err60_array,axis=0)*np.sqrt(err60_array.shape[0])
+            err120 = np.sum(err120_array,axis=0)*np.sqrt(err120_array.shape[0])
             polerr_array = np.array([err0, err60, err120])
 
             # Update headers
@@ -886,8 +903,9 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
                     list_head = headers60
                 else:
                     list_head = headers120
-                header['exptime'] = np.mean([head['exptime'] for head in list_head])/len(list_head)
+                header['exptime'] = np.sum([head['exptime'] for head in list_head])/len(list_head)
             headers_array = [headers0[0], headers60[0], headers120[0]]
+
             if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
@@ -976,10 +994,33 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
                 FWHM=FWHM, scale=scale, smoothing=smoothing)
         pol0, pol60, pol120 = pol_array
 
+        if (pol0 < 0.).any() or (pol60 < 0.).any() or (pol120 < 0.).any():
+            print("WARNING : Negative value in polarizer array.")
+
         #Stokes parameters
         I_stokes = (2./3.)*(pol0 + pol60 + pol120)
         Q_stokes = (2./3.)*(2*pol0 - pol60 - pol120)
         U_stokes = (2./np.sqrt(3.))*(pol60 - pol120)
+
+        #Remove nan
+        I_stokes[np.isnan(I_stokes)]=0.
+        Q_stokes[np.isnan(Q_stokes)]=0.
+        Q_stokes[I_stokes == 0.]=0.
+        U_stokes[np.isnan(U_stokes)]=0.
+        U_stokes[I_stokes == 0.]=0.
+
+        mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
+        if mask.any():
+            print("WARNING : I_pol > I_stokes : ", len(I_stokes[mask]))
+
+            plt.imshow(np.sqrt(Q_stokes**2+U_stokes**2)/I_stokes*mask, origin='lower')
+            plt.colorbar()
+            plt.title(r"$I_{pol}/I_{tot}$")
+            plt.show()
+
+            #I_stokes[mask]=0.
+            Q_stokes[mask]=0.
+            U_stokes[mask]=0.
 
         #Stokes covariance matrix
         Stokes_cov = np.zeros((3,3,I_stokes.shape[0],I_stokes.shape[1]))
@@ -989,11 +1030,6 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
         Stokes_cov[0,1] = Stokes_cov[1,0] = (4./(3.*np.sqrt(3.)))*(pol_cov[1,1]-pol_cov[2,2]+pol_cov[0,1]-pol_cov[0,2])
         Stokes_cov[0,2] = Stokes_cov[2,0] = (4./9.)*(2.*pol_cov[0,0]-pol_cov[1,1]-pol_cov[2,2]+pol_cov[0,1]+pol_cov[0,2]-2.*pol_cov[1,2])
         Stokes_cov[1,2] = Stokes_cov[2,1] = (4./(3.*np.sqrt(3.)))*(-pol_cov[1,1]+pol_cov[2,2]+2.*pol_cov[0,1]-2.*pol_cov[0,2])
-
-        #Remove nan
-        I_stokes[np.isnan(I_stokes)]=0.
-        Q_stokes[np.isnan(Q_stokes)]=0.
-        U_stokes[np.isnan(U_stokes)]=0.
 
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
@@ -1053,10 +1089,11 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     #Polarization degree and angle computation
     I_pol = np.sqrt(Q_stokes**2 + U_stokes**2)
     P = I_pol/I_stokes*100.
+    P[I_stokes <= 0.] = 0.
     PA = (90./np.pi)*np.arctan2(U_stokes,Q_stokes)+90
 
-    if (np.isfinite(P)>100.).any():
-        print("WARNING : found pixels for which P > 100%")
+    if (P>100.).any():
+        print("WARNING : found pixels for which P > 100%", len(P[P>100.]))
 
     #Associated errors
     s_P = (100./I_stokes)*np.sqrt((Q_stokes**2*Stokes_cov[1,1] + U_stokes**2*Stokes_cov[2,2] + 2.*Q_stokes*U_stokes*Stokes_cov[1,2])/(Q_stokes**2 + U_stokes**2) + ((Q_stokes/I_stokes)**2 + (U_stokes/I_stokes)**2)*Stokes_cov[0,0] - 2.*(Q_stokes/I_stokes)*Stokes_cov[0,1] - 2.*(U_stokes/I_stokes)*Stokes_cov[0,2])
@@ -1065,16 +1102,88 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
 
     debiased_P = np.sqrt(P**2 - s_P**2)
 
+    if (debiased_P>100.).any():
+        print("WARNING : found pixels for which debiased_P > 100%", len(debiased_P[debiased_P>100.]))
+
     #Compute the total exposure time so that
     #I_stokes*exp_tot = N_tot the total number of events
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
-    N_obs = I_stokes/np.array([header['photflam'] for header in headers]).mean()*exp_tot
+    N_obs = I_stokes*exp_tot
 
     #Errors on P, PA supposing Poisson noise
-    s_P_P = np.sqrt(2.)*(N_obs)**(-0.5)*100.
+    s_P_P = np.sqrt(2.)/np.sqrt(N_obs)*100.
     s_PA_P = s_P_P/(2.*P/100.)*180./np.pi
 
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
+
+
+def rotate_data(data_array, error_array, headers, ang):
+    """
+    Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
+    matrix to rotate Q, U of a given angle in degrees and update header
+    orientation keyword.
+    ----------
+    Inputs:
+    data_array : numpy.ndarray
+        Array of images (2D floats) to be rotated by angle ang.
+    error_array : numpy.ndarray
+        Array of error associated to images in data_array.
+    headers : header list
+        List of headers corresponding to the reduced images.
+    ang : float
+        Rotation angle (in degrees) that should be applied to the Stokes
+        parameters
+    ----------
+    Returns:
+    new_data_array : numpy.ndarray
+        Updated array containing the rotated images.
+    new_error_array : numpy.ndarray
+        Updated array containing the rotated errors.
+    new_headers : header list
+        Updated list of headers corresponding to the reduced images accounting
+        for the new orientation angle.
+    """
+    #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
+    alpha = ang*np.pi/180.
+
+    #Rotate original images using scipy.ndimage.rotate
+    new_data_array = []
+    new_error_array = []
+    for i in range(len(data_array)):
+        new_data_array.append(sc_rotate(data_array[i], ang, reshape=False,
+            cval=0.))
+        new_error_array.append(sc_rotate(error_array[i], ang, reshape=False,
+            cval=error_array.mean()))
+    new_data_array = np.array(new_data_array)
+    new_error_array = np.array(new_error_array)
+
+    for i in range(len(new_data_array)):
+        new_data_array[i][new_data_array[i] < 0.] = 0.
+
+    #Update headers to new angle
+    new_headers = []
+    mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
+        [np.sin(-alpha), np.cos(-alpha)]])
+    for header in headers:
+        new_header = copy.deepcopy(header)
+        new_header['orientat'] = header['orientat'] + ang
+
+        new_wcs = WCS(header).deepcopy()
+        if new_wcs.wcs.has_cd():    # CD matrix
+            del new_wcs.wcs.cd
+            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
+            for key in keys:
+                new_header.remove(key, ignore_missing=True)
+            new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(new_wcs.wcs.get_pc()**2,axis=1))
+        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
+            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
+            new_wcs.wcs.pc = newpc
+        new_wcs.wcs.set()
+        new_header.update(new_wcs.to_header())
+
+        new_headers.append(new_header)
+
+    return new_data_array, new_error_array, new_headers
 
 
 def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
@@ -1133,15 +1242,15 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
 
     #Rotate original images using scipy.ndimage.rotate
     new_I_stokes = sc_rotate(new_I_stokes, ang, reshape=False,
-            cval=0.10*np.sqrt(new_Stokes_cov[0,0][0,0]))
+            cval=0.0*np.sqrt(new_Stokes_cov[0,0][0,0]))
     new_Q_stokes = sc_rotate(new_Q_stokes, ang, reshape=False,
-            cval=0.10*np.sqrt(new_Stokes_cov[1,1][0,0]))
+            cval=0.0*np.sqrt(new_Stokes_cov[1,1][0,0]))
     new_U_stokes = sc_rotate(new_U_stokes, ang, reshape=False,
-            cval=0.10*np.sqrt(new_Stokes_cov[2,2][0,0]))
+            cval=0.0*np.sqrt(new_Stokes_cov[2,2][0,0]))
     for i in range(3):
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang, reshape=False,
-                    cval=0.10*new_Stokes_cov[i,j].mean())
+                    cval=0.0*new_Stokes_cov[i,j].mean())
 
     #Update headers to new angle
     new_headers = []
@@ -1153,11 +1262,11 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
 
         new_wcs = WCS(header).deepcopy()
         if new_wcs.wcs.has_cd():    # CD matrix
-            del w.wcs.cd
+            del new_wcs.wcs.cd
             keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
             for key in keys:
                 new_header.remove(key, ignore_missing=True)
-            w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
+            new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
         elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
             newpc = np.dot(mrot, new_wcs.wcs.get_pc())
             new_wcs.wcs.pc = newpc

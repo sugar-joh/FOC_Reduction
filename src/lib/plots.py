@@ -134,7 +134,7 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     pang_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes))])]
 
     pivot_wav = Stokes[0].header['photplam']
-    convert_flux = Stokes[0].header['photflam']
+    convert_flux = 1.#Stokes[0].header['photflam']
     wcs = WCS(Stokes[0]).deepcopy()
 
     #Compute SNR and apply cuts

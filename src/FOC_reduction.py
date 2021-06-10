@@ -16,20 +16,20 @@ import lib.plots as proj_plots      #Functions for plotting data
 def main():
     ##### User inputs
     ## Input and output locations
-    globals()['data_folder'] = "../data/NGC1068_x274020/"
-    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+#    globals()['data_folder'] = "../data/NGC1068_x274020/"
+#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
 #            'x14w0104t_c0f.fits','x14w0105p_c0f.fits','x14w0106t_c0f.fits']
 #    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-#    globals()['data_folder'] = "../data/3C405_x136060/"
-#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/3C405_x136060/"
+    globals()['data_folder'] = "../data/3C405_x136060/"
+    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+    globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #    globals()['data_folder'] = "../data/CygnusA_x43w0/"
 #    infiles = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
@@ -87,25 +87,26 @@ def main():
         iterations = 10
     # Error estimation
     error_sub_shape = (75,75)
-    display_error = False
+    display_error = True
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.50
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = False
+    display_data = True
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
-    rotate = True                  #rotation to North convention can give erroneous results
+    rotate_stokes = False           #rotation to North convention can give erroneous results
+    rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020_rot'    #additionnal informations
+    figname = '3C405_FOC'         #target/intrument name
+    figtype = ''    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -114,19 +115,40 @@ def main():
     ## Step 1:
     # Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
+    for data in data_array:
+        if (data < 0.).any():
+            print("ETAPE 1 : ", data)
     # Crop data to remove outside blank margins.
     data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
+    for data in data_array:
+        if (data < 0.).any():
+            print("ETAPE 2 : ", data)
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     data_array, error_array = proj_red.get_error(data_array, sub_shape=error_sub_shape, display=display_error, headers=headers, savename=figname+"_errors", plots_folder=plots_folder)
+    for data in data_array:
+        if (data < 0.).any():
+            print("ETAPE 3 : ", data)
     # Rebin data to desired pixel size.
     if rebin:
         data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
+    for data in data_array:
+        if (data < 0.).any():
+            print("ETAPE 4 : ", data)
     #Align and rescale images with oversampling.
     data_array, error_array = proj_red.align_data(data_array, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
-
+    for data in data_array:
+        if (data < 0.).any():
+            print("ETAPE 5 : ", data)
+    # Rotate data to have North up
+    ref_header = copy.deepcopy(headers[0])
+    if rotate_data:
+        data_array, error_array, headers = proj_red.rotate_data(data_array, error_array, headers, -ref_header['orientat'])
+        for data in data_array:
+            if (data < 0.).any():
+                print("ETAPE 6 : ", data)
     #Plot array for checking output
     if display_data:
         proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_center_"+align_center, plots_folder=plots_folder)
@@ -141,7 +163,7 @@ def main():
 
     ## Step 3:
     # Rotate images to have North up
-    if rotate:
+    if rotate_stokes:
         ref_header = copy.deepcopy(headers[0])
         I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
     # Compute polarimetric parameters (polarization degree and angle).

@@ -41,6 +41,10 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             data_array.append(f[0].data)
     data_array = np.array(data_array)
 
+    # Prevent negative count value in imported data
+    for i in range(len(data_array)):
+        data_array[i][data_array[i] < 0.] = 0.
+
     if compute_flux:
         for i in range(len(infiles)):
             # Compute the flux in counts/sec
