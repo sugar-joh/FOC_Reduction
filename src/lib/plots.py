@@ -87,6 +87,56 @@ def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
     plt.show()
     return 0
 
+
+def plot_Stokes(Stokes, savename=None, plots_folder=""):
+    """
+    Plots I/Q/U maps.
+    ----------
+    Inputs:
+    Stokes : astropy.io.fits.hdu.hdulist.HDUList
+        HDUList containing I, Q, U, P, s_P, PA, s_PA (in this particular order)
+        for one observation.
+    savename : str, optional
+        Name of the figure the map should be saved to. If None, the map won't
+        be saved (only displayed).
+        Defaults to None.
+    plots_folder : str, optional
+        Relative (or absolute) filepath to the folder in wich the map will
+        be saved. Not used if savename is None.
+        Defaults to current folder.
+    """
+    # Get data
+    stkI = Stokes[np.argmax([Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])].data
+    stkQ = Stokes[np.argmax([Stokes[i].header['datatype']=='Q_stokes' for i in range(len(Stokes))])].data
+    stkU = Stokes[np.argmax([Stokes[i].header['datatype']=='U_stokes' for i in range(len(Stokes))])].data
+
+    wcs = WCS(Stokes[0]).deepcopy()
+
+    # Plot figure
+    fig = plt.figure(figsize=(30,10))
+
+    ax = fig.add_subplot(131, projection=wcs)
+    im = ax.imshow(stkI, origin='lower')
+    plt.colorbar(im)
+    ax.set(xlabel="RA", ylabel="DEC", title=r"$I_{stokes}$")
+
+    ax = fig.add_subplot(132, projection=wcs)
+    im = ax.imshow(stkQ, origin='lower')
+    plt.colorbar(im)
+    ax.set(xlabel="RA", ylabel="DEC", title=r"$Q_{stokes}$")
+
+    ax = fig.add_subplot(133, projection=wcs)
+    im = ax.imshow(stkU, origin='lower')
+    plt.colorbar(im)
+    ax.set(xlabel="RA", ylabel="DEC", title=r"$U_{stokes}$")
+
+    if not (savename is None):
+        fig.suptitle(savename+"_IQU")
+        fig.savefig(plots_folder+savename+"_IQU.png",bbox_inches='tight')
+    plt.show()
+    return 0
+
+
 def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
         savename=None, plots_folder="", display=None):
     """
@@ -136,6 +186,10 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     pivot_wav = Stokes[0].header['photplam']
     convert_flux = 1.#Stokes[0].header['photflam']
     wcs = WCS(Stokes[0]).deepcopy()
+
+    #Plot Stokes parameters map
+    if display is None:
+        plot_Stokes(Stokes, savename=savename, plots_folder=plots_folder)
 
     #Compute SNR and apply cuts
     pol.data[pol.data == 0.] = np.nan
