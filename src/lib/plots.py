@@ -184,7 +184,7 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     pang_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes))])]
 
     pivot_wav = Stokes[0].header['photplam']
-    convert_flux = 1.#Stokes[0].header['photflam']
+    convert_flux = Stokes[0].header['photflam']
     wcs = WCS(Stokes[0]).deepcopy()
 
     #Plot Stokes parameters map
@@ -194,11 +194,13 @@ def polarization_map(Stokes, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     #Compute SNR and apply cuts
     pol.data[pol.data == 0.] = np.nan
     SNRp = pol.data/pol_err.data
+    SNRp[np.isnan(SNRp)] = 0.
     pol.data[SNRp < SNRp_cut] = np.nan
     SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+    SNRi[np.isnan(SNRi)] = 0.
     pol.data[SNRi < SNRi_cut] = np.nan
 
-    mask = (SNRp < SNRp_cut) * (SNRi < SNRi_cut)
+    mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
 
     # Look for pixel of max polarization
     if np.isfinite(pol.data).any():

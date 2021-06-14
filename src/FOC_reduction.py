@@ -87,7 +87,7 @@ def main():
         iterations = 10
     # Error estimation
     error_sub_shape = (75,75)
-    display_error = True
+    display_error = False
     # Data binning
     rebin = True
     if rebin:
@@ -96,17 +96,17 @@ def main():
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
-    display_data = True
+    display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_FWHM = 1.00           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate_stokes = False           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = '3C405_FOC'         #target/intrument name
-    figtype = ''    #additionnal informations
+    figtype = '_combine_FWHM100'    #additionnal informations
     SNRp_cut = 3    #P measurments with SNR>3
     SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -165,7 +165,7 @@ def main():
     # Rotate images to have North up
     if rotate_stokes:
         ref_header = copy.deepcopy(headers[0])
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'])
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 

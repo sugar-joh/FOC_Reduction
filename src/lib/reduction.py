@@ -646,15 +646,14 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     # Create a rescaled null array that can contain any rotation of the
     #original image (and shifted images)
     shape = data_array.shape
-    res_shape = int(np.ceil(np.sqrt(2)*np.max(shape[1:])))
-    rescaled_image = np.ones((shape[0],res_shape,res_shape))
+    res_shape = int(np.ceil(np.sqrt(2.5)*np.max(shape[1:])))
+    rescaled_image = np.zeros((shape[0],res_shape,res_shape))
     rescaled_error = np.ones((shape[0],res_shape,res_shape))
     res_center = (np.array(rescaled_image.shape[1:])/2).astype(int)
 
     shifts, errors = [], []
     for i,image in enumerate(data_array):
         # Initialize rescaled images to background values
-        rescaled_image[i] *= 0.*background[i]
         rescaled_error[i] *= background[i]
         # Get shifts and error by cross-correlation to ref_data
         shift, error, phase_diff = phase_cross_correlation(ref_data, image,
@@ -1004,10 +1003,10 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
 
         #Remove nan
         I_stokes[np.isnan(I_stokes)]=0.
-        Q_stokes[np.isnan(Q_stokes)]=0.
         Q_stokes[I_stokes == 0.]=0.
-        U_stokes[np.isnan(U_stokes)]=0.
         U_stokes[I_stokes == 0.]=0.
+        Q_stokes[np.isnan(Q_stokes)]=0.
+        U_stokes[np.isnan(U_stokes)]=0.
 
         mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
         if mask.any():
@@ -1114,6 +1113,16 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     s_P_P = np.sqrt(2.)/np.sqrt(N_obs)*100.
     s_PA_P = s_P_P/(2.*P/100.)*180./np.pi
 
+    # Nan handling :
+    fmax = np.finfo(np.float64).max
+
+    P[np.isnan(P)] = 0.
+    s_P[np.isnan(s_P)] = fmax
+    s_PA[np.isnan(s_PA)] = fmax
+    debiased_P[np.isnan(debiased_P)] = 0.
+    s_P_P[np.isnan(s_P_P)] = fmax
+    s_PA_P[np.isnan(s_PA_P)] = fmax
+
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
 
@@ -1186,7 +1195,7 @@ def rotate_data(data_array, error_array, headers, ang):
     return new_data_array, new_error_array, new_headers
 
 
-def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
+def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang, SNRi_cut=None):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1209,6 +1218,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     ang : float
         Rotation angle (in degrees) that should be applied to the Stokes
         parameters
+    SNRi_cut : float, optional
+        Cut that should be applied to the signal-to-noise ratio on I.
+        Any SNR < SNRi_cut won't be displayed. If None, cut won't be applied.
+        Defaults to None.
     ----------
     Returns:
     new_I_stokes : numpy.ndarray
@@ -1226,6 +1239,18 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
         Updated list of headers corresponding to the reduced images accounting
         for the new orientation angle.
     """
+    #Apply cuts
+    if not(SNRi_cut is None):
+        SNRi = I_stokes/np.sqrt(Stokes_cov[0,0])
+        mask = SNRi < SNRi_cut
+        eps = 1e-5
+        for i in range(I_stokes.shape[0]):
+            for j in range(I_stokes.shape[1]):
+                if mask[i,j]:
+                    I_stokes[i,j] = eps*np.sqrt(Stokes_cov[0,0][i,j])
+                    Q_stokes[i,j] = eps*np.sqrt(Stokes_cov[1,1][i,j])
+                    U_stokes[i,j] = eps*np.sqrt(Stokes_cov[2,2][i,j])
+
     #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
     alpha = ang*np.pi/180.
     new_I_stokes = 1.*I_stokes
@@ -1274,6 +1299,16 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
         new_header.update(new_wcs.to_header())
 
         new_headers.append(new_header)
+
+    # Nan handling :
+    fmax = np.finfo(np.float64).max
+
+    new_I_stokes[np.isnan(new_I_stokes)] = 0.
+    new_Q_stokes[new_I_stokes == 0.] = 0.
+    new_U_stokes[new_I_stokes == 0.] = 0.
+    new_Q_stokes[np.isnan(new_Q_stokes)] = 0.
+    new_U_stokes[np.isnan(new_U_stokes)] = 0.
+    new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers
 
