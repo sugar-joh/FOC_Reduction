@@ -1018,8 +1018,8 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
             plt.show()
 
             #I_stokes[mask]=0.
-            Q_stokes[mask]=0.
-            U_stokes[mask]=0.
+            #Q_stokes[mask]=0.
+            #U_stokes[mask]=0.
 
         #Stokes covariance matrix
         Stokes_cov = np.zeros((3,3,I_stokes.shape[0],I_stokes.shape[1]))
@@ -1426,5 +1426,21 @@ def rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
         new_header.update(new_wcs.to_header())
 
         new_headers.append(new_header)
+
+    # Nan handling :
+    fmax = np.finfo(np.float64).max
+
+    new_I_stokes[np.isnan(new_I_stokes)] = 0.
+    new_Q_stokes[new_I_stokes == 0.] = 0.
+    new_U_stokes[new_I_stokes == 0.] = 0.
+    new_Q_stokes[np.isnan(new_Q_stokes)] = 0.
+    new_U_stokes[np.isnan(new_U_stokes)] = 0.
+    new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
+    P[np.isnan(P)] = 0.
+    s_P[np.isnan(s_P)] = fmax
+    s_PA[np.isnan(s_PA)] = fmax
+    debiased_P[np.isnan(debiased_P)] = 0.
+    s_P_P[np.isnan(s_P_P)] = fmax
+    s_PA_P[np.isnan(s_PA_P)] = fmax
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, new_headers
