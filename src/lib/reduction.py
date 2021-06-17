@@ -800,7 +800,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             raise ValueError("Not all images in array have same pixel size")
         FWHM /= pxsize[0].min()
 
-    #Define gaussian stdev
+    # Define gaussian stdev
     stdev = FWHM/(2.*np.sqrt(2.*np.log(2)))
     fmax = np.finfo(np.float64).max
 
@@ -821,15 +821,16 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                 g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*len(data_array))
                 # Apply weighted combination
-                if data_mask[r,c]:
-                    smoothed[r,c] = 0.
-                    error[r,c] = 1.
-                else:
-                    smoothed[r,c] = np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                    error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
+                error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+
+        # Nan handling
+        error[np.isnan(smoothed)] = 0.
+        smoothed[np.isnan(smoothed)] = 0.
+        error[np.isnan(error)] = 0.
 
     elif smoothing.lower() in ['gauss','gaussian']:
-        #Convolution with gaussian function
+        # Convolution with gaussian function
         smoothed = np.zeros(data_array.shape)
         error = np.zeros(error_array.shape)
         for i,image in enumerate(data_array):
@@ -838,12 +839,13 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 for c in range(image.shape[1]):
                     dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                     g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
-                if data_mask[r,c]:
-                    smoothed[r,c] = 0.
-                    error[r,c] = 1.
-                else:
-                    smoothed[r,c] = np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                    error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                    smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
+                    error[i][r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+
+            # Nan handling
+            error[i][np.isnan(smoothed)] = 0.
+            smoothed[i][np.isnan(smoothed)] = 0.
+            error[i][np.isnan(error)] = 0.
 
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
