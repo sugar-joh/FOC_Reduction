@@ -45,6 +45,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.patches import Rectangle
 from datetime import datetime
 from scipy.ndimage import rotate as sc_rotate
 from scipy.ndimage import shift as sc_shift
@@ -166,7 +167,8 @@ def bin_ndarray(ndarray, new_shape, operation='sum'):
     return ndarray
 
 
-def crop_array(data_array, error_array=None, step=5, null_val=None, inside=False):
+def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
+        inside=False, display=False, savename=None, plots_folder=""):
     """
     Homogeneously crop an array: all contained images will have the same shape.
     'inside' parameter will decide how much should be cropped.
@@ -175,6 +177,8 @@ def crop_array(data_array, error_array=None, step=5, null_val=None, inside=False
     data_array : numpy.ndarray
         Array containing the observation data (2D float arrays) to
         homogeneously crop.
+    headers : header list
+        Headers associated with the images in data_array.
     error_array : numpy.ndarray, optional
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
@@ -196,6 +200,10 @@ def crop_array(data_array, error_array=None, step=5, null_val=None, inside=False
         If True, the cropped image will be the maximum rectangle included
         inside the image. If False, the cropped image will be the minimum
         rectangle in which the whole image is included.
+        Defaults to False.
+    display : boolean, optional
+        If True, data_array will be displayed with a rectangle around the
+        sub-image selected for region of interest.
         Defaults to False.
     ----------
     Returns:
@@ -225,6 +233,46 @@ def crop_array(data_array, error_array=None, step=5, null_val=None, inside=False
         v_array[3] = np.max(vertex[:,3]).astype(int)
 
     new_shape = np.array([v_array[1]-v_array[0],v_array[3]-v_array[2]])
+    rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 'b']
+    if display:
+        fig, ax = plt.subplots()
+        data = data_array[0]
+        instr = headers[0]['instrume']
+        rootname = headers[0]['rootname']
+        exptime = headers[0]['exptime']
+        filt = headers[0]['filtnam1']
+        #plots
+        im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower')
+        x, y, width, height, color = rectangle
+        ax.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
+        #position of centroid
+        ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], lw=1,
+                color='black')
+        ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], lw=1,
+                color='black')
+        ax.annotate(instr+":"+rootname, color='white', fontsize=5,
+                xy=(0.02, 0.95), xycoords='axes fraction')
+        ax.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02),
+                xycoords='axes fraction')
+        ax.annotate(exptime, color='white', fontsize=5, xy=(0.80, 0.02),
+                xycoords='axes fraction')
+        ax.set(title="Location of cropped image.",
+                xlabel='pixel offset',
+                ylabel='pixel offset')
+
+        fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
+        cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
+        fig.colorbar(im, cax=cbar_ax)
+
+        if not(savename is None):
+            fig.suptitle(savename+'_'+filt+'_crop_region')
+            fig.savefig(plots_folder+savename+'_'+filt+'_crop_region.png',
+                    bbox_inches='tight')
+            plot_obs(data_array, headers, vmin=data_array.min(),
+                    vmax=data_array.max(), rectangle=[rectangle,]*len(headers),
+                    savename=savename+'_crop_region',plots_folder=plots_folder)
+        plt.show()
+
     crop_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
     crop_error_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
     for i,image in enumerate(data_array):
@@ -360,7 +408,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         Only returned if return_background is True.
     """
     # Crop out any null edges
-    data, error = crop_array(data_array, step=5, null_val=0., inside=False)
+    data, error = crop_array(data_array, headers, step=5, null_val=0., inside=False)
 
     sub_shape = np.array(sub_shape)
     # Make sub_shape of odd values
@@ -371,7 +419,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
     diff = (sub_shape-1).astype(int)
     temp = np.zeros((shape[0],shape[1]-diff[0],shape[2]-diff[1]))
     error_array = np.ones(data_array.shape)
-    rectangle = np.zeros((shape[0],4))
+    rectangle = []
     background = np.zeros((shape[0]))
 
     for i,image in enumerate(data):
@@ -384,7 +432,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
     minima = np.unravel_index(np.argmin(temp.sum(axis=0)),temp.shape[1:])
 
     for i, image in enumerate(data):
-        rectangle[i] = minima[1], minima[0], sub_shape[1], sub_shape[0]
+        rectangle.append([minima[1], minima[0], sub_shape[1], sub_shape[0], 'r'])
         # Compute error : root mean square of the background
         sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
         #error =  np.std(sub_image)    # Previously computed using standard deviation over the background
@@ -398,6 +446,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
 
     if display:
 
+        convert_flux = headers[0]['photflam']
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
         date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
@@ -406,12 +455,13 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         dict_filt = {"POL0":'r', "POL60":'g', "POL120":'b'}
         c_filt = np.array([dict_filt[f] for f in filt])
 
-        fig,ax = plt.subplots(figsize=(10,6),constrained_layout=True)
+        fig,ax = plt.subplots(figsize=(10,6), constrained_layout=True)
         for f in np.unique(filt):
             mask = [fil==f for fil in filt]
-            ax.scatter(date_time[mask], background[mask], color=dict_filt[f],
-                    label="Filter : {0:s}".format(f))
-        ax.errorbar(date_time, background, yerr=error_array[:,0,0], fmt='+k',
+            ax.scatter(date_time[mask], background[mask]*convert_flux,
+                    color=dict_filt[f],label="Filter : {0:s}".format(f))
+        ax.errorbar(date_time, background*convert_flux,
+                yerr=error_array[:,0,0]*convert_flux, fmt='+k',
                 markersize=0, ecolor=c_filt)
         # Date handling
         locator = mdates.AutoDateLocator()
@@ -424,12 +474,12 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         plt.legend()
 
         if not(savename is None):
-            fig.suptitle(savename+"_background_flux.png")
+            fig.suptitle(savename+"_background_flux")
             fig.savefig(plots_folder+savename+"_background_flux.png",
                     bbox_inches='tight')
             vmin = np.min(np.log10(data[data > 0.]))
             vmax = np.max(np.log10(data[data > 0.]))
-            plot_obs(np.log10(data), headers, vmin=vmin, vmax=vmax,
+            plot_obs(data, headers, vmin=data.min(), vmax=data.max(),
                     rectangle=rectangle,
                     savename=savename+"_background_location",
                     plots_folder=plots_folder)
@@ -555,8 +605,8 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
     return rebinned_data, rebinned_error, rebinned_headers, Dxy
 
 
-def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
-        ref_center=None, return_shifts=True):
+def align_data(data_array, headers, error_array=None, upsample_factor=1.,
+        ref_data=None, ref_center=None, return_shifts=True):
     """
     Align images in data_array using cross correlation, and rescale them to
     wider images able to contain any rotation of the reference image.
@@ -565,6 +615,8 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     Inputs:
     data_array : numpy.ndarray
         Array containing the data to align (2D float arrays).
+    headers : header list
+        List of headers corresponding to the images in data_array.
     error_array : numpy.ndarray, optional
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
@@ -626,7 +678,7 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     full_array = np.concatenate((data_array,[ref_data]),axis=0)
     err_array = np.concatenate((error_array,[np.zeros(ref_data.shape)]),axis=0)
 
-    full_array, err_array = crop_array(full_array, err_array, step=5,
+    full_array, err_array = crop_array(full_array, headers, err_array, step=5,
             inside=False)
 
     data_array, ref_data = full_array[:-1], full_array[-1]
@@ -649,6 +701,7 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     res_shape = int(np.ceil(np.sqrt(2.5)*np.max(shape[1:])))
     rescaled_image = np.zeros((shape[0],res_shape,res_shape))
     rescaled_error = np.ones((shape[0],res_shape,res_shape))
+    rescaled_mask = np.ones((shape[0],res_shape,res_shape),dtype=bool)
     res_center = (np.array(rescaled_image.shape[1:])/2).astype(int)
 
     shifts, errors = [], []
@@ -665,9 +718,12 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
                 res_shift[1]:res_shift[1]+shape[2]] = copy.deepcopy(image)
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = copy.deepcopy(error_array[i])
+        rescaled_mask[i,res_shift[0]:res_shift[0]+shape[1],
+                res_shift[1]:res_shift[1]+shape[2]] = False
         # Shift images to align
         rescaled_image[i] = sc_shift(rescaled_image[i], shift, cval=0.)
         rescaled_error[i] = sc_shift(rescaled_error[i], shift, cval=background[i])
+        rescaled_mask[i] = sc_shift(rescaled_mask[i], shift, cval=True)
 
         rescaled_image[i][rescaled_image[i] < 0.] = 0.
 
@@ -678,13 +734,13 @@ def align_data(data_array, error_array=None, upsample_factor=1., ref_data=None,
     errors = np.array(errors)
 
     if return_shifts:
-        return rescaled_image, rescaled_error, shifts, errors
+        return rescaled_image, rescaled_error, rescaled_mask.any(axis=0), shifts, errors
     else:
-        return rescaled_image, rescaled_error
+        return rescaled_image, rescaled_error, rescaled_mask.any(axis=0)
 
 
-def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
-        smoothing='gaussian'):
+def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
+        scale='pixel', smoothing='gaussian'):
     """
     Smooth a data_array using selected function.
     ----------
@@ -746,6 +802,7 @@ def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
 
     #Define gaussian stdev
     stdev = FWHM/(2.*np.sqrt(2.*np.log(2)))
+    fmax = np.finfo(np.float64).max
 
     if smoothing.lower() in ['combine','combining']:
         # Smooth using N images combination algorithm
@@ -761,11 +818,15 @@ def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
         for r in range(smoothed.shape[0]):
             for c in range(smoothed.shape[1]):
                 # Compute distance from current pixel
-                dist_rc = np.sqrt((r-xx)**2+(c-yy)**2)
+                dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                 g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*len(data_array))
                 # Apply weighted combination
-                smoothed[r,c] = np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                if data_mask[r,c]:
+                    smoothed[r,c] = 0.
+                    error[r,c] = 1.
+                else:
+                    smoothed[r,c] = np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
+                    error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
 
     elif smoothing.lower() in ['gauss','gaussian']:
         #Convolution with gaussian function
@@ -775,10 +836,14 @@ def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
             xx, yy = np.indices(image.shape)
             for r in range(image.shape[0]):
                 for c in range(image.shape[1]):
-                    dist_rc = np.sqrt((r-xx)**2+(c-yy)**2)
+                    dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                     g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
-                    smoothed[i][r,c] = np.sum(image*g_rc)
-                    error[i][r,c] = np.sum(error_array*g_rc**2)
+                if data_mask[r,c]:
+                    smoothed[r,c] = 0.
+                    error[r,c] = 1.
+                else:
+                    smoothed[r,c] = np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
+                    error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
 
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
@@ -786,8 +851,8 @@ def smooth_data(data_array, error_array, headers, FWHM=1., scale='pixel',
     return smoothed, error
 
 
-def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
-        smoothing='gaussian'):
+def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
+        scale='pixel', smoothing='gaussian'):
     """
     Make the average image from a single polarizer for a given instrument.
     -----------
@@ -862,11 +927,11 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
 
         if not(FWHM is None) and (smoothing.lower() in ['combine','combining']):
             # Smooth by combining each polarizer images
-            pol0, err0 = smooth_data(pol0_array, err0_array, headers0,
+            pol0, err0 = smooth_data(pol0_array, err0_array, data_mask, headers0,
                     FWHM=FWHM, scale=scale, smoothing=smoothing)
-            pol60, err60 = smooth_data(pol60_array, err60_array, headers60,
+            pol60, err60 = smooth_data(pol60_array, err60_array, data_mask, headers60,
                     FWHM=FWHM, scale=scale, smoothing=smoothing)
-            pol120, err120 = smooth_data(pol120_array, err120_array, headers120,
+            pol120, err120 = smooth_data(pol120_array, err120_array, data_mask, headers120,
                     FWHM=FWHM, scale=scale, smoothing=smoothing)
 
         else:
@@ -908,7 +973,7 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
             if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
-                        headers_array, FWHM=FWHM, scale=scale)
+                        data_mask, headers_array, FWHM=FWHM, scale=scale)
                 pol0, pol60, pol120 = pol_array
                 err0, err60, err120 = polerr_array
 
@@ -931,8 +996,8 @@ def polarizer_avg(data_array, error_array, headers, FWHM=None, scale='pixel',
     return polarizer_array, polarizer_cov
 
 
-def compute_Stokes(data_array, error_array, headers, FWHM=None,
-        scale='pixel', smoothing='gaussian_after'):
+def compute_Stokes(data_array, error_array, data_mask, headers,
+        FWHM=None, scale='pixel', smoothing='gaussian_after'):
     """
     Compute the Stokes parameters I, Q and U for a given data_set
     ----------
@@ -989,8 +1054,8 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
     # Routine for the FOC instrument
     if instr == 'FOC':
         # Get image from each polarizer and covariance matrix
-        pol_array, pol_cov = polarizer_avg(data_array, error_array, headers,
-                FWHM=FWHM, scale=scale, smoothing=smoothing)
+        pol_array, pol_cov = polarizer_avg(data_array, error_array, data_mask,
+                headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
         pol0, pol60, pol120 = pol_array
 
         if (pol0 < 0.).any() or (pol60 < 0.).any() or (pol120 < 0.).any():
@@ -1012,10 +1077,10 @@ def compute_Stokes(data_array, error_array, headers, FWHM=None,
         if mask.any():
             print("WARNING : I_pol > I_stokes : ", len(I_stokes[mask]))
 
-            plt.imshow(np.sqrt(Q_stokes**2+U_stokes**2)/I_stokes*mask, origin='lower')
-            plt.colorbar()
-            plt.title(r"$I_{pol}/I_{tot}$")
-            plt.show()
+            #plt.imshow(np.sqrt(Q_stokes**2+U_stokes**2)/I_stokes*mask, origin='lower')
+            #plt.colorbar()
+            #plt.title(r"$I_{pol}/I_{tot}$")
+            #plt.show()
 
             #I_stokes[mask]=0.
             #Q_stokes[mask]=0.
@@ -1107,11 +1172,12 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     #Compute the total exposure time so that
     #I_stokes*exp_tot = N_tot the total number of events
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
+    print("Total exposure time : {} sec".format(exp_tot))
     N_obs = I_stokes*exp_tot
 
     #Errors on P, PA supposing Poisson noise
     s_P_P = np.sqrt(2.)/np.sqrt(N_obs)*100.
-    s_PA_P = s_P_P/(2.*P/100.)*180./np.pi
+    s_PA_P = s_P_P/(2.*P)*180./np.pi
 
     # Nan handling :
     fmax = np.finfo(np.float64).max
@@ -1126,7 +1192,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
 
-def rotate_data(data_array, error_array, headers, ang):
+def rotate_data(data_array, error_array, data_mask, headers, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1164,6 +1230,7 @@ def rotate_data(data_array, error_array, headers, ang):
         new_error_array.append(sc_rotate(error_array[i], ang, reshape=False,
             cval=error_array.mean()))
     new_data_array = np.array(new_data_array)
+    new_data_mask = sc_rotate(data_mask, ang, reshape=False, cval=True)
     new_error_array = np.array(new_error_array)
 
     for i in range(len(new_data_array)):
@@ -1192,10 +1259,10 @@ def rotate_data(data_array, error_array, headers, ang):
 
         new_headers.append(new_header)
 
-    return new_data_array, new_error_array, new_headers
+    return new_data_array, new_error_array, new_data_mask, new_headers
 
 
-def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang, SNRi_cut=None):
+def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang, SNRi_cut=None):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1266,16 +1333,14 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang, SNRi_c
     new_Stokes_cov[1,2] = new_Stokes_cov[2,1] = np.cos(2.*alpha)*np.sin(2.*alpha)*(Stokes_cov[2,2] - Stokes_cov[1,1]) + (np.cos(2.*alpha)**2 - np.sin(2.*alpha)**2)*Stokes_cov[1,2]
 
     #Rotate original images using scipy.ndimage.rotate
-    new_I_stokes = sc_rotate(new_I_stokes, ang, reshape=False,
-            cval=0.0*np.sqrt(new_Stokes_cov[0,0][0,0]))
-    new_Q_stokes = sc_rotate(new_Q_stokes, ang, reshape=False,
-            cval=0.0*np.sqrt(new_Stokes_cov[1,1][0,0]))
-    new_U_stokes = sc_rotate(new_U_stokes, ang, reshape=False,
-            cval=0.0*np.sqrt(new_Stokes_cov[2,2][0,0]))
+    new_I_stokes = sc_rotate(new_I_stokes, ang, reshape=False, cval=0.)
+    new_Q_stokes = sc_rotate(new_Q_stokes, ang, reshape=False, cval=0.)
+    new_U_stokes = sc_rotate(new_U_stokes, ang, reshape=False, cval=0.)
+    new_data_mask = sc_rotate(data_mask, ang, reshape=False, cval=True)
     for i in range(3):
         for j in range(3):
-            new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang, reshape=False,
-                    cval=0.0*new_Stokes_cov[i,j].mean())
+            new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
+                    reshape=False, cval=0.)
 
     #Update headers to new angle
     new_headers = []
@@ -1310,10 +1375,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang, SNRi_c
     new_U_stokes[np.isnan(new_U_stokes)] = 0.
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers
+    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers
 
 
-def rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
+def rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1443,4 +1508,4 @@ def rotate2_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, ang):
     s_P_P[np.isnan(s_P_P)] = fmax
     s_PA_P[np.isnan(s_PA_P)] = fmax
 
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, new_headers
+    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, data_mask, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, new_headers

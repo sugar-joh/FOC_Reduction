@@ -8,6 +8,7 @@ Main script where are progressively added the steps for the FOC pipeline reducti
 import sys
 import numpy as np
 import copy
+import matplotlib.pyplot as plt
 import lib.fits as proj_fits        #Functions to handle fits files
 import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
@@ -85,6 +86,8 @@ def main():
         psf_scale = 'arcsec'
         psf_shape=(9,9)
         iterations = 10
+    # Cropping
+    display_crop = False
     # Error estimation
     error_sub_shape = (75,75)
     display_error = False
@@ -98,17 +101,17 @@ def main():
     align_center = 'image'        #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'gaussian'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_function = 'combine'  #gaussian_after, gaussian or combine
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_gaussian_FWHM010_rot'    #additionnal informations
-    SNRp_cut = 3    #P measurments with SNR>3
-    SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    figtype = '_combine_FWHM020_rot'    #additionnal informations
+    SNRp_cut = 20    #P measurments with SNR>3
+    SNRi_cut = 130   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
@@ -119,7 +122,7 @@ def main():
         if (data < 0.).any():
             print("ETAPE 1 : ", data)
     # Crop data to remove outside blank margins.
-    data_array, error_array = proj_red.crop_array(data_array, step=5, null_val=0., inside=True)
+    data_array, error_array = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 2 : ", data)
@@ -138,14 +141,14 @@ def main():
         if (data < 0.).any():
             print("ETAPE 4 : ", data)
     #Align and rescale images with oversampling.
-    data_array, error_array = proj_red.align_data(data_array, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
+    data_array, error_array, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 5 : ", data)
     # Rotate data to have North up
     ref_header = copy.deepcopy(headers[0])
     if rotate_data:
-        data_array, error_array, headers = proj_red.rotate_data(data_array, error_array, headers, -ref_header['orientat'])
+        data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
         for data in data_array:
             if (data < 0.).any():
                 print("ETAPE 6 : ", data)
@@ -159,13 +162,13 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
 
     ## Step 3:
     # Rotate images to have North up
     if rotate_stokes:
         ref_header = copy.deepcopy(headers[0])
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, -ref_header['orientat'], SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
@@ -175,11 +178,11 @@ def main():
 
     ## Step 5:
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
 
     return 0
 
