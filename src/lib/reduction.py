@@ -215,7 +215,7 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
     if null_val is None:
         null_val = [1.00*error.mean() for error in error_array]
     elif type(null_val) is float:
-        null_val = [null_val,]*len(error_array)
+        null_val = [null_val,]*error_array.shape[0]
 
     vertex = np.zeros((data_array.shape[0],4),dtype=int)
     for i,image in enumerate(data_array):
@@ -233,7 +233,7 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
         v_array[3] = np.max(vertex[:,3]).astype(int)
 
     new_shape = np.array([v_array[1]-v_array[0],v_array[3]-v_array[2]])
-    rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 'b']
+    rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 0., 'b']
     if display:
         fig, ax = plt.subplots()
         data = data_array[0]
@@ -243,7 +243,7 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
         filt = headers[0]['filtnam1']
         #plots
         im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower')
-        x, y, width, height, color = rectangle
+        x, y, width, height, angle, color = rectangle
         ax.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
         #position of centroid
         ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], lw=1,
@@ -432,7 +432,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
     minima = np.unravel_index(np.argmin(temp.sum(axis=0)),temp.shape[1:])
 
     for i, image in enumerate(data):
-        rectangle.append([minima[1], minima[0], sub_shape[1], sub_shape[0], 'r'])
+        rectangle.append([minima[1], minima[0], sub_shape[1], sub_shape[0], 0., 'r'])
         # Compute error : root mean square of the background
         sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
         #error =  np.std(sub_image)    # Previously computed using standard deviation over the background
@@ -819,7 +819,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             for c in range(smoothed.shape[1]):
                 # Compute distance from current pixel
                 dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
-                g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*len(data_array))
+                g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
                 # Apply weighted combination
                 smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
                 error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
@@ -1063,12 +1063,58 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         if (pol0 < 0.).any() or (pol60 < 0.).any() or (pol120 < 0.).any():
             print("WARNING : Negative value in polarizer array.")
 
-        #Stokes parameters
-        I_stokes = (2./3.)*(pol0 + pol60 + pol120)
-        Q_stokes = (2./3.)*(2*pol0 - pol60 - pol120)
-        U_stokes = (2./np.sqrt(3.))*(pol60 - pol120)
+        # Stokes parameters
+        #default
+        #I_stokes = (2./3.)*(pol0 + pol60 + pol120)
+        #Q_stokes = (2./3.)*(2*pol0 - pol60 - pol120)
+        #U_stokes = (2./np.sqrt(3.))*(pol60 - pol120)
 
-        #Remove nan
+        #transmittance corrected
+        trans2 = {'f140w' : 0.21, 'f175w' : 0.24, 'f220w' : 0.39, 'f275w' : 0.40, 'f320w' : 0.89, 'f342w' : 0.81, 'f430w' : 0.74, 'f370lp' : 0.83, 'f486n' : 0.63, 'f501n' : 0.68, 'f480lp' : 0.82, 'clear2' : 1.0}
+        trans3 = {'f120m' : 0.10, 'f130m' : 0.10, 'f140m' : 0.08, 'f152m' : 0.08, 'f165w' : 0.28, 'f170m' : 0.18, 'f195w' : 0.42, 'f190m' : 0.15, 'f210m' : 0.18, 'f231m' : 0.18, 'clear3' : 1.0}
+        trans4 = {'f253m' : 0.18, 'f278m' : 0.26, 'f307m' : 0.26, 'f130lp' : 0.92, 'f346m' : 0.58, 'f372m' : 0.73, 'f410m' : 0.58, 'f437m' : 0.71, 'f470m' : 0.79, 'f502m' : 0.82, 'f550m' : 0.77, 'clear4' : 1.0}
+        transmit = np.ones((3,))   #will be filter dependant
+        filt2 = headers[0]['filtnam2']
+        filt3 = headers[0]['filtnam3']
+        filt4 = headers[0]['filtnam4']
+        same_filt2 = np.array([filt2 == header['filtnam2'] for header in headers]).all()
+        same_filt3 = np.array([filt3 == header['filtnam3'] for header in headers]).all()
+        same_filt4 = np.array([filt4 == header['filtnam4'] for header in headers]).all()
+        if not (same_filt2 and same_filt3 and same_filt4):
+            print("WARNING : All images in data_array are not from the same \
+                    band filter, the limiting transmittance will be taken.")
+            transmit2 = np.min([trans2[header['filtnam2'].lower()] for header in headers])
+            transmit3 = np.min([trans3[header['filtnam3'].lower()] for header in headers])
+            transmit4 = np.min([trans4[header['filtnam4'].lower()] for header in headers])
+        else :
+            transmit2 = trans2[filt2.lower()]
+            transmit3 = trans3[filt3.lower()]
+            transmit4 = trans4[filt4.lower()]
+        transmit *= transmit2*transmit3*transmit4
+
+        pol_efficiency = {'pol0' : 0.92, 'pol60' : 0.92, 'pol120' : 0.91}
+        pol_eff = np.ones((3,))
+        pol_eff[0] = pol_efficiency['pol0']
+        pol_eff[1] = pol_efficiency['pol60']
+        pol_eff[2] = pol_efficiency['pol120']
+
+        theta = np.array([np.pi, np.pi/3., 2.*np.pi/3.])
+        flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])
+
+        norm = pol_eff[1]*pol_eff[2]*np.sin(-2.*theta[1]+2.*theta[2]) \
+                + pol_eff[2]*pol_eff[0]*np.sin(-2.*theta[2]+2.*theta[0]) \
+                + pol_eff[0]*pol_eff[1]*np.sin(-2.*theta[0]+2.*theta[1])
+        coeff = np.zeros((3,3))
+        for i in range(3):
+            coeff[0,i] = pol_eff[(i+1)%3]*pol_eff[(i+2)%3]*np.sin(-2.*theta[(i+1)%3]+2.*theta[(i+2)%3])/norm
+            coeff[1,i] = (-pol_eff[(i+1)%3]*np.sin(2.*theta[(i+1)%3]) + pol_eff[(i+2)%3]*np.sin(2.*theta[(i+2)%3]))/norm
+            coeff[2,i] = (pol_eff[(i+1)%3]*np.cos(2.*theta[(i+1)%3]) - pol_eff[(i+2)%3]*np.cos(2.*theta[(i+2)%3]))/norm
+
+        I_stokes = np.sum([coeff[0,i]*flux[i] for i in range(3)], axis=0)
+        Q_stokes = np.sum([coeff[1,i]*flux[i] for i in range(3)], axis=0)
+        U_stokes = np.sum([coeff[2,i]*flux[i] for i in range(3)], axis=0)
+
+        # Remove nan
         I_stokes[np.isnan(I_stokes)]=0.
         Q_stokes[I_stokes == 0.]=0.
         U_stokes[I_stokes == 0.]=0.
@@ -1077,7 +1123,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 
         mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
         if mask.any():
-            print("WARNING : I_pol > I_stokes : ", len(I_stokes[mask]))
+            print("WARNING : I_pol > I_stokes : ", I_stokes[mask].size)
 
             #plt.imshow(np.sqrt(Q_stokes**2+U_stokes**2)/I_stokes*mask, origin='lower')
             #plt.colorbar()
@@ -1156,10 +1202,10 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     I_pol = np.sqrt(Q_stokes**2 + U_stokes**2)
     P = I_pol/I_stokes*100.
     P[I_stokes <= 0.] = 0.
-    PA = (90./np.pi)*np.arctan2(U_stokes,Q_stokes)+90
+    PA = (90./np.pi)*np.arctan2(U_stokes,Q_stokes)+90.*2.
 
     if (P>100.).any():
-        print("WARNING : found pixels for which P > 100%", len(P[P>100.]))
+        print("WARNING : found pixels for which P > 100%", P[P>100.].size)
 
     #Associated errors
     s_P = (100./I_stokes)*np.sqrt((Q_stokes**2*Stokes_cov[1,1] + U_stokes**2*Stokes_cov[2,2] + 2.*Q_stokes*U_stokes*Stokes_cov[1,2])/(Q_stokes**2 + U_stokes**2) + ((Q_stokes/I_stokes)**2 + (U_stokes/I_stokes)**2)*Stokes_cov[0,0] - 2.*(Q_stokes/I_stokes)*Stokes_cov[0,1] - 2.*(U_stokes/I_stokes)*Stokes_cov[0,2])
@@ -1169,7 +1215,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     debiased_P = np.sqrt(P**2 - s_P**2)
 
     if (debiased_P>100.).any():
-        print("WARNING : found pixels for which debiased_P > 100%", len(debiased_P[debiased_P>100.]))
+        print("WARNING : found pixels for which debiased_P > 100%", debiased_P[debiased_P>100.].size)
 
     #Compute the total exposure time so that
     #I_stokes*exp_tot = N_tot the total number of events
@@ -1226,7 +1272,7 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     #Rotate original images using scipy.ndimage.rotate
     new_data_array = []
     new_error_array = []
-    for i in range(len(data_array)):
+    for i in range(data_array.shape[0]):
         new_data_array.append(sc_rotate(data_array[i], ang, reshape=False,
             cval=0.))
         new_error_array.append(sc_rotate(error_array[i], ang, reshape=False,
@@ -1235,7 +1281,7 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     new_data_mask = sc_rotate(data_mask, ang, reshape=False, cval=True)
     new_error_array = np.array(new_error_array)
 
-    for i in range(len(new_data_array)):
+    for i in range(new_data_array.shape[0]):
         new_data_array[i][new_data_array[i] < 0.] = 0.
 
     #Update headers to new angle

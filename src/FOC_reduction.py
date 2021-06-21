@@ -8,20 +8,20 @@ Main script where are progressively added the steps for the FOC pipeline reducti
 import sys
 import numpy as np
 import copy
-import matplotlib.pyplot as plt
 import lib.fits as proj_fits        #Functions to handle fits files
 import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
+from lib.convex_hull import image_hull
 
 
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -44,13 +44,13 @@ def main():
 #    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
 #    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
 
-    globals()['data_folder'] = "../data/MKN463_x2rp030/"
-    infiles = ['x2rp0201t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0203t_c0f.fits',
-            'x2rp0204t_c0f.fits', 'x2rp0205t_c0f.fits', 'x2rp0206t_c0f.fits',
-            'x2rp0207t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0302t_c0f.fits',
-            'x2rp0303t_c0f.fits', 'x2rp0304t_c0f.fits', 'x2rp0305t_c0f.fits',
-            'x2rp0306t_c0f.fits', 'x2rp0307t_c0f.fits']
-    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
+#    globals()['data_folder'] = "../data/MKN463_x2rp030/"
+#    infiles = ['x2rp0201t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0203t_c0f.fits',
+#            'x2rp0204t_c0f.fits', 'x2rp0205t_c0f.fits', 'x2rp0206t_c0f.fits',
+#            'x2rp0207t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0302t_c0f.fits',
+#            'x2rp0303t_c0f.fits', 'x2rp0304t_c0f.fits', 'x2rp0305t_c0f.fits',
+#            'x2rp0306t_c0f.fits', 'x2rp0307t_c0f.fits']
+#    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
 
 #    globals()['data_folder'] = "../data/PG1630+377_x39510/"
 #    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
@@ -108,10 +108,10 @@ def main():
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'MKN463_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020_rot'    #additionnal informations
-    SNRp_cut = 3    #P measurments with SNR>3
-    SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_3_combine_FWHM020'    #additionnal informations
+    SNRp_cut = 30    #P measurments with SNR>3
+    SNRi_cut = 300   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
@@ -145,16 +145,26 @@ def main():
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 5 : ", data)
-    # Rotate data to have North up
+
+    vertex = image_hull((1.-data_mask),step=5,null_val=0.,inside=True)
+    shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
+    rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'w']
+
+# Rotate data to have North up
     ref_header = copy.deepcopy(headers[0])
     if rotate_data:
+        alpha = ref_header['orientat']
+        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
+            [np.sin(-alpha), np.cos(-alpha)]])
+        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))
+        rectangle[4] = alpha
         data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
         for data in data_array:
             if (data < 0.).any():
                 print("ETAPE 6 : ", data)
     #Plot array for checking output
     if display_data:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), savename=figname+"_center_"+align_center, plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
 
     ## Step 2:
     # Compute Stokes I, Q, U with smoothed polarized images
@@ -166,8 +176,13 @@ def main():
 
     ## Step 3:
     # Rotate images to have North up
+    ref_header = copy.deepcopy(headers[0])
     if rotate_stokes:
-        ref_header = copy.deepcopy(headers[0])
+        alpha = ref_header['orientat']
+        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
+            [np.sin(-alpha), np.cos(-alpha)]])
+        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))
+        rectangle[4] = alpha
         I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
@@ -178,11 +193,11 @@ def main():
 
     ## Step 5:
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
 
     return 0
 

@@ -73,16 +73,20 @@ def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
         #plots
         im = ax.imshow(data, vmin=vmin, vmax=vmax, origin='lower')
         if not(rectangle is None):
-            x, y, width, height, color = rectangle[i]
-            ax.add_patch(Rectangle((x, y), width, height, edgecolor=color, fill=False))
+            x, y, width, height, angle, color = rectangle[i]
+            ax.add_patch(Rectangle((x, y), width, height, angle=angle,
+                edgecolor=color, fill=False))
         #position of centroid
         ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], lw=1,
                 color='black')
         ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], lw=1,
                 color='black')
-        ax.annotate(instr+":"+rootname, color='white', fontsize=5, xy=(0.02, 0.95), xycoords='axes fraction')
-        ax.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02), xycoords='axes fraction')
-        ax.annotate(exptime, color='white', fontsize=5, xy=(0.80, 0.02), xycoords='axes fraction')
+        ax.annotate(instr+":"+rootname,color='white',fontsize=5,xy=(0.02, 0.95),
+                xycoords='axes fraction')
+        ax.annotate(filt,color='white',fontsize=10,xy=(0.02, 0.02),
+                xycoords='axes fraction')
+        ax.annotate(exptime,color='white',fontsize=5,xy=(0.80, 0.02),
+                xycoords='axes fraction')
 
     fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
     cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
@@ -144,7 +148,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
-def polarization_map(Stokes, data_mask, SNRp_cut=3., SNRi_cut=30., step_vec=1,
+def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec=1,
         savename=None, plots_folder="", display=None):
     """
     Plots polarization map from Stokes HDUList.
@@ -153,6 +157,10 @@ def polarization_map(Stokes, data_mask, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     Stokes : astropy.io.fits.hdu.hdulist.HDUList
         HDUList containing I, Q, U, P, s_P, PA, s_PA (in this particular order)
         for one observation.
+    rectangle : numpy.ndarray, optional
+        Array of parameters for matplotlib.patches.Rectangle objects that will
+        be displayed on each output image. If None, no rectangle displayed.
+        Defaults to None.
     SNRp_cut : float, optional
         Cut that should be applied to the signal-to-noise ratio on P.
         Any SNR < SNRp_cut won't be displayed.
@@ -279,6 +287,12 @@ def polarization_map(Stokes, data_mask, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
     ax.add_artist(north_dir)
 
+    # Display instrument FOV
+    if not(rectangle is None):
+        x, y, width, height, angle, color = rectangle
+        ax.add_patch(Rectangle((x, y), width, height, angle=angle,
+            edgecolor=color, fill=False))
+
     # Compute integrated parameters and associated errors for pixels in the cut
     n_pix = mask.size
     I_int = stkI.data[mask].sum()
@@ -294,7 +308,7 @@ def polarization_map(Stokes, data_mask, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     P_int = np.sqrt(Q_int**2+U_int**2)/I_int*100.
     P_int_err = (100./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
 
-    PA_int = (90./np.pi)*np.arctan2(U_int,Q_int)+90.
+    PA_int = (90./np.pi)*np.arctan2(U_int,Q_int)+90.*2
     PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
 
     # Compute integrated parameters and associated errors for all pixels
@@ -313,7 +327,7 @@ def polarization_map(Stokes, data_mask, SNRp_cut=3., SNRi_cut=30., step_vec=1,
     P_diluted_err = (100./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
     P_diluted_err = np.sqrt(2/n_pix)*100.
 
-    PA_diluted = (90./np.pi)*np.arctan2(U_diluted,Q_diluted)+90.
+    PA_diluted = (90./np.pi)*np.arctan2(U_diluted,Q_diluted)+90.*2
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
     PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
 
