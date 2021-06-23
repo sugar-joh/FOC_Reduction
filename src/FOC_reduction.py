@@ -109,9 +109,9 @@ def main():
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_3_combine_FWHM020'    #additionnal informations
-    SNRp_cut = 30    #P measurments with SNR>3
-    SNRi_cut = 300   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    figtype = '_2_combine_FWHM020_rot'    #additionnal informations
+    SNRp_cut = 20    #P measurments with SNR>3
+    SNRi_cut = 130   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
@@ -156,7 +156,7 @@ def main():
         alpha = ref_header['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
             [np.sin(-alpha), np.cos(-alpha)]])
-        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))
+        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
         data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
         for data in data_array:
@@ -172,7 +172,7 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
 
     ## Step 3:
     # Rotate images to have North up
@@ -181,11 +181,11 @@ def main():
         alpha = ref_header['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
             [np.sin(-alpha), np.cos(-alpha)]])
-        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))
+        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
-    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
+    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers)
 
     ## Step 4:
     # Save image to FITS.
@@ -193,11 +193,12 @@ def main():
 
     ## Step 5:
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
 
     return 0
 

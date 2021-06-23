@@ -17,10 +17,29 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDi
 from astropy.wcs import WCS
 
 
+def princ_angle(ang):
+    """
+    Return the principal angle in the 0-180° quadrant.
+    """
+    while ang < 0.:
+        ang += 180.
+    while ang > 180.:
+        ang -= 180.
+    return ang
+
+
 def sci_not(v,err,rnd=1):
+    """
+    Return the scientifque error notation as a string.
+    """
     power = - int(('%E' % v)[-3:])+1
-    return r"({0} $\pm$ {1})e{2}".format(
-            round(v*10**power,rnd),round(err*10**power,rnd),-power)
+    output = r"({0}".format(round(v*10**power,rnd))
+    if type(err) == list:
+        for error in err:
+            output += r" $\pm$ {0}".format(round(error*10**power,rnd))
+    else:
+        output += r" $\pm$ {0}".format(round(err*10**power,rnd))
+    return output+r")e{0}".format(-power)
 
 
 def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
@@ -240,6 +259,14 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
+    elif display.lower() in ['pol_flux']:
+        # Display polarisation flux
+        pf_mask = (stkI.data > 0.) * (pol.data > 0.)
+        vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask]/100.)
+        im = ax.imshow(stkI.data*convert_flux*pol.data/100.,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
+        cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
         vmin, vmax = 0., 100.
@@ -290,6 +317,7 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     # Display instrument FOV
     if not(rectangle is None):
         x, y, width, height, angle, color = rectangle
+        x, y = np.array([x, y])- np.array(stkI.data.shape)/2.
         ax.add_patch(Rectangle((x, y), width, height, angle=angle,
             edgecolor=color, fill=False))
 
@@ -308,7 +336,7 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     P_int = np.sqrt(Q_int**2+U_int**2)/I_int*100.
     P_int_err = (100./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
 
-    PA_int = (90./np.pi)*np.arctan2(U_int,Q_int)+90.*2
+    PA_int = princ_angle((90./np.pi)*np.arctan2(U_int,Q_int))
     PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
 
     # Compute integrated parameters and associated errors for all pixels
@@ -325,11 +353,11 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
 
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted*100.
     P_diluted_err = (100./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
-    P_diluted_err = np.sqrt(2/n_pix)*100.
+    #P_diluted_err = np.sqrt(2/n_pix)*100.
 
-    PA_diluted = (90./np.pi)*np.arctan2(U_diluted,Q_diluted)+90.*2
+    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
-    PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
+    #PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
 
     ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted,P_diluted_err)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
 
