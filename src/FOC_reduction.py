@@ -109,8 +109,8 @@ def main():
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_2_combine_FWHM020_rot'    #additionnal informations
-    SNRp_cut = 20    #P measurments with SNR>3
+    figtype = '_combine_FWHM020_rot'    #additionnal informations
+    SNRp_cut = 10    #P measurments with SNR>3
     SNRi_cut = 130   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 

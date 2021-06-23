@@ -1222,14 +1222,14 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers):
     theta1, theta2, theta3 = np.pi, np.pi/3., 2.*np.pi/3.
 
     norm = k2*k3*np.sin(-2.*theta2+2.*theta3) + k3*k1*np.sin(-2.*theta3+2.*theta1) + k1*k2*np.sin(-2.*theta1+2.*theta2)
-    C1 = 1/(I_stokes**2*P/100.)
-    C2 = P/100./I_stokes
+    C1 = 10000./(I_stokes**2*P)
+    C2 = P/I_stokes
     dP_dtheta1 = 2.*(k1*k2*k3/norm) * (np.cos(-2.*theta3+2.*theta1)/k2 - np.cos(-2.*theta1+2.*theta2)/k3) * (((a_stokes[1,0]+a_stokes[2,0]-1.)*C1 + a_stokes[0,0]*C2)*f1 + ((a_stokes[0,1]) * (C2-C1))*f2 + ((a_stokes[0,2]) * (C2-C1))*f3)
-    dP_dtheta2 = 2.*(k1*k2*k3/norm) * (np.cos(-2.*theta1+2.*theta2)/k3 - np.cos(-2.*theta2+2.*theta3)/k1) * (((a_stokes[1,0]+a_stokes[2,0]-1./(1.-k3/k1*np.cos(-2.*theta2+2.*theta1)/np.cos(-2*theta1+2.*theta2)))*C1 + (a_stokes[0,0]-1./(1.-k1/k3*np.cos(-2.*theta1+2.*theta2)/np.cos(-2*theta2+2.*theta3))*C2)*f1 + ((a_stokes[0,1]+np.cos(2.*theta2)/(a_stokes[1,2]*np.cos(2.*theta2)-a_stokes[1,1]*np.sin(2.*theta2))) * (C2-C1))*f2 + ((a_stokes[0,2]+np.sin(2.*theta2)/(a_stokes[1,2]*np.cos(2.*theta2)-a_stokes[1,1]*np.sin(2.*theta2))) * (C2-C1))*f3))
-    dP_dtheta3 = 2.*(k1*k2*k3/norm) * (np.cos(-2.*theta2+2.*theta3)/k1 - np.cos(-2.*theta3+2.*theta1)/k2) * (((a_stokes[1,0]+a_stokes[2,0]+1./(1.-k1/k2*np.cos(-2.*theta3+2.*theta1)/np.cos(-2*theta2+2.*theta3)))*C1 + (a_stokes[0,0]+1./(1.-k2/k1*np.cos(-2.*theta2+2.*theta3)/np.cos(-2*theta3+2.*theta1))*C2)*f1 + ((a_stokes[0,1]+np.cos(2.*theta3)/(a_stokes[2,2]*np.cos(2.*theta3)-a_stokes[2,1]*np.sin(2.*theta3))) * (C2-C1))*f2 + ((a_stokes[0,2]+np.sin(2.*theta3)/(a_stokes[2,2]*np.cos(2.*theta3)-a_stokes[2,1]*np.sin(2.*theta3))) * (C2-C1))*f3))
+    dP_dtheta2 = 2.*(k1*k2*k3/norm) * (np.cos(-2.*theta1+2.*theta2)/k3 - np.cos(-2.*theta2+2.*theta3)/k1) * (((a_stokes[1,0]+a_stokes[2,0]-1./(1.-k3/k1*np.cos(-2.*theta2+2.*theta1)/np.cos(-2*theta1+2.*theta2)))*C1 + (a_stokes[0,0]-1./(1.-k1/k3*np.cos(-2.*theta1+2.*theta2)/np.cos(-2*theta2+2.*theta3)))*C2)*f1 + ((a_stokes[0,1]+np.cos(2.*theta2)/(a_stokes[1,2]*np.cos(2.*theta2)-a_stokes[1,1]*np.sin(2.*theta2))) * (C2-C1))*f2 + ((a_stokes[0,2]+np.sin(2.*theta2)/(a_stokes[1,2]*np.cos(2.*theta2)-a_stokes[1,1]*np.sin(2.*theta2))) * (C2-C1))*f3)
+    dP_dtheta3 = 2.*(k1*k2*k3/norm) * (np.cos(-2.*theta2+2.*theta3)/k1 - np.cos(-2.*theta3+2.*theta1)/k2) * (((a_stokes[1,0]+a_stokes[2,0]+1./(1.-k1/k2*np.cos(-2.*theta3+2.*theta1)/np.cos(-2*theta2+2.*theta3)))*C1 + (a_stokes[0,0]+1./(1.-k2/k1*np.cos(-2.*theta2+2.*theta3)/np.cos(-2*theta3+2.*theta1)))*C2)*f1 + ((a_stokes[0,1]+np.cos(2.*theta3)/(a_stokes[2,2]*np.cos(2.*theta3)-a_stokes[2,1]*np.sin(2.*theta3))) * (C2-C1))*f2 + ((a_stokes[0,2]+np.sin(2.*theta3)/(a_stokes[2,2]*np.cos(2.*theta3)-a_stokes[2,1]*np.sin(2.*theta3))) * (C2-C1))*f3)
 
-    s_P_ax = np.sqrt(dP_dtheta1**2+dP_dtheta2**2+dP_dtheta3**2)*3.
-    s_PA_ax = np.ones(s_PA.shape)/np.sqrt(2)*3.
+    s_P_ax = np.sqrt(dP_dtheta1**2+dP_dtheta2**2+dP_dtheta3**2)*3./360.
+    s_PA_ax = np.ones(s_PA.shape)/np.sqrt(2)*3./360.
     #Sum quadratically
     s_P = np.sqrt(s_P**2 + s_P_ax**2)
     s_PA = np.sqrt(s_PA**2 + s_PA_ax**2)
