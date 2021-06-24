@@ -110,8 +110,8 @@ def main():
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020_rot'    #additionnal informations
-    SNRp_cut = 10    #P measurments with SNR>3
-    SNRi_cut = 130   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 20.    #P measurments with SNR>3
+    SNRi_cut = 200   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
@@ -172,7 +172,7 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
 
     ## Step 3:
     # Rotate images to have North up
@@ -183,9 +183,9 @@ def main():
             [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
-    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers)
+    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
     ## Step 4:
     # Save image to FITS.

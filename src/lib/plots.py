@@ -262,20 +262,20 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     elif display.lower() in ['pol_flux']:
         # Display polarisation flux
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
-        vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask]/100.)
-        im = ax.imshow(stkI.data*convert_flux*pol.data/100.,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask])
+        im = ax.imshow(stkI.data*convert_flux*pol.data,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
         cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
         vmin, vmax = 0., 100.
-        im = ax.imshow(pol.data,extent=[-pol.data.shape[1]/2.,pol.data.shape[1]/2.,-pol.data.shape[0]/2.,pol.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(pol.data*100.,extent=[-pol.data.shape[1]/2.,pol.data.shape[1]/2.,-pol.data.shape[0]/2.,pol.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P$ [%]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
-        vmin, vmax = 0., 5.
-        im = ax.imshow(pol_err.data,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., 10.
+        im = ax.imshow(pol_err.data*100.,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
@@ -307,7 +307,7 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
 
     X, Y = np.meshgrid(np.linspace(-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.,stkI.data.shape[0]), np.linspace(-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,stkI.data.shape[1]))
     U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-    Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=50.,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+    Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
     pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
     ax.add_artist(pol_sc)
 
@@ -333,8 +333,8 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     IU_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2][mask]**2))
     QU_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2][mask]**2))
 
-    P_int = np.sqrt(Q_int**2+U_int**2)/I_int*100.
-    P_int_err = (100./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
+    P_int = np.sqrt(Q_int**2+U_int**2)/I_int
+    P_int_err = (1./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
 
     PA_int = princ_angle((90./np.pi)*np.arctan2(U_int,Q_int))
     PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
@@ -351,15 +351,15 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2]**2))
     QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2]**2))
 
-    P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted*100.
-    P_diluted_err = (100./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+    P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
+    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
     #P_diluted_err = np.sqrt(2/n_pix)*100.
 
     PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
     #PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
 
-    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted,P_diluted_err)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
+    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
 
     ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')
