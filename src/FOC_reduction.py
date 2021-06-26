@@ -110,8 +110,8 @@ def main():
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020_rot'    #additionnal informations
-    SNRp_cut = 20.    #P measurments with SNR>3
-    SNRi_cut = 200   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 3.    #P measurments with SNR>3
+    SNRi_cut = 30   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
