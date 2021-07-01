@@ -167,7 +167,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
-def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec=1,
+def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec=1,
         savename=None, plots_folder="", display=None):
     """
     Plots polarization map from Stokes HDUList.
@@ -235,6 +235,7 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     SNRi[np.isnan(SNRi)] = 0.
     pol.data[SNRi < SNRi_cut] = np.nan
 
+    data_mask = (1.-data_mask).astype(bool)
     mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
 
     # Look for pixel of max polarization
@@ -340,16 +341,16 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
 
     # Compute integrated parameters and associated errors for all pixels
-    n_pix = stkI.data.size
-    I_diluted = stkI.data.sum()
-    Q_diluted = stkQ.data.sum()
-    U_diluted = stkU.data.sum()
-    I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,0]))
-    Q_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,1]))
-    U_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[2,2]))
-    IQ_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,1]**2))
-    IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2]**2))
-    QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2]**2))
+    n_pix = stkI.data[data_mask].size
+    I_diluted = stkI.data[data_mask].sum()
+    Q_diluted = stkQ.data[data_mask].sum()
+    U_diluted = stkU.data[data_mask].sum()
+    I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,0][data_mask]))
+    Q_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,1][data_mask]))
+    U_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[2,2][data_mask]))
+    IQ_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,1][data_mask]**2))
+    IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2][data_mask]**2))
+    QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2][data_mask]**2))
 
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
@@ -359,7 +360,7 @@ def polarization_map(Stokes, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
     #PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
 
-    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_int*convert_flux,I_int_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_int*100.,P_int_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_int,PA_int_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
+    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
 
     ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')

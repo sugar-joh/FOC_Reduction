@@ -1153,9 +1153,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes + A*coeff_stokes[2,1]*(np.sin(2.*theta[1]*Q_stokes) - np.cos(2.*theta[1]*U_stokes)))
         dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes + A*coeff_stokes[2,2]*(np.sin(2.*theta[2]*Q_stokes) - np.cos(2.*theta[2]*U_stokes)))
 
-        Stokes_cov[0,0] += (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
-        Stokes_cov[1,1] += (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
-        Stokes_cov[2,2] += (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
+        #Stokes_cov[0,0] += (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
+        #Stokes_cov[1,1] += (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
+        #Stokes_cov[2,2] += (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
         plt.imshow(np.abs(Stokes_cov[0,0]/I_stokes)*100., origin='lower')
         plt.colorbar()
         plt.show()
@@ -1337,7 +1337,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_I_stokes = sc_rotate(new_I_stokes, ang, reshape=False, cval=0.)
     new_Q_stokes = sc_rotate(new_Q_stokes, ang, reshape=False, cval=0.)
     new_U_stokes = sc_rotate(new_U_stokes, ang, reshape=False, cval=0.)
-    new_data_mask = sc_rotate(data_mask, ang, reshape=False, cval=True)
+    new_data_mask = (sc_rotate(data_mask.astype(float)*10., ang, reshape=False, cval=10.).astype(int)).astype(bool)
     for i in range(3):
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
