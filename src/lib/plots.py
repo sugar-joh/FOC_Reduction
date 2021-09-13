@@ -9,9 +9,11 @@ prototypes :
         Plots polarization map of polarimetric parameters saved in an HDUList
 """
 
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.widgets import RectangleSelector
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -167,8 +169,102 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
-def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30., step_vec=1,
-        savename=None, plots_folder="", display=None):
+class crop_map(object):
+    """
+    Class to interactively crop I_stokes map to desired Region of Interest
+    """
+    def __init__(self, Stokes, data_mask, SNRp_cut=3., SNRi_cut=30.):
+        #Get data
+        stkI = Stokes[np.argmax([Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])]
+        stk_cov = Stokes[np.argmax([Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])]
+        pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes))])]
+        pol_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])]
+        self.Stokes = Stokes
+        self.data_mask = data_mask
+
+        wcs = WCS(Stokes[0]).deepcopy()
+
+        #Compute SNR and apply cuts
+        pol.data[pol.data == 0.] = np.nan
+        SNRp = pol.data/pol_err.data
+        SNRp[np.isnan(SNRp)] = 0.
+        pol.data[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        SNRi[np.isnan(SNRi)] = 0.
+        pol.data[SNRi < SNRi_cut] = np.nan
+
+        convert_flux = Stokes[0].header['photflam']
+
+        #Plot the map
+        plt.rcParams.update({'font.size': 16})
+        self.fig = plt.figure(figsize=(15,15))
+        self.ax = self.fig.add_subplot(111, projection=wcs)
+        self.ax.set_facecolor('k')
+        self.fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
+        cbar_ax = self.fig.add_axes([0.95, 0.12, 0.01, 0.75])
+
+        self.extent = [-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.]
+        self.center = [stkI.data.shape[1]/2.,stkI.data.shape[0]/2.]
+
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        im = self.ax.imshow(stkI.data*convert_flux,extent=self.extent, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
+        cont = self.ax.contour(SNRi, extent=self.extent, levels=levelsI, colors='grey', linewidths=0.5)
+
+        fontprops = fm.FontProperties(size=16)
+        px_size = wcs.wcs.get_cdelt()[0]
+        px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax.add_artist(px_sc)
+
+        self.ax.set_title(
+        "Click and drag to crop to desired Region of Interest.\n"
+        "Press 'c' to toggle the selector on and off")
+
+    def onselect_crop(self, eclick, erelease) -> None:
+        # Obtain (xmin, xmax, ymin, ymax) values
+        self.RSextent = self.rect_selector.extents
+        self.RScenter = [self.center[i]+self.rect_selector.center[i] for i in range(2)]
+
+        # Zoom to selection
+        print("CROP TO : ",self.RSextent)
+        print("CENTER : ",self.RScenter)
+        #self.ax.set_xlim(self.extent[0], self.extent[1])
+        #self.ax.set_ylim(self.extent[2], self.extent[3])
+
+    def run(self) -> None:
+        self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
+                drawtype='box', button=[1], interactive=True)
+        #self.fig.canvas.mpl_connect('key_press_event', self.toggle_selector)
+        plt.show()
+
+    def crop(self):
+        Stokes_crop = copy.deepcopy(self.Stokes)
+        # Data sets to crop
+        stkI = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='I_stokes' for i in range(len(Stokes_crop))])]
+        stkQ = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='Q_stokes' for i in range(len(Stokes_crop))])]
+        stkU = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='U_stokes' for i in range(len(Stokes_crop))])]
+        stk_cov = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes_crop))])]
+        pol = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes_crop))])]
+        pol_err = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes_crop))])]
+        pang = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='Pol_ang' for i in range(len(Stokes_crop))])]
+        pang_err = Stokes_crop[np.argmax([Stokes_crop[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes_crop))])]
+        # Crop datasets
+        vertex = [int(self.RScenter[0]+self.RSextent[0]), int(self.RScenter[0]+self.RSextent[1]), int(self.RScenter[1]+self.RSextent[2]), int(self.RScenter[1]+self.RSextent[3])]
+        for dataset in [stkI, stkQ, stkU, pol, pol_err, pang, pang_err]:
+            dataset.data = dataset.data[vertex[2]:vertex[3], vertex[0]:vertex[1]]
+        data_mask = self.data_mask[vertex[2]:vertex[3], vertex[0]:vertex[1]]
+        new_stk_cov = np.zeros((3,3,stkI.data.shape[0],stkI.data.shape[1]))
+        for i in range(3):
+            for j in range(3):
+                new_stk_cov[i,j] = stk_cov.data[i,j][vertex[2]:vertex[3], vertex[0]:vertex[1]]
+        stk_cov.data = new_stk_cov
+
+        return Stokes_crop, data_mask
+
+
+def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
+        step_vec=1, savename=None, plots_folder="", display=None):
     """
     Plots polarization map from Stokes HDUList.
     ----------

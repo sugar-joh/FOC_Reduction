@@ -1143,28 +1143,63 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         Stokes_cov[0,2] = Stokes_cov[2,0] = coeff_stokes[0,0]*coeff_stokes[2,0]*pol_cov[0,0]+coeff_stokes[0,1]*coeff_stokes[2,1]*pol_cov[1,1]+coeff_stokes[0,2]*coeff_stokes[2,2]*pol_cov[2,2]+(coeff_stokes[0,0]*coeff_stokes[2,1]+coeff_stokes[2,0]*coeff_stokes[0,1])*pol_cov[0,1]+(coeff_stokes[0,0]*coeff_stokes[2,2]+coeff_stokes[2,0]*coeff_stokes[0,2])*pol_cov[0,2]+(coeff_stokes[0,1]*coeff_stokes[2,2]+coeff_stokes[2,1]*coeff_stokes[0,2])*pol_cov[1,2]
         Stokes_cov[1,2] = Stokes_cov[2,1] = coeff_stokes[1,0]*coeff_stokes[2,0]*pol_cov[0,0]+coeff_stokes[1,1]*coeff_stokes[2,1]*pol_cov[1,1]+coeff_stokes[1,2]*coeff_stokes[2,2]*pol_cov[2,2]+(coeff_stokes[1,0]*coeff_stokes[2,1]+coeff_stokes[2,0]*coeff_stokes[1,1])*pol_cov[0,1]+(coeff_stokes[1,0]*coeff_stokes[2,2]+coeff_stokes[2,0]*coeff_stokes[1,2])*pol_cov[0,2]+(coeff_stokes[1,1]*coeff_stokes[2,2]+coeff_stokes[2,1]*coeff_stokes[1,2])*pol_cov[1,2]
 
-        dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) + A*coeff_stokes[0,0]*(np.sin(2.*theta[0]*Q_stokes) - np.cos(2.*theta[0]*U_stokes)))
-        dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) + A*coeff_stokes[0,1]*(np.sin(2.*theta[1]*Q_stokes) - np.cos(2.*theta[1]*U_stokes)))
-        dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) + A*coeff_stokes[0,2]*(np.sin(2.*theta[2]*Q_stokes) - np.cos(2.*theta[2]*U_stokes)))
-        dQ_dtheta1 = 2.*pol_eff[0]/A*(np.cos(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*Q_stokes + A*coeff_stokes[1,0]*(np.sin(2.*theta[0]*Q_stokes) - np.cos(2.*theta[0]*U_stokes)))
-        dQ_dtheta2 = 2.*pol_eff[1]/A*(np.cos(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*Q_stokes + A*coeff_stokes[1,1]*(np.sin(2.*theta[1]*Q_stokes) - np.cos(2.*theta[1]*U_stokes)))
-        dQ_dtheta3 = 2.*pol_eff[2]/A*(np.cos(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*Q_stokes + A*coeff_stokes[1,2]*(np.sin(2.*theta[2]*Q_stokes) - np.cos(2.*theta[2]*U_stokes)))
-        dU_dtheta1 = 2.*pol_eff[0]/A*(np.sin(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*U_stokes + A*coeff_stokes[2,0]*(np.sin(2.*theta[0]*Q_stokes) - np.cos(2.*theta[0]*U_stokes)))
-        dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes + A*coeff_stokes[2,1]*(np.sin(2.*theta[1]*Q_stokes) - np.cos(2.*theta[1]*U_stokes)))
-        dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes + A*coeff_stokes[2,2]*(np.sin(2.*theta[2]*Q_stokes) - np.cos(2.*theta[2]*U_stokes)))
+        dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes))
+        dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes))
+        dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes))
+        dQ_dtheta1 = 2.*pol_eff[0]/A*(np.cos(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*Q_stokes)
+        dQ_dtheta2 = 2.*pol_eff[1]/A*(np.cos(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*Q_stokes)
+        dQ_dtheta3 = 2.*pol_eff[2]/A*(np.cos(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*Q_stokes)
+        dU_dtheta1 = 2.*pol_eff[0]/A*(np.sin(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*U_stokes)
+        dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes)
+        dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes)
 
-        #Stokes_cov[0,0] += (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
-        #Stokes_cov[1,1] += (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
-        #Stokes_cov[2,2] += (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
-        plt.imshow(np.abs(Stokes_cov[0,0]/I_stokes)*100., origin='lower')
-        plt.colorbar()
-        plt.show()
-        plt.imshow(np.abs(Stokes_cov[1,1]/Q_stokes)*100., origin='lower')
-        plt.colorbar()
-        plt.show()
-        plt.imshow(np.abs(Stokes_cov[2,2]/U_stokes)*100., origin='lower')
-        plt.colorbar()
-        plt.show()
+        s_I2_axis = (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
+        s_Q2_axis = (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
+        s_U2_axis = (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
+
+        Stokes_cov[0,0] += s_I2_axis
+        Stokes_cov[1,1] += s_Q2_axis
+        Stokes_cov[2,2] += s_U2_axis
+
+#        s_I_I = np.sqrt(Stokes_cov[0,0])/I_stokes*100.
+#        s_I_axis_I = np.sqrt(s_I2_axis)/I_stokes*100.
+#        s_Q_Q = np.sqrt(Stokes_cov[1,1])/Q_stokes*100.
+#        s_Q_axis_Q = np.sqrt(s_Q2_axis)/Q_stokes*100.
+#        s_U_U = np.sqrt(Stokes_cov[2,2])/U_stokes*100.
+#        s_U_axis_U = np.sqrt(s_U2_axis)/U_stokes*100.
+#
+#        fig, ax = plt.subplots(3,3)
+#        im = ax[0,0].imshow(s_I_I, origin='lower')
+#        ax[0,0].set_title(r"$\frac{\sigma_{I}}{I}$")
+#        fig.colorbar(im, ax=ax[0,0])
+#        im = ax[0,1].imshow(s_I_axis_I, origin='lower')
+#        ax[0,1].set_title(r"$\frac{\sigma_{I}^{axis}}{I}$")
+#        fig.colorbar(im, ax=ax[0,1])
+#        im = ax[0,2].imshow(s_I_axis_I/s_I_I, origin='lower')
+#        ax[0,2].set_title(r"$\frac{\sigma_{I}^{axis}}{\sigma_{I}}$")
+#        fig.colorbar(im, ax=ax[0,2])
+#        im = ax[1,0].imshow(s_Q_Q, origin='lower')
+#        ax[1,0].set_title(r"$\frac{\sigma_{Q}}{Q}$")
+#        fig.colorbar(im, ax=ax[1,0])
+#        im = ax[1,1].imshow(s_Q_axis_Q, origin='lower')
+#        ax[1,1].set_title(r"$\frac{\sigma_{Q}^{axis}}{Q}$")
+#        fig.colorbar(im, ax=ax[1,1])
+#        im = ax[1,2].imshow(s_Q_axis_Q/s_Q_Q, origin='lower')
+#        ax[1,2].set_title(r"$\frac{\sigma_{Q}^{axis}}{\sigma_{Q}}$")
+#        fig.colorbar(im, ax=ax[1,2])
+#        im = ax[2,0].imshow(s_U_U, origin='lower')
+#        ax[2,0].set_title(r"$\frac{\sigma_{U}}{U}$")
+#        fig.colorbar(im, ax=ax[2,0])
+#        im = ax[2,1].imshow(s_U_axis_U, origin='lower')
+#        ax[2,1].set_title(r"$\frac{\sigma_{U}^{axis}}{U}$")
+#        fig.colorbar(im, ax=ax[2,1])
+#        im = ax[2,2].imshow(s_U_axis_U/s_U_U, origin='lower')
+#        ax[2,2].set_title(r"$\frac{\sigma_{U}^{axis}}{\sigma_{U}}$")
+#        fig.colorbar(im, ax=ax[2,2])
+#        plt.show()
+#        print("s_I/I = {}% ; s_I_axis/I = {}%".format(np.mean(s_I_I[I_stokes > 0.]), np.mean(s_I_axis_I[I_stokes > 0.])))
+#        print("s_Q/Q = {}% ; s_Q_axis/Q = {}%".format(np.mean(s_Q_Q[Q_stokes > 0.]), np.mean(s_Q_axis_Q[Q_stokes > 0.])))
+#        print("s_U/U = {}% ; s_U_axis/U = {}%".format(np.mean(s_U_U[U_stokes > 0.]), np.mean(s_U_axis_U[U_stokes > 0.])))
 
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])

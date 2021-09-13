@@ -17,11 +17,11 @@ from lib.convex_hull import image_hull
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -77,9 +77,9 @@ def main():
 #    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
 
-    globals()['data_folder'] = "../data/PictorA_x25d040/"
-    infiles = ['x25d0401t_c0f.fits','x25d0402t_c0f.fits','x25d0403t_c0f.fits']
-    globals()['plots_folder'] = "../plots/PictorA_x25d040/"
+#    globals()['data_folder'] = "../data/PictorA_x25d040/"
+#    infiles = ['x25d0401t_c0f.fits','x25d0402t_c0f.fits','x25d0403t_c0f.fits']
+#    globals()['plots_folder'] = "../plots/PictorA_x25d040/"
 
     ## Reduction parameters
     # Deconvolution
@@ -112,10 +112,10 @@ def main():
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'PictorA_FOC'         #target/intrument name
+    figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020_rot'    #additionnal informations
-    SNRp_cut = 20.    #P measurments with SNR>3
-    SNRi_cut = 120.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 15.    #P measurments with SNR>3
+    SNRi_cut = 80.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
@@ -144,7 +144,7 @@ def main():
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 4 : ", data)
-    #Align and rescale images with oversampling.
+    # Align and rescale images with oversampling.
     data_array, error_array, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
     for data in data_array:
         if (data < 0.).any():
@@ -154,7 +154,7 @@ def main():
     shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
     rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'w']
 
-# Rotate data to have North up
+    # Rotate data to have North up
     ref_header = copy.deepcopy(headers[0])
     if rotate_data:
         alpha = ref_header['orientat']
@@ -196,6 +196,11 @@ def main():
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
 
     ## Step 5:
+    # Crop to desired Region of Interest (ROI)
+#    StokesCrop = proj_plots.crop_map(copy.deepcopy(Stokes_test), copy.deepcopy(data_mask), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)
+#    StokesCrop.run()
+#    Stokes_crop, data_mask = StokesCrop.crop()
+
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
