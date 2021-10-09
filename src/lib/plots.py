@@ -372,8 +372,15 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
         vmin, vmax = 0., 10.
-        im = ax.imshow(pol_err.data*100.,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        p_err = pol_err.data.copy()
+        p_err[p_err*100. > vmax] = np.nan
+        im = ax.imshow(p_err*100.,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
+    elif display.lower() in ['s_i','i_err']:
+        # Display intensity error map
+        vmin, vmax = 0., np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
+        im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
         vmin, vmax = 0., np.max(SNRi[SNRi > 0.])

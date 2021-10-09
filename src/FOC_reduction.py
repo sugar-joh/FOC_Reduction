@@ -192,19 +192,20 @@ def main():
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
     ## Step 4:
-    # Save image to FITS.
-    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
+    # crop to desired region of interest (roi)
+#    stokescrop = proj_plots.crop_map(copy.deepcopy(stokes_test), copy.deepcopy(data_mask), snrp_cut=snrp_cut, snri_cut=snri_cut)
+#    stokescrop.run()
+#    stokes_crop, data_mask = stokescrop.crop()
 
     ## Step 5:
-    # Crop to desired Region of Interest (ROI)
-#    StokesCrop = proj_plots.crop_map(copy.deepcopy(Stokes_test), copy.deepcopy(data_mask), SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)
-#    StokesCrop.run()
-#    Stokes_crop, data_mask = StokesCrop.crop()
+    # Save image to FITS.
+    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
     proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')

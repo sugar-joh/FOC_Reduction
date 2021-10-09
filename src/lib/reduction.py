@@ -863,13 +863,13 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 for c in range(image.shape[1]):
                     dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                     g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
-                    smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                    error[i][r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                    smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(image*g_rc)
+                    error[i][r,c] = np.sqrt(np.sum(error_array[i]*g_rc**2))
 
             # Nan handling
-            error[i][np.isnan(smoothed)] = 0.
-            smoothed[i][np.isnan(smoothed)] = 0.
-            error[i][np.isnan(error)] = 0.
+            error[i][np.isnan(smoothed[i])] = 0.
+            smoothed[i][np.isnan(smoothed[i])] = 0.
+            error[i][np.isnan(error[i])] = 0.
 
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
