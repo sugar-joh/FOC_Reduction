@@ -37,7 +37,7 @@ prototypes :
         Rotate I, Q, U given an angle in degrees using scipy functions.
 """
 
-import copy
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -222,15 +222,15 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
         null_val = [null_val,]*error_array.shape[0]
 
     vertex = np.zeros((data_array.shape[0],4),dtype=int)
-    for i,image in enumerate(data_array):
+    for i,image in enumerate(data_array):   # Get vertex of the rectangular convex hull of each image
         vertex[i] = image_hull(image,step=step,null_val=null_val[i],inside=inside)
     v_array = np.zeros(4,dtype=int)
-    if inside:
+    if inside:  # Get vertex of the maximum convex hull for all images
         v_array[0] = np.max(vertex[:,0]).astype(int)
         v_array[1] = np.min(vertex[:,1]).astype(int)
         v_array[2] = np.max(vertex[:,2]).astype(int)
         v_array[3] = np.min(vertex[:,3]).astype(int)
-    else:
+    else:       # Get vertex of the minimum convex hull for all images
         v_array[0] = np.min(vertex[:,0]).astype(int)
         v_array[1] = np.max(vertex[:,1]).astype(int)
         v_array[2] = np.min(vertex[:,2]).astype(int)
@@ -279,7 +279,7 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
 
     crop_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
     crop_error_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
-    for i,image in enumerate(data_array):
+    for i,image in enumerate(data_array):   #Put the image data in the cropped array
         crop_array[i] = image[v_array[0]:v_array[1],v_array[2]:v_array[3]]
         crop_error_array[i] = error_array[i][v_array[0]:v_array[1],v_array[2]:v_array[3]]
 
@@ -732,9 +732,9 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         center = np.fix(ref_center-shift).astype(int)
         res_shift = res_center-ref_center
         rescaled_image[i,res_shift[0]:res_shift[0]+shape[1],
-                res_shift[1]:res_shift[1]+shape[2]] = copy.deepcopy(image)
+                res_shift[1]:res_shift[1]+shape[2]] = deepcopy(image)
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
-                res_shift[1]:res_shift[1]+shape[2]] = copy.deepcopy(error_array[i])
+                res_shift[1]:res_shift[1]+shape[2]] = deepcopy(error_array[i])
         rescaled_mask[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = False
         # Shift images to align
@@ -1106,14 +1106,19 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         pol_eff[1] = pol_efficiency['pol60']
         pol_eff[2] = pol_efficiency['pol120']
 
+        # Orientation and error for each polarizer  ## THIS IS WHERE WE IMPLEMENT THE ERROR THAT IS GOING WRONG
+        # POL0 = 0deg, POL60 = 60deg, POL120=120deg
         theta = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.])
+        # Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
         sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
         pol_flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])
 
+        # Normalization parameter for Stokes parameters computation
         A = pol_eff[1]*pol_eff[2]*np.sin(-2.*theta[1]+2.*theta[2]) \
                 + pol_eff[2]*pol_eff[0]*np.sin(-2.*theta[2]+2.*theta[0]) \
                 + pol_eff[0]*pol_eff[1]*np.sin(-2.*theta[0]+2.*theta[1])
         coeff_stokes = np.zeros((3,3))
+        # Coefficients linking each polarizer flux to each Stokes parameter
         for i in range(3):
             coeff_stokes[0,i] = pol_eff[(i+1)%3]*pol_eff[(i+2)%3]*np.sin(-2.*theta[(i+1)%3]+2.*theta[(i+2)%3])/A
             coeff_stokes[1,i] = (-pol_eff[(i+1)%3]*np.sin(2.*theta[(i+1)%3]) + pol_eff[(i+2)%3]*np.sin(2.*theta[(i+2)%3]))/A
@@ -1143,6 +1148,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         Stokes_cov[0,2] = Stokes_cov[2,0] = coeff_stokes[0,0]*coeff_stokes[2,0]*pol_cov[0,0]+coeff_stokes[0,1]*coeff_stokes[2,1]*pol_cov[1,1]+coeff_stokes[0,2]*coeff_stokes[2,2]*pol_cov[2,2]+(coeff_stokes[0,0]*coeff_stokes[2,1]+coeff_stokes[2,0]*coeff_stokes[0,1])*pol_cov[0,1]+(coeff_stokes[0,0]*coeff_stokes[2,2]+coeff_stokes[2,0]*coeff_stokes[0,2])*pol_cov[0,2]+(coeff_stokes[0,1]*coeff_stokes[2,2]+coeff_stokes[2,1]*coeff_stokes[0,2])*pol_cov[1,2]
         Stokes_cov[1,2] = Stokes_cov[2,1] = coeff_stokes[1,0]*coeff_stokes[2,0]*pol_cov[0,0]+coeff_stokes[1,1]*coeff_stokes[2,1]*pol_cov[1,1]+coeff_stokes[1,2]*coeff_stokes[2,2]*pol_cov[2,2]+(coeff_stokes[1,0]*coeff_stokes[2,1]+coeff_stokes[2,0]*coeff_stokes[1,1])*pol_cov[0,1]+(coeff_stokes[1,0]*coeff_stokes[2,2]+coeff_stokes[2,0]*coeff_stokes[1,2])*pol_cov[0,2]+(coeff_stokes[1,1]*coeff_stokes[2,2]+coeff_stokes[2,1]*coeff_stokes[1,2])*pol_cov[1,2]
 
+        # Compute the derivative of each Stokes parameter with respect to the polarizer orientation
         dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes))
         dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes))
         dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes))
@@ -1153,10 +1159,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes)
         dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes)
 
+        # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
         s_I2_axis = (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
         s_Q2_axis = (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
         s_U2_axis = (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
 
+        # Add quadratically the uncertainty to the Stokes covariance matrix ## THIS IS WHERE THE PROBLEMATIC UNCERTAINTY IS ADDED TO THE PIPELINE
         Stokes_cov[0,0] += s_I2_axis
         Stokes_cov[1,1] += s_Q2_axis
         Stokes_cov[2,2] += s_U2_axis
@@ -1361,7 +1369,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
 
 
     #Compute new covariance matrix on rotated parameters
-    new_Stokes_cov = copy.deepcopy(Stokes_cov)
+    new_Stokes_cov = deepcopy(Stokes_cov)
     new_Stokes_cov[1,1] = np.cos(2.*alpha)**2*Stokes_cov[1,1] + np.sin(2.*alpha)**2*Stokes_cov[2,2] + 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
     new_Stokes_cov[2,2] = np.sin(2.*alpha)**2*Stokes_cov[1,1] + np.cos(2.*alpha)**2*Stokes_cov[2,2] - 2.*np.cos(2.*alpha)*np.sin(2.*alpha)*Stokes_cov[1,2]
     new_Stokes_cov[0,1] = new_Stokes_cov[1,0] = np.cos(2.*alpha)*Stokes_cov[0,1] + np.sin(2.*alpha)*Stokes_cov[0,2]
@@ -1383,7 +1391,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
         [np.sin(-alpha), np.cos(-alpha)]])
     for header in headers:
-        new_header = copy.deepcopy(header)
+        new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
 
         new_wcs = WCS(header).deepcopy()

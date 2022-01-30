@@ -3,7 +3,7 @@ Library functions for graham algorithm implementation (find the convex hull
 of a given list of points).
 """
 
-import copy
+from copy import deepcopy
 import numpy as np
 
 
@@ -141,12 +141,12 @@ def partition(s, l, r, order):
     for j in range(l, r):
         if order(s[j], s[r]):
             i = i + 1
-            temp = copy.deepcopy(s[i])
-            s[i] = copy.deepcopy(s[j])
-            s[j] = copy.deepcopy(temp)
-    temp = copy.deepcopy(s[i+1])
-    s[i+1] = copy.deepcopy(s[r])
-    s[r] = copy.deepcopy(temp)
+            temp = deepcopy(s[i])
+            s[i] = deepcopy(s[j])
+            s[j] = deepcopy(temp)
+    temp = deepcopy(s[i+1])
+    s[i+1] = deepcopy(s[r])
+    s[r] = deepcopy(temp)
     return i + 1
 
 

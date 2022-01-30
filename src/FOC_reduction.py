@@ -7,7 +7,7 @@ Main script where are progressively added the steps for the FOC pipeline reducti
 #Project libraries
 import sys
 import numpy as np
-import copy
+from copy import deepcopy
 import lib.fits as proj_fits        #Functions to handle fits files
 import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
@@ -155,11 +155,10 @@ def main():
     rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'w']
 
     # Rotate data to have North up
-    ref_header = copy.deepcopy(headers[0])
+    ref_header = deepcopy(headers[0])
     if rotate_data:
         alpha = ref_header['orientat']
-        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
-            [np.sin(-alpha), np.cos(-alpha)]])
+        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
         data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
@@ -180,7 +179,7 @@ def main():
 
     ## Step 3:
     # Rotate images to have North up
-    ref_header = copy.deepcopy(headers[0])
+    ref_header = deepcopy(headers[0])
     if rotate_stokes:
         alpha = ref_header['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
@@ -193,7 +192,7 @@ def main():
 
     ## Step 4:
     # crop to desired region of interest (roi)
-#    stokescrop = proj_plots.crop_map(copy.deepcopy(stokes_test), copy.deepcopy(data_mask), snrp_cut=snrp_cut, snri_cut=snri_cut)
+#    stokescrop = proj_plots.crop_map(deepcopy(stokes_test), deepcopy(data_mask), snrp_cut=snrp_cut, snri_cut=snri_cut)
 #    stokescrop.run()
 #    stokes_crop, data_mask = stokescrop.crop()
 
@@ -202,13 +201,13 @@ def main():
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-    proj_plots.polarization_map(copy.deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
 
     return 0
 
