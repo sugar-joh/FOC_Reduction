@@ -327,8 +327,10 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
     SNRp = pol.data/pol_err.data
     SNRp[np.isnan(SNRp)] = 0.
     pol.data[SNRp < SNRp_cut] = np.nan
-    SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
-    SNRi[np.isnan(SNRi)] = 0.
+
+    maskI = stk_cov.data[0,0] > 0
+    SNRi = np.zeros(stkI.data.shape)
+    SNRi[maskI] = stkI.data[maskI]/np.sqrt(stk_cov.data[0,0][maskI])
     pol.data[SNRi < SNRi_cut] = np.nan
 
     data_mask = (1.-data_mask).astype(bool)
@@ -373,7 +375,7 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
         # Display polarization degree error map
         vmin, vmax = 0., 10.
         p_err = pol_err.data.copy()
-        p_err[p_err*100. > vmax] = np.nan
+        p_err[p_err > vmax/100.] = np.nan
         im = ax.imshow(p_err*100.,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['s_i','i_err']:

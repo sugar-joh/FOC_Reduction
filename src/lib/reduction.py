@@ -46,6 +46,9 @@ from datetime import datetime
 from scipy.ndimage import rotate as sc_rotate
 from scipy.ndimage import shift as sc_shift
 from astropy.wcs import WCS
+from astropy import log
+log.setLevel('ERROR')
+import warnings
 from lib.deconvolve import deconvolve_im, gaussian_psf
 from lib.convex_hull import image_hull
 from lib.plots import plot_obs
@@ -826,7 +829,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
 
     # Define gaussian stdev
     stdev = FWHM/(2.*np.sqrt(2.*np.log(2)))
-    fmax = np.finfo(np.float64).max
+    fmax = np.finfo(np.double).max
 
     if smoothing.lower() in ['combine','combining']:
         # Smooth using N images combination algorithm
@@ -843,7 +846,9 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             for c in range(smoothed.shape[1]):
                 # Compute distance from current pixel
                 dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
-                g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
+                # Catch expected "OverflowWarning" as we overflow values that are not in the image
+                with warnings.catch_warnings(record=True) as w: 
+                    g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
                 # Apply weighted combination
                 smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
                 error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
@@ -862,7 +867,9 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             for r in range(image.shape[0]):
                 for c in range(image.shape[1]):
                     dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
-                    g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
+                    # Catch expected "OverflowWarning" as we overflow values that are not in the image
+                    with warnings.catch_warnings(record=True) as w: 
+                        g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
                     smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(image*g_rc)
                     error[i][r,c] = np.sqrt(np.sum(error_array[i]*g_rc**2))
 
@@ -1137,7 +1144,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 
         mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
         if mask.any():
-            print("WARNING : I_pol > I_stokes : ", I_stokes[mask].size)
+            print("WARNING : found {0:d} pixels for which I_pol > I_stokes".format(I_stokes[mask].size))
 
         #Stokes covariance matrix
         Stokes_cov = np.zeros((3,3,I_stokes.shape[0],I_stokes.shape[1]))
@@ -1265,22 +1272,34 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
         for the new orientation angle.
     """
     #Polarization degree and angle computation
-    I_pol = np.sqrt(Q_stokes**2 + U_stokes**2)
-    P = I_pol/I_stokes
-    P[I_stokes <= 0.] = 0.
-    PA = (90./np.pi)*np.arctan2(U_stokes,Q_stokes)
+    mask = I_stokes>0.
+    I_pol = np.zeros(I_stokes.shape)
+    I_pol[mask] = np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2)
+    P = np.zeros(I_stokes.shape)
+    P[mask] = I_pol[mask]/I_stokes[mask]
+    PA = np.zeros(I_stokes.shape)
+    PA[mask] = (90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask])
 
     if (P>1).any():
-        print("WARNING : found pixels for which P > 1", P[P>1.].size)
-
+        print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
+        
     #Associated errors
-    s_P = (1/I_stokes)*np.sqrt((Q_stokes**2*Stokes_cov[1,1] + U_stokes**2*Stokes_cov[2,2] + 2.*Q_stokes*U_stokes*Stokes_cov[1,2])/(Q_stokes**2 + U_stokes**2) + ((Q_stokes/I_stokes)**2 + (U_stokes/I_stokes)**2)*Stokes_cov[0,0] - 2.*(Q_stokes/I_stokes)*Stokes_cov[0,1] - 2.*(U_stokes/I_stokes)*Stokes_cov[0,2])
-    s_PA = (90./(np.pi*(Q_stokes**2 + U_stokes**2)))*np.sqrt(U_stokes**2*Stokes_cov[1,1] + Q_stokes**2*Stokes_cov[2,2] - 2.*Q_stokes*U_stokes*Stokes_cov[1,2])
+    fmax = np.finfo(np.float64).max
+    
+    s_P = np.ones(I_stokes.shape)*fmax
+    s_P[mask] = (1/I_stokes[mask])*np.sqrt((Q_stokes[mask]**2*Stokes_cov[1,1][mask] + U_stokes[mask]**2*Stokes_cov[2,2][mask] + 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])/(Q_stokes[mask]**2 + U_stokes[mask]**2) + ((Q_stokes[mask]/I_stokes[mask])**2 + (U_stokes[mask]/I_stokes[mask])**2)*Stokes_cov[0,0][mask] - 2.*(Q_stokes[mask]/I_stokes[mask])*Stokes_cov[0,1][mask] - 2.*(U_stokes[mask]/I_stokes[mask])*Stokes_cov[0,2][mask])
+    s_P[np.isnan(s_P)] = fmax
+    s_PA = np.ones(I_stokes.shape)*fmax
+    s_PA[mask] = (90./(np.pi*(Q_stokes[mask]**2 + U_stokes[mask]**2)))*np.sqrt(U_stokes[mask]**2*Stokes_cov[1,1][mask] + Q_stokes[mask]**2*Stokes_cov[2,2][mask] - 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])
 
-    debiased_P = np.sqrt(P**2 - s_P**2)
+    # Catch expected "OverflowWarning" as wrong pixel have an overflowing error
+    with warnings.catch_warnings(record=True) as w:
+        mask2 = P**2 >= s_P**2
+    debiased_P = np.zeros(I_stokes.shape)
+    debiased_P[mask2] = np.sqrt(P[mask2]**2 - s_P[mask2]**2)
 
     if (debiased_P>1.).any():
-        print("WARNING : found pixels for which debiased_P > 100%", debiased_P[debiased_P>1.].size)
+        print("WARNING : found {0:d} pixels for which debiased_P > 100%".format(debiased_P[debiased_P>1.].size))
 
     #Compute the total exposure time so that
     #I_stokes*exp_tot = N_tot the total number of events
@@ -1289,18 +1308,18 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     N_obs = I_stokes*exp_tot
 
     #Errors on P, PA supposing Poisson noise
-    s_P_P = np.sqrt(2.)/np.sqrt(N_obs)*100.
-    s_PA_P = s_P_P/(2.*P)*180./np.pi
+    s_P_P = np.ones(I_stokes.shape)*fmax
+    s_P_P[mask] = np.sqrt(2.)/np.sqrt(N_obs[mask])*100.
+    s_PA_P = np.ones(I_stokes.shape)*fmax
+    s_PA_P[mask2] = s_P_P[mask2]/(2.*P[mask2])*180./np.pi
 
-    # Nan handling :
-    fmax = np.finfo(np.float64).max
-
-    P[np.isnan(P)] = 0.
-    s_P[np.isnan(s_P)] = fmax
-    s_PA[np.isnan(s_PA)] = fmax
-    debiased_P[np.isnan(debiased_P)] = 0.
-    s_P_P[np.isnan(s_P_P)] = fmax
-    s_PA_P[np.isnan(s_PA_P)] = fmax
+#    # Nan handling :
+#    P[np.isnan(P)] = 0.
+#    s_P[np.isnan(s_P)] = fmax
+#    s_PA[np.isnan(s_PA)] = fmax
+#    debiased_P[np.isnan(debiased_P)] = 0.
+#    s_P_P[np.isnan(s_P_P)] = fmax
+#    s_PA_P[np.isnan(s_PA_P)] = fmax
 
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
@@ -1385,6 +1404,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
                     reshape=False, cval=0.)
+        new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
 
     #Update headers to new angle
     new_headers = []

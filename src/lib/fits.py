@@ -39,7 +39,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
         with fits.open(data_folder+infiles[i]) as f:
             headers.append(f[0].header)
             data_array.append(f[0].data)
-    data_array = np.array(data_array)
+    data_array = np.array(data_array,dtype=np.double)
 
     # Prevent negative count value in imported data
     for i in range(len(data_array)):
