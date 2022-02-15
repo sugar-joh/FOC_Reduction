@@ -1183,7 +1183,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 #        s_U_U = np.sqrt(Stokes_cov[2,2])/U_stokes*100.
 #        s_U_axis_U = np.sqrt(s_U2_axis)/U_stokes*100.
 #
-#        fig, ax = plt.subplots(3,3)
+#        fig, ax = plt.subplots(3,3,figsize=(15,15))
 #        im = ax[0,0].imshow(s_I_I, origin='lower')
 #        ax[0,0].set_title(r"$\frac{\sigma_{I}}{I}$")
 #        fig.colorbar(im, ax=ax[0,0])
@@ -1304,7 +1304,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     #Compute the total exposure time so that
     #I_stokes*exp_tot = N_tot the total number of events
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
-    print("Total exposure time : {} sec".format(exp_tot))
+    #print("Total exposure time : {} sec".format(exp_tot))
     N_obs = I_stokes*exp_tot
 
     #Errors on P, PA supposing Poisson noise
@@ -1313,13 +1313,13 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     s_PA_P = np.ones(I_stokes.shape)*fmax
     s_PA_P[mask2] = s_P_P[mask2]/(2.*P[mask2])*180./np.pi
 
-#    # Nan handling :
-#    P[np.isnan(P)] = 0.
-#    s_P[np.isnan(s_P)] = fmax
-#    s_PA[np.isnan(s_PA)] = fmax
-#    debiased_P[np.isnan(debiased_P)] = 0.
-#    s_P_P[np.isnan(s_P_P)] = fmax
-#    s_PA_P[np.isnan(s_PA_P)] = fmax
+    # Nan handling :
+    P[np.isnan(P)] = 0.
+    s_P[np.isnan(s_P)] = fmax
+    s_PA[np.isnan(s_PA)] = fmax
+    debiased_P[np.isnan(debiased_P)] = 0.
+    s_P_P[np.isnan(s_P_P)] = fmax
+    s_PA_P[np.isnan(s_PA_P)] = fmax
 
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
