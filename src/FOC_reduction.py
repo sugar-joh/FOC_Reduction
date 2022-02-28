@@ -116,7 +116,7 @@ def main():
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = '3C2173_FOC'         #target/intrument name
+    figname = '3C273_FOC'         #target/intrument name
     figtype = '_combine_FWHM015_deconvolved'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 20.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
