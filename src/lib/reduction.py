@@ -847,7 +847,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 # Compute distance from current pixel
                 dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                 # Catch expected "OverflowWarning" as we overflow values that are not in the image
-                with warnings.catch_warnings(record=True) as w: 
+                with warnings.catch_warnings(record=True) as w:
                     g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
                 # Apply weighted combination
                 smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
@@ -868,7 +868,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 for c in range(image.shape[1]):
                     dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
                     # Catch expected "OverflowWarning" as we overflow values that are not in the image
-                    with warnings.catch_warnings(record=True) as w: 
+                    with warnings.catch_warnings(record=True) as w:
                         g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
                     smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(image*g_rc)
                     error[i][r,c] = np.sqrt(np.sum(error_array[i]*g_rc**2))
@@ -1172,9 +1172,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_U2_axis = (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
 
         # Add quadratically the uncertainty to the Stokes covariance matrix ## THIS IS WHERE THE PROBLEMATIC UNCERTAINTY IS ADDED TO THE PIPELINE
-        Stokes_cov[0,0] += s_I2_axis
-        Stokes_cov[1,1] += s_Q2_axis
-        Stokes_cov[2,2] += s_U2_axis
+        #Stokes_cov[0,0] += s_I2_axis
+        #Stokes_cov[1,1] += s_Q2_axis
+        #Stokes_cov[2,2] += s_U2_axis
 
 #        s_I_I = np.sqrt(Stokes_cov[0,0])/I_stokes*100.
 #        s_I_axis_I = np.sqrt(s_I2_axis)/I_stokes*100.
@@ -1282,10 +1282,10 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
 
     if (P>1).any():
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
-        
+
     #Associated errors
     fmax = np.finfo(np.float64).max
-    
+
     s_P = np.ones(I_stokes.shape)*fmax
     s_P[mask] = (1/I_stokes[mask])*np.sqrt((Q_stokes[mask]**2*Stokes_cov[1,1][mask] + U_stokes[mask]**2*Stokes_cov[2,2][mask] + 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])/(Q_stokes[mask]**2 + U_stokes[mask]**2) + ((Q_stokes[mask]/I_stokes[mask])**2 + (U_stokes[mask]/I_stokes[mask])**2)*Stokes_cov[0,0][mask] - 2.*(Q_stokes[mask]/I_stokes[mask])*Stokes_cov[0,1][mask] - 2.*(U_stokes[mask]/I_stokes[mask])*Stokes_cov[0,2][mask])
     s_P[np.isnan(s_P)] = fmax

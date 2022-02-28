@@ -90,7 +90,7 @@ def main():
     deconvolve = True
     if deconvolve:
         psf = 'gaussian'  #Can be user-defined as well
-        psf_FWHM = 0.10
+        psf_FWHM = 0.15
         psf_scale = 'arcsec'
         psf_shape=(9,9)
         iterations = 10
@@ -102,7 +102,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.15
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -110,16 +110,16 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = 0.15           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = '3C2173_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010_deconvolved'    #additionnal informations
+    figtype = '_combine_FWHM015_deconvolved'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
-    SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRi_cut = 20.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start
