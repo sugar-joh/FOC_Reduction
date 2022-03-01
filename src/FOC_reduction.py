@@ -17,11 +17,11 @@ from lib.convex_hull import image_hull
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -81,13 +81,13 @@ def main():
 #    infiles = ['x25d0401t_c0f.fits','x25d0402t_c0f.fits','x25d0403t_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PictorA_x25d040/"
 
-    globals()['data_folder'] = "../data/3C273_x0u20/"
-    infiles = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits','x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits','x0u20201t_c0f.fits','x0u20202t_c0f.fits','x0u20203t_c0f.fits','x0u20204t_c0f.fits','x0u20205t_c0f.fits','x0u20206t_c0f.fits','x0u20301t_c0f.fits','x0u20302t_c0f.fits','x0u20303t_c0f.fits','x0u20304t_c0f.fits','x0u20305t_c0f.fits','x0u20306t_c0f.fits']
-    globals()['plots_folder'] = "../plots/3C273_x0u20/"
+#    globals()['data_folder'] = "../data/3C273_x0u20/"
+#    infiles = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits','x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits','x0u20201t_c0f.fits','x0u20202t_c0f.fits','x0u20203t_c0f.fits','x0u20204t_c0f.fits','x0u20205t_c0f.fits','x0u20206t_c0f.fits','x0u20301t_c0f.fits','x0u20302t_c0f.fits','x0u20303t_c0f.fits','x0u20304t_c0f.fits','x0u20305t_c0f.fits','x0u20306t_c0f.fits']
+#    globals()['plots_folder'] = "../plots/3C273_x0u20/"
 
     ## Reduction parameters
     # Deconvolution
-    deconvolve = True
+    deconvolve = False
     if deconvolve:
         psf = 'gaussian'  #Can be user-defined as well
         psf_FWHM = 0.15
@@ -97,12 +97,12 @@ def main():
     # Cropping
     display_crop = False
     # Error estimation
-    error_sub_shape = (75,75)
+    error_sub_shape = (150,150)
     display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.15
+        pxsize = 0.05
         px_scale = 'arcsec'         #pixel or arcsec
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -110,16 +110,16 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.15           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = '3C273_FOC'         #target/intrument name
-    figtype = '_combine_FWHM015_deconvolved'    #additionnal informations
-    SNRp_cut = 5.    #P measurments with SNR>3
-    SNRi_cut = 20.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_combine_FWHM020'    #additionnal informations
+    SNRp_cut = 50.    #P measurments with SNR>3
+    SNRi_cut = 350.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
 
     ##### Pipeline start

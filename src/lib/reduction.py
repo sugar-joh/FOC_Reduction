@@ -626,7 +626,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
 
 
 def align_data(data_array, headers, error_array=None, upsample_factor=1.,
-        ref_data=None, ref_center=None, return_shifts=True):
+        ref_data=None, ref_center=None, return_shifts=False):
     """
     Align images in data_array using cross correlation, and rescale them to
     wider images able to contain any rotation of the reference image.
@@ -851,7 +851,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                     g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
                 # Apply weighted combination
                 smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                error[r,c] = np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                error[r,c] = (1.-data_mask[r,c])*np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
 
         # Nan handling
         error[np.isnan(smoothed)] = 0.
@@ -871,7 +871,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                     with warnings.catch_warnings(record=True) as w:
                         g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
                     smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(image*g_rc)
-                    error[i][r,c] = np.sqrt(np.sum(error_array[i]*g_rc**2))
+                    error[i][r,c] = (1.-data_mask[r,c])*np.sqrt(np.sum(error_array[i]*g_rc**2))
 
             # Nan handling
             error[i][np.isnan(smoothed[i])] = 0.
@@ -1440,3 +1440,72 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers
+
+def rotate_data(data_array, error_array, data_mask, headers, ang):
+    """
+    Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
+    matrix to rotate Q, U of a given angle in degrees and update header
+    orientation keyword.
+    ----------
+    Inputs:
+    data_array : numpy.ndarray
+        Array of images (2D floats) to be rotated by angle ang.
+    error_array : numpy.ndarray
+        Array of error associated to images in data_array.
+    headers : header list
+        List of headers corresponding to the reduced images.
+    ang : float
+        Rotation angle (in degrees) that should be applied to the Stokes
+        parameters
+    ----------
+    Returns:
+    new_data_array : numpy.ndarray
+        Updated array containing the rotated images.
+    new_error_array : numpy.ndarray
+        Updated array containing the rotated errors.
+    new_headers : header list
+        Updated list of headers corresponding to the reduced images accounting
+        for the new orientation angle.
+    """
+    #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
+    alpha = ang*np.pi/180.
+
+    #Rotate original images using scipy.ndimage.rotate
+    new_data_array = []
+    new_error_array = []
+    for i in range(data_array.shape[0]):
+        new_data_array.append(sc_rotate(data_array[i], ang, reshape=False,
+            cval=0.))
+        new_error_array.append(sc_rotate(error_array[i], ang, reshape=False,
+            cval=error_array.mean()))
+    new_data_array = np.array(new_data_array)
+    new_data_mask = sc_rotate(data_mask, ang, reshape=False, cval=True)
+    new_error_array = np.array(new_error_array)
+
+    for i in range(new_data_array.shape[0]):
+        new_data_array[i][new_data_array[i] < 0.] = 0.
+
+    #Update headers to new angle
+    new_headers = []
+    mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
+        [np.sin(-alpha), np.cos(-alpha)]])
+    for header in headers:
+        new_header = deepcopy(header)
+        new_header['orientat'] = header['orientat'] + ang
+
+        new_wcs = WCS(header).deepcopy()
+        if new_wcs.wcs.has_cd():    # CD matrix
+            del new_wcs.wcs.cd
+            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
+            for key in keys:
+                new_header.remove(key, ignore_missing=True)
+            new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(new_wcs.wcs.get_pc()**2,axis=1))
+        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
+            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
+            new_wcs.wcs.pc = newpc
+        new_wcs.wcs.set()
+        new_header.update(new_wcs.to_header())
+
+        new_headers.append(new_header)
+
+    return new_data_array, new_error_array, new_data_mask, new_headers
