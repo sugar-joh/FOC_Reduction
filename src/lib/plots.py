@@ -263,7 +263,7 @@ class crop_map(object):
         return Stokes_crop, data_mask
 
 
-def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
+def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
         step_vec=1, savename=None, plots_folder="", display=None):
     """
     Plots polarization map from Stokes HDUList.
@@ -301,6 +301,10 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
         degree ('p','pol','pol_deg') or polarization degree error ('s_p',
         'pol_err','pol_deg_err').
         Defaults to None (intensity).
+    ----------
+    Returns:
+    fig, ax : matplotlib.pyplot object
+        The figure and ax created for interactive contour maps.
     """
     #Get data
     stkI = Stokes[np.argmax([Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])]
@@ -317,6 +321,10 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
     pivot_wav = Stokes[0].header['photplam']
     convert_flux = Stokes[0].header['photflam']
     wcs = WCS(Stokes[0]).deepcopy()
+
+    #Get image mask
+    if data_mask is None:
+        data_mask = np.ones(stkI.shape).astype(bool)
 
     #Plot Stokes parameters map
     if display is None:
@@ -354,64 +362,62 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
     if display is None:
         # If no display selected, show intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = ax.imshow(stkI.data*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
-        cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
+        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['pol_flux']:
         # Display polarisation flux
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
         vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask])
-        im = ax.imshow(stkI.data*convert_flux*pol.data,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux*pol.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
-        cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
         vmin, vmax = 0., 100.
-        im = ax.imshow(pol.data*100.,extent=[-pol.data.shape[1]/2.,pol.data.shape[1]/2.,-pol.data.shape[0]/2.,pol.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(pol.data*100., vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P$ [%]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
         vmin, vmax = 0., 10.
         p_err = pol_err.data.copy()
         p_err[p_err > vmax/100.] = np.nan
-        im = ax.imshow(p_err*100.,extent=[-pol_err.data.shape[1]/2.,pol_err.data.shape[1]/2.,-pol_err.data.shape[0]/2.,pol_err.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(p_err*100., vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['s_i','i_err']:
         # Display intensity error map
         vmin, vmax = 0., np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
-        im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
         vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
-        im = ax.imshow(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
         levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
-        #print(levelsI)
-        cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
+        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
         vmin, vmax = SNRp_cut, np.max(SNRp[SNRp > 0.])
-        im = ax.imshow(SNRp, extent=[-SNRp.shape[1]/2.,SNRp.shape[1]/2.,-SNRp.shape[0]/2.,SNRp.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P/\sigma_{P}$")
         levelsP = np.linspace(SNRp_cut, np.max(SNRp[SNRp > 0.]), 10)
-        cont = ax.contour(SNRp, extent=[-SNRp.shape[1]/2.,SNRp.shape[1]/2.,-SNRp.shape[0]/2.,SNRp.shape[0]/2.], levels=levelsP, colors='grey', linewidths=0.5)
+        cont = ax.contour(SNRp, levels=levelsP, colors='grey', linewidths=0.5)
     else:
         # Defaults to intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = ax.imshow(stkI.data*convert_flux,extent=[-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.], vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
         levelsI = np.linspace(SNRi_cut, SNRi.max(), 10)
-        cont = ax.contour(SNRi, extent=[-SNRi.shape[1]/2.,SNRi.shape[1]/2.,-SNRi.shape[0]/2.,SNRi.shape[0]/2.], levels=levelsI, colors='grey', linewidths=0.5)
+        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
 
     fontprops = fm.FontProperties(size=16)
-    px_size = wcs.wcs.get_cdelt()[0]
+    px_size = wcs.wcs.get_cdelt()[0]*3600.
     px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
     ax.add_artist(px_sc)
 
-    X, Y = np.meshgrid(np.linspace(-stkI.data.shape[0]/2.,stkI.data.shape[0]/2.,stkI.data.shape[0]), np.linspace(-stkI.data.shape[1]/2.,stkI.data.shape[1]/2.,stkI.data.shape[1]))
+    #pol.data[np.isfinite(pol.data)] = 1./2.
+    X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
     U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
     Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
     pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
@@ -481,4 +487,68 @@ def polarization_map(Stokes, data_mask, rectangle=None, SNRp_cut=3., SNRi_cut=30
         fig.savefig(plots_folder+savename+".png",bbox_inches='tight',dpi=200)
 
     plt.show()
-    return 0
+    return fig, ax
+
+class align_maps(object):
+    """
+    Class to interactively align maps with different WCS.
+    """
+    def __init__(self, Stokes, other_map, SNRp_cut=3., SNRi_cut=30.):
+        #Get data
+        stkI = Stokes[np.argmax([Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])]
+        stk_cov = Stokes[np.argmax([Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])]
+        pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes))])]
+        pol_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])]
+        pang = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])]
+
+        wcs1 = WCS(Stokes[0]).deepcopy()
+        convert_flux = Stokes[0].header['photflam']
+        wcs2 = WCS(other_map).deepcopy()
+
+        #Compute SNR and apply cuts
+        pol.data[pol.data == 0.] = np.nan
+        SNRp = pol.data/pol_err.data
+        SNRp[np.isnan(SNRp)] = 0.
+        pol.data[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        SNRi[np.isnan(SNRi)] = 0.
+        pol.data[SNRi < SNRi_cut] = np.nan
+
+        plt.rcParams.update({'font.size': 16})
+        self.fig = plt.figure(figsize=(25,15))
+        #Plot the UV map
+        self.ax1 = self.fig.add_subplot(121, projection=wcs1)
+        self.ax1.set_facecolor('k')
+
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        im1 = self.ax1.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+
+        fontprops = fm.FontProperties(size=16)
+        px_size = wcs1.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax1.add_artist(px_sc)
+        
+        north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        self.ax1.add_artist(north_dir1)
+
+        pol.data[np.isfinite(pol.data)] = 1./2.
+        step_vec = 1
+        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
+        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        Q = self.ax1.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+
+        self.ax1.set_title("Click on selected point of reference.")
+
+        #Plot the other map
+        self.ax2 = self.fig.add_subplot(122, projection=wcs2)
+        self.ax2.set_facecolor('k')
+
+        vmin, vmax = 0., np.max(other_map.data[other_map.data > 0.])
+        im2 = self.ax2.imshow(other_map.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+
+        fontprops = fm.FontProperties(size=16)
+        px_size = wcs2.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax2.add_artist(px_sc)
+
+        self.ax2.set_title("Click on selected point of reference.")

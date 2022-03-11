@@ -44,6 +44,30 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     # Prevent negative count value in imported data
     for i in range(len(data_array)):
         data_array[i][data_array[i] < 0.] = 0.
+    
+    # force WCS to convention PCi_ja unitary, cdelt in deg
+    for header in headers:
+        new_wcs = wcs.WCS(header).deepcopy()
+        if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt == np.array([1., 1.])).all():
+            # Update WCS with relevant information
+            HST_aper = 2400.    # HST aperture in mm
+            f_ratio = header['f_ratio']
+            px_dim = np.array([25., 25.])   # Pixel dimension in µm
+            if header['pxformt'].lower() == 'zoom':
+                px_dim[0] = 50.
+            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            if new_wcs.wcs.has_cd():
+                old_cd = new_wcs.wcs.cd
+                del new_wcs.wcs.cd
+                keys = list(new_wcs.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
+                for key in keys:
+                    header.remove(key, ignore_missing=True)
+            elif (new_wcs.wcs.cdelt == np.array([1., 1.])).all() and \
+                    (new_wcs.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
+                old_cd = new_wcs.wcs.pc
+            new_wcs.wcs.pc = np.dot(old_cd, np.diag(1./new_cdelt))
+            new_wcs.wcs.cdelt = new_cdelt
+            header.update(new_wcs.to_header())
 
     if compute_flux:
         for i in range(len(infiles)):
@@ -92,22 +116,6 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     ref_header = headers[0]
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
     new_wcs = wcs.WCS(ref_header).deepcopy()
-    if new_wcs.wcs.has_cd():
-        del new_wcs.wcs.cd
-        keys = list(new_wcs.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
-        for key in keys:
-            ref_header.remove(key, ignore_missing=True)
-        new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(new_wcs.wcs.get_pc()**2,axis=1))
-    if (new_wcs.wcs.cdelt == np.array([1., 1.])).all() and \
-            (new_wcs.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
-        # Update WCS with relevant information
-        HST_aper = 2400.    # HST aperture in mm
-        f_ratio = ref_header['f_ratio']
-        px_dim = np.array([25., 25.])   # Pixel dimension in µm
-        if ref_header['pxformt'].lower() == 'zoom':
-            px_dim[0] = 50.
-        new_wcs.wcs.cdelt = 206.3*px_dim/(f_ratio*HST_aper)
-    new_wcs.wcs.crpix = [I_stokes.shape[0]/2, I_stokes.shape[1]/2]
 
     header = new_wcs.to_header()
     header['instrume'] = (ref_header['instrume'], 'Instrument from which data is reduced')

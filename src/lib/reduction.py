@@ -331,23 +331,7 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
         for i,header in enumerate(headers):
             # Get current pixel size
             w = WCS(header).deepcopy()
-            if w.wcs.has_cd():
-                del w.wcs.cd
-                keys = list(w.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
-                for key in keys:
-                    header.remove(key, ignore_missing=True)
-                w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
-            if (w.wcs.cdelt == np.array([1., 1.])).all() and \
-                    (w.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
-                # Update WCS with relevant information
-                HST_aper = 2400.    # HST aperture in mm
-                f_ratio = header['f_ratio']
-                px_dim = np.array([25., 25.])   # Pixel dimension in µm
-                if header['pxformt'].lower() == 'zoom':
-                    px_dim[0] = 50.
-                w.wcs.cdelt = 206.3*px_dim/(f_ratio*HST_aper)
-            header.update(w.to_header())
-            pxsize[i] = np.round(w.wcs.cdelt,5)
+            pxsize[i] = np.round(w.wcs.cdelt/3600.,5)
         if (pxsize != pxsize[0]).any():
             raise ValueError("Not all images in array have same pixel size")
         FWHM /= pxsize[0].min()
@@ -570,31 +554,17 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             image, error, header = enum
             # Get current pixel size
             w = WCS(header).deepcopy()
-            if w.wcs.has_cd():
-                del w.wcs.cd
-                keys = list(w.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
-                for key in keys:
-                    header.remove(key, ignore_missing=True)
-                w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
-            if (w.wcs.cdelt == np.array([1., 1.])).all() and \
-                    (w.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
-                # Update WCS with relevant information
-                f_ratio = header['f_ratio']
-                px_dim = np.array([25., 25.])   # Pixel dimension in µm
-                if header['pxformt'].lower() == 'zoom':
-                    px_dim[0] = 50.
-                w.wcs.cdelt = 206.3*px_dim/(f_ratio*HST_aper)
-            header.update(w.to_header())
 
             # Compute binning ratio
             if scale.lower() in ['px', 'pixel']:
                 Dxy = np.array([pxsize,]*2)
             elif scale.lower() in ['arcsec','arcseconds']:
-                Dxy = np.floor(pxsize/w.wcs.cdelt).astype(int)
+                Dxy = np.floor(pxsize/w.wcs.cdelt/3600.).astype(int)
             else:
                 raise ValueError("'{0:s}' invalid scale for binning.".format(scale))
 
             if (Dxy <= 1.).any():
+                print(Dxy, pxsize, w.wcs.cdelt*3600.)
                 raise ValueError("Requested pixel size is below resolution.")
             new_shape = (image.shape//Dxy).astype(int)
 
@@ -605,9 +575,6 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             # Propagate error
             rms_image = np.sqrt(bin_ndarray(image**2, new_shape=new_shape,
                 operation='average'))
-            #std_image = np.sqrt(bin_ndarray(image**2, new_shape=new_shape,
-            #    operation='average') - bin_ndarray(image, new_shape=new_shape,
-            #        operation='average')**2)
             new_error = np.sqrt(Dxy[0]*Dxy[1])*bin_ndarray(error,
                     new_shape=new_shape, operation='average')
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
@@ -806,23 +773,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
         for i,header in enumerate(headers):
             # Get current pixel size
             w = WCS(header).deepcopy()
-            if w.wcs.has_cd():
-                del w.wcs.cd
-                keys = list(w.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
-                for key in keys:
-                    header.remove(key, ignore_missing=True)
-                w.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
-            if (w.wcs.cdelt == np.array([1., 1.])).all() and \
-                    (w.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
-                # Update WCS with relevant information
-                HST_aper = 2400.    # HST aperture in mm
-                f_ratio = header['f_ratio']
-                px_dim = np.array([25., 25.])   # Pixel dimension in µm
-                if header['pxformt'].lower() == 'zoom':
-                    px_dim[0] = 50.
-                w.wcs.cdelt = 206.3*px_dim/(f_ratio*HST_aper)
-            header.update(w.to_header())
-            pxsize[i] = np.round(w.wcs.cdelt,4)
+            pxsize[i] = np.round(w.wcs.cdelt*3600.,4)
         if (pxsize != pxsize[0]).any():
             raise ValueError("Not all images in array have same pixel size")
         FWHM /= pxsize[0].min()
@@ -1176,46 +1127,6 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         #Stokes_cov[1,1] += s_Q2_axis
         #Stokes_cov[2,2] += s_U2_axis
 
-#        s_I_I = np.sqrt(Stokes_cov[0,0])/I_stokes*100.
-#        s_I_axis_I = np.sqrt(s_I2_axis)/I_stokes*100.
-#        s_Q_Q = np.sqrt(Stokes_cov[1,1])/Q_stokes*100.
-#        s_Q_axis_Q = np.sqrt(s_Q2_axis)/Q_stokes*100.
-#        s_U_U = np.sqrt(Stokes_cov[2,2])/U_stokes*100.
-#        s_U_axis_U = np.sqrt(s_U2_axis)/U_stokes*100.
-#
-#        fig, ax = plt.subplots(3,3,figsize=(15,15))
-#        im = ax[0,0].imshow(s_I_I, origin='lower')
-#        ax[0,0].set_title(r"$\frac{\sigma_{I}}{I}$")
-#        fig.colorbar(im, ax=ax[0,0])
-#        im = ax[0,1].imshow(s_I_axis_I, origin='lower')
-#        ax[0,1].set_title(r"$\frac{\sigma_{I}^{axis}}{I}$")
-#        fig.colorbar(im, ax=ax[0,1])
-#        im = ax[0,2].imshow(s_I_axis_I/s_I_I, origin='lower')
-#        ax[0,2].set_title(r"$\frac{\sigma_{I}^{axis}}{\sigma_{I}}$")
-#        fig.colorbar(im, ax=ax[0,2])
-#        im = ax[1,0].imshow(s_Q_Q, origin='lower')
-#        ax[1,0].set_title(r"$\frac{\sigma_{Q}}{Q}$")
-#        fig.colorbar(im, ax=ax[1,0])
-#        im = ax[1,1].imshow(s_Q_axis_Q, origin='lower')
-#        ax[1,1].set_title(r"$\frac{\sigma_{Q}^{axis}}{Q}$")
-#        fig.colorbar(im, ax=ax[1,1])
-#        im = ax[1,2].imshow(s_Q_axis_Q/s_Q_Q, origin='lower')
-#        ax[1,2].set_title(r"$\frac{\sigma_{Q}^{axis}}{\sigma_{Q}}$")
-#        fig.colorbar(im, ax=ax[1,2])
-#        im = ax[2,0].imshow(s_U_U, origin='lower')
-#        ax[2,0].set_title(r"$\frac{\sigma_{U}}{U}$")
-#        fig.colorbar(im, ax=ax[2,0])
-#        im = ax[2,1].imshow(s_U_axis_U, origin='lower')
-#        ax[2,1].set_title(r"$\frac{\sigma_{U}^{axis}}{U}$")
-#        fig.colorbar(im, ax=ax[2,1])
-#        im = ax[2,2].imshow(s_U_axis_U/s_U_U, origin='lower')
-#        ax[2,2].set_title(r"$\frac{\sigma_{U}^{axis}}{\sigma_{U}}$")
-#        fig.colorbar(im, ax=ax[2,2])
-#        plt.show()
-#        print("s_I/I = {}% ; s_I_axis/I = {}%".format(np.mean(s_I_I[I_stokes > 0.]), np.mean(s_I_axis_I[I_stokes > 0.])))
-#        print("s_Q/Q = {}% ; s_Q_axis/Q = {}%".format(np.mean(s_Q_Q[Q_stokes > 0.]), np.mean(s_Q_axis_Q[Q_stokes > 0.])))
-#        print("s_U/U = {}% ; s_U_axis/U = {}%".format(np.mean(s_U_U[U_stokes > 0.]), np.mean(s_U_axis_U[U_stokes > 0.])))
-
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
             Stokes_error = np.array([np.sqrt(Stokes_cov[i,i]) for i in range(3)])
@@ -1416,11 +1327,20 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
 
         new_wcs = WCS(header).deepcopy()
         if new_wcs.wcs.has_cd():    # CD matrix
+            # Update WCS with relevant information
+            HST_aper = 2400.    # HST aperture in mm
+            f_ratio = header['f_ratio']
+            px_dim = np.array([25., 25.])   # Pixel dimension in µm
+            if ref_header['pxformt'].lower() == 'zoom':
+                px_dim[0] = 50.
+            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            old_cd = new_wcs.wcs.cd
             del new_wcs.wcs.cd
             keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
             for key in keys:
                 new_header.remove(key, ignore_missing=True)
-            new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(w.wcs.get_pc()**2,axis=1))
+            new_wcs.wcs.pc = np.dot(mrot, np.dot(old_cd, np.diag(1./new_cdelt)))
+            new_wcs.wcs.cdelt = new_cdelt
         elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
             newpc = np.dot(mrot, new_wcs.wcs.get_pc())
             new_wcs.wcs.pc = newpc
@@ -1495,11 +1415,20 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
 
         new_wcs = WCS(header).deepcopy()
         if new_wcs.wcs.has_cd():    # CD matrix
+            # Update WCS with relevant information
+            HST_aper = 2400.    # HST aperture in mm
+            f_ratio = ref_header['f_ratio']
+            px_dim = np.array([25., 25.])   # Pixel dimension in µm
+            if ref_header['pxformt'].lower() == 'zoom':
+                px_dim[0] = 50.
+            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            old_cd = new_wcs.wcs.cd
             del new_wcs.wcs.cd
             keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
             for key in keys:
                 new_header.remove(key, ignore_missing=True)
-            new_wcs.wcs.cdelt = 3600.*np.sqrt(np.sum(new_wcs.wcs.get_pc()**2,axis=1))
+            new_wcs.wcs.pc = np.dot(mrot, np.dot(old_cd, np.diag(1./new_cdelt)))
+            new_wcs.wcs.cdelt = new_cdelt
         elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
             newpc = np.dot(mrot, new_wcs.wcs.get_pc())
             new_wcs.wcs.pc = newpc
