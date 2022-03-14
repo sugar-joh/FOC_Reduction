@@ -13,7 +13,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from matplotlib.widgets import RectangleSelector
+from matplotlib.widgets import RectangleSelector, Button
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -493,17 +493,115 @@ class align_maps(object):
     """
     Class to interactively align maps with different WCS.
     """
-    def __init__(self, Stokes, other_map, SNRp_cut=3., SNRi_cut=30.):
+    def __init__(self, Stokes, other_map):
+        self.aligned = False
+        self.Stokes_UV = Stokes
+        self.other_map = other_map
         #Get data
-        stkI = Stokes[np.argmax([Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])]
-        stk_cov = Stokes[np.argmax([Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])]
-        pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes))])]
-        pol_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])]
-        pang = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])]
+        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
 
-        wcs1 = WCS(Stokes[0]).deepcopy()
-        convert_flux = Stokes[0].header['photflam']
-        wcs2 = WCS(other_map).deepcopy()
+        self.wcs_UV = WCS(self.Stokes_UV[0]).deepcopy()
+        convert_flux = self.Stokes_UV[0].header['photflam']
+        self.wcs_other = WCS(self.other_map).deepcopy()
+
+        plt.rcParams.update({'font.size': 16})
+        self.fig = plt.figure(figsize=(25,15))
+        #Plot the UV map
+        self.ax1 = self.fig.add_subplot(121, projection=self.wcs_UV)
+        self.ax1.set_facecolor('k')
+
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        im1 = self.ax1.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+
+        fontprops = fm.FontProperties(size=16)
+        px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax1.add_artist(px_sc)
+        
+        north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        self.ax1.add_artist(north_dir1)
+
+        self.cr_UV, = self.ax1.plot(*self.wcs_UV.wcs.crpix, 'r+')
+
+        self.ax1.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
+
+        #Plot the other map
+        self.ax2 = self.fig.add_subplot(122, projection=self.wcs_other)
+        self.ax2.set_facecolor('k')
+
+        vmin, vmax = 0., np.max(other_map.data[other_map.data > 0.])
+        im2 = self.ax2.imshow(other_map.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+
+        fontprops = fm.FontProperties(size=16)
+        px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax2.add_artist(px_sc)
+        
+        self.cr_other, = self.ax2.plot(*self.wcs_other.wcs.crpix, 'r+')
+
+        self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
+
+        #Selection button
+        self.axapply = self.fig.add_axes([0.80, 0.01, 0.1, 0.04])
+        self.bapply = Button(self.axapply, 'Apply reference.')
+    
+    def get_aligned_wcs(self):
+        return self.wcs_UV, self.wcs_other
+
+    def onclick_ref(self, event) -> None:
+        if self.fig.canvas.manager.toolbar.mode == '':
+            if (event.inaxes is not None) and (event.inaxes == self.ax1):
+                x = event.xdata
+                y = event.ydata
+
+                self.cr_UV.set(data=[x,y])
+                self.fig.canvas.draw_idle()
+            
+            if (event.inaxes is not None) and (event.inaxes == self.ax2):
+                x = event.xdata
+                y = event.ydata
+
+                self.cr_other.set(data=[x,y])
+                self.fig.canvas.draw_idle()
+    
+    def apply_align(self, event):
+        self.wcs_UV.wcs.crpix = np.array(self.cr_UV.get_data())
+        self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
+        self.wcs_other.wcs.crval = self.wcs_UV.wcs.crval
+        self.fig.canvas.draw_idle()
+
+        if self.aligned:
+            plt.close(self.fig)
+    
+    def on_close_align(self, event):
+        self.aligned = True
+        print(self.get_aligned_wcs())
+    
+    def run(self):
+        plt.show()
+        self.fig.canvas.mpl_connect('button_press_event', self.onclick_ref)
+        self.bapply.on_clicked(self.apply_align)
+        self.fig.canvas.mpl_connect('close_event', self.on_close_align)
+        return self.get_aligned_wcs()
+
+class overplot_maps(align_maps):
+    """
+    Class to overplot maps from different observations.
+    Inherit from class align_maps in order to get the same WCS on both maps.
+    """
+    def overplot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.):
+        #Get Data
+        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
+        stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
+        pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
+        pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
+        pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
+        
+        other_I = self.other_map.data
+#        other_unit = self.other_map.header['bunit']
+#        other_wav = self.other_map.header['crval3']
+        
+        convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
         pol.data[pol.data == 0.] = np.nan
@@ -515,40 +613,32 @@ class align_maps(object):
         pol.data[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig = plt.figure(figsize=(25,15))
-        #Plot the UV map
-        self.ax1 = self.fig.add_subplot(121, projection=wcs1)
-        self.ax1.set_facecolor('k')
+        self.fig2 = plt.figure(figsize=(15,15))
+        self.ax = self.fig2.add_subplot(111, projection=self.wcs_UV)
+        self.ax.set_facecolor('k')
+        self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
 
+        #Display UV intensity map with polarization vectors
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im1 = self.ax1.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
-
-        fontprops = fm.FontProperties(size=16)
-        px_size = wcs1.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
-        self.ax1.add_artist(px_sc)
-        
-        north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
-        self.ax1.add_artist(north_dir1)
+        im = self.ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         pol.data[np.isfinite(pol.data)] = 1./2.
         step_vec = 1
         X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = self.ax1.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
 
-        self.ax1.set_title("Click on selected point of reference.")
+        #Display other map as contours
+        other_cont = self.ax.contour(other_I, transform=self.ax.get_transform(self.wcs_other), levels=np.linspace(other_vmin, other_vmax, other_num), colors='grey')
+        self.ax.clabel(other_cont, inline=True, fontsize=8)
 
-        #Plot the other map
-        self.ax2 = self.fig.add_subplot(122, projection=wcs2)
-        self.ax2.set_facecolor('k')
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="")
 
-        vmin, vmax = 0., np.max(other_map.data[other_map.data > 0.])
-        im2 = self.ax2.imshow(other_map.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
-
-        fontprops = fm.FontProperties(size=16)
-        px_size = wcs2.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
-        self.ax2.add_artist(px_sc)
-
-        self.ax2.set_title("Click on selected point of reference.")
+        plt.show()
+    
+    def plot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.) -> None:
+        self.run()
+        if self.aligned:
+            self.overplot(other_vmin, other_vmax, other_num, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)

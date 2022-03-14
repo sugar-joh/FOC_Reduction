@@ -1335,7 +1335,6 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
                     reshape=False, cval=0.)
         new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
     center = np.array(new_I_stokes.shape)/2
-    print('c',center)
 
     #Update headers to new angle
     new_headers = []
