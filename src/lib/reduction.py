@@ -216,6 +216,10 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
     Returns:
     cropped_array : numpy.ndarray
         Array containing the observationnal data homogeneously cropped.
+    headers : header list
+        Updated headers associated with the images in data_array.
+    cropped_error : numpy.ndarray
+        Array containing the error on the observationnal data homogeneously cropped.
     """
     if error_array is None:
         error_array = np.zeros(data_array.shape)
@@ -282,11 +286,16 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
 
     crop_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
     crop_error_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
-    for i,image in enumerate(data_array):   #Put the image data in the cropped array
+    for i,image in enumerate(data_array):
+        #Put the image data in the cropped array
         crop_array[i] = image[v_array[0]:v_array[1],v_array[2]:v_array[3]]
         crop_error_array[i] = error_array[i][v_array[0]:v_array[1],v_array[2]:v_array[3]]
+        #Update CRPIX value in the associated header
+        curr_wcs = deepcopy(WCS(headers[i]))
+        curr_wcs.wcs.crpix = curr_wcs.wcs.crpix - np.array([v_array[0], v_array[2]])
+        headers[i].update(curr_wcs.to_header())
 
-    return crop_array, crop_error_array
+    return crop_array, crop_error_array, headers
 
 
 def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
@@ -353,7 +362,7 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     return deconv_array
 
 
-def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
+def get_error(data_array, headers, sub_shape=(15,15), display=False,
         savename=None, plots_folder="", return_background=False):
     """
     Look for sub-image of shape sub_shape that have the smallest integrated
@@ -363,6 +372,8 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
     Inputs:
     data_array : numpy.ndarray
         Array containing the data to study (2D float arrays).
+    headers : header list
+        Headers associated with the images in data_array.
     sub_shape : tuple, optional
         Shape of the sub-image to look for. Must be odd.
         Defaults to (15,15).
@@ -370,10 +381,6 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
         Defaults to False.
-    headers : header list, optional
-        Headers associated with the images in data_array. Will only be used if
-        display is True.
-        Defaults to None.
     savename : str, optional
         Name of the figure the map should be saved to. If None, the map won't
         be saved (only displayed). Only used if display is True.
@@ -390,6 +397,8 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
     Returns:
     data_array : numpy.ndarray
         Array containing the data to study minus the background.
+    headers : header list
+        Updated headers associated with the images in data_array.
     error_array : numpy.ndarray
         Array containing the background values associated to the images in
         data_array.
@@ -399,7 +408,7 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         Only returned if return_background is True.
     """
     # Crop out any null edges
-    data, error = crop_array(data_array, headers, step=5, null_val=0., inside=False)
+    data, error, headers = crop_array(data_array, headers, step=5, null_val=0., inside=False)
 
     sub_shape = np.array(sub_shape)
     # Make sub_shape of odd values
@@ -449,7 +458,6 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
             print(data_array[i])
 
     if display:
-
         convert_flux = headers[0]['photflam']
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
@@ -497,9 +505,9 @@ def get_error(data_array, sub_shape=(15,15), display=False, headers=None,
         plt.show()
 
     if return_background:
-        return data_array, error_array, np.array([error_array[i][0,0] for i in range(error_array.shape[0])])
+        return data_array, error_array, headers, np.array([error_array[i][0,0] for i in range(error_array.shape[0])])
     else:
-        return data_array, error_array
+        return data_array, error_array, headers
 
 
 def rebin_array(data_array, error_array, headers, pxsize, scale,
@@ -656,19 +664,21 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
     if error_array is None:
-        _, error_array, background = get_error(data_array, return_background=True)
+        _, error_array, headers, background = get_error(data_array, headers, return_background=True)
     else:
-        _, _, background = get_error(data_array, return_background=True)
+        _, _, headers, background = get_error(data_array, headers, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
     full_array = np.concatenate((data_array,[ref_data]),axis=0)
+    full_headers = deepcopy(headers)
+    full_headers.append(headers[0])
     err_array = np.concatenate((error_array,[np.zeros(ref_data.shape)]),axis=0)
 
-    full_array, err_array = crop_array(full_array, headers, err_array, step=5,
+    full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5,
             inside=False)
 
-    data_array, ref_data = full_array[:-1], full_array[-1]
+    data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
 
     if ref_center is None:
@@ -723,14 +733,22 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
 
         shifts.append(shift)
         errors.append(error)
-
+    
     shifts = np.array(shifts)
     errors = np.array(errors)
 
+    # Update headers CRPIX value
+    added_pix = (np.array(rescaled_image.shape[1:]) - np.array(data_array.shape[1:]))/2
+    headers_wcs = [deepcopy(WCS(header)) for header in headers]
+    new_crpix = np.array([wcs.wcs.crpix for wcs in headers_wcs]) + shifts + added_pix
+    for i in range(len(headers_wcs)):
+        headers_wcs[i].wcs.crpix = new_crpix.mean(axis=0)
+        headers[i].update(headers_wcs[i].to_header())
+
     if return_shifts:
-        return rescaled_image, rescaled_error, rescaled_mask.any(axis=0), shifts, errors
+        return rescaled_image, rescaled_error, headers, rescaled_mask.any(axis=0), shifts, errors
     else:
-        return rescaled_image, rescaled_error, rescaled_mask.any(axis=0)
+        return rescaled_image, rescaled_error, headers, rescaled_mask.any(axis=0)
 
 
 def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
@@ -1316,6 +1334,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
                     reshape=False, cval=0.)
         new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
+    center = np.array(new_I_stokes.shape)/2
+    print('c',center)
 
     #Update headers to new angle
     new_headers = []
@@ -1324,7 +1344,6 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     for header in headers:
         new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
-
         new_wcs = WCS(header).deepcopy()
         if new_wcs.wcs.has_cd():    # CD matrix
             # Update WCS with relevant information
@@ -1344,6 +1363,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
             newpc = np.dot(mrot, new_wcs.wcs.get_pc())
             new_wcs.wcs.pc = newpc
+        new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - center) + center
         new_wcs.wcs.set()
         new_header.update(new_wcs.to_header())
 
@@ -1359,9 +1379,9 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_U_stokes[np.isnan(new_U_stokes)] = 0.
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers
+    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers, new_data_mask
 
-def rotate_data(data_array, error_array, data_mask, headers, ang):
+def rotate_data(data_array, error_array, headers, data_mask, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1437,4 +1457,4 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
 
         new_headers.append(new_header)
 
-    return new_data_array, new_error_array, new_data_mask, new_headers
+    return new_data_array, new_error_array, new_headers, new_data_mask

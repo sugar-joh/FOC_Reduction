@@ -130,7 +130,7 @@ def main():
         if (data < 0.).any():
             print("ETAPE 1 : ", data)
     # Crop data to remove outside blank margins.
-    data_array, error_array = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
+    data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 2 : ", data)
@@ -138,7 +138,7 @@ def main():
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
-    data_array, error_array = proj_red.get_error(data_array, sub_shape=error_sub_shape, display=display_error, headers=headers, savename=figname+"_errors", plots_folder=plots_folder)
+    data_array, error_array, headers = proj_red.get_error(data_array, headers, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 3 : ", data)
@@ -150,7 +150,7 @@ def main():
         if (data < 0.).any():
             print("ETAPE 4 : ", data)
     # Align and rescale images with oversampling.
-    data_array, error_array, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
+    data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 5 : ", data)
@@ -166,7 +166,7 @@ def main():
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
-        data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
+        data_array, error_array, headers, data_mask = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
         for data in data_array:
             if (data < 0.).any():
                 print("ETAPE 6 : ", data)
@@ -191,7 +191,7 @@ def main():
             [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
