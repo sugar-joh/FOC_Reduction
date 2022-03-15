@@ -548,8 +548,10 @@ class align_maps(object):
 
         #Selection button
         self.axapply = self.fig.add_axes([0.80, 0.01, 0.1, 0.04])
-        self.bapply = Button(self.axapply, 'Apply reference.')
-    
+        self.bapply = Button(self.axapply, 'Apply reference')
+        self.axreset = self.fig.add_axes([0.60, 0.01, 0.1, 0.04])
+        self.breset = Button(self.axreset, 'Leave as is')
+     
     def get_aligned_wcs(self):
         return self.wcs_UV, self.wcs_other
 
@@ -569,6 +571,16 @@ class align_maps(object):
                 self.cr_other.set(data=[x,y])
                 self.fig.canvas.draw_idle()
     
+    def reset_align(self, event):
+        self.wcs_UV.wcs.crpix = WCS(self.Stokes_UV[0].header).wcs.crpix[:2]
+        self.wcs_other.wcs.crpix = WCS(self.other_map[0].header).wcs.crpix[:2]
+        self.fig.canvas.draw_idle()
+
+        if self.aligned:
+            plt.close()
+        
+        self.aligned = True
+
     def apply_align(self, event):
         self.wcs_UV.wcs.crpix = np.array(self.cr_UV.get_data())
         self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
@@ -576,7 +588,9 @@ class align_maps(object):
         self.fig.canvas.draw_idle()
 
         if self.aligned:
-            plt.close(self.fig)
+            plt.close()
+        
+        self.aligned = True
     
     def on_close_align(self, event):
         self.aligned = True
@@ -586,6 +600,7 @@ class align_maps(object):
         self.fig.canvas.draw()
         self.fig.canvas.mpl_connect('button_press_event', self.onclick_ref)
         self.bapply.on_clicked(self.apply_align)
+        self.breset.on_clicked(self.reset_align)
         self.fig.canvas.mpl_connect('close_event', self.on_close_align)
         plt.show(block=True)
         return self.get_aligned_wcs()
