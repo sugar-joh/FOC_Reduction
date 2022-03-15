@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.widgets import RectangleSelector, Button
+from matplotlib.transforms import Bbox
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -497,12 +498,16 @@ class align_maps(object):
         self.aligned = False
         self.Stokes_UV = Stokes
         self.other_map = other_map
-        #Get data
-        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
 
         self.wcs_UV = WCS(self.Stokes_UV[0]).deepcopy()
         convert_flux = self.Stokes_UV[0].header['photflam']
-        self.wcs_other = WCS(self.other_map).deepcopy()
+        self.wcs_other = WCS(self.other_map[0]).deepcopy()
+        if self.wcs_other.naxis > 2:
+            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
+            self.other_map[0].data = self.other_map[0].data[0,0]
+        #Get data
+        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
+        other_data = self.other_map[0].data
 
         plt.rcParams.update({'font.size': 16})
         self.fig = plt.figure(figsize=(25,15))
@@ -529,8 +534,8 @@ class align_maps(object):
         self.ax2 = self.fig.add_subplot(122, projection=self.wcs_other)
         self.ax2.set_facecolor('k')
 
-        vmin, vmax = 0., np.max(other_map.data[other_map.data > 0.])
-        im2 = self.ax2.imshow(other_map.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(other_data[other_data > 0.])
+        im2 = self.ax2.imshow(other_data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
@@ -577,11 +582,12 @@ class align_maps(object):
         self.aligned = True
         print(self.get_aligned_wcs())
     
-    def run(self):
-        plt.show()
+    def align(self):
+        self.fig.canvas.draw()
         self.fig.canvas.mpl_connect('button_press_event', self.onclick_ref)
         self.bapply.on_clicked(self.apply_align)
         self.fig.canvas.mpl_connect('close_event', self.on_close_align)
+        plt.show(block=True)
         return self.get_aligned_wcs()
 
 class overplot_maps(align_maps):
@@ -591,15 +597,16 @@ class overplot_maps(align_maps):
     """
     def overplot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.):
         #Get Data
+        obj = self.Stokes_UV[0].header['targname']
         stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
         stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
         pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
         pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
         pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
         
-        other_I = self.other_map.data
-#        other_unit = self.other_map.header['bunit']
-#        other_wav = self.other_map.header['crval3']
+        other_data = self.other_map[0].data
+        other_unit = self.other_map[0].header['bunit']
+        other_freq = self.other_map[0].header['crval3']
         
         convert_flux = self.Stokes_UV[0].header['photflam']
 
@@ -629,16 +636,18 @@ class overplot_maps(align_maps):
         X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        self.ax.autoscale(False)
 
         #Display other map as contours
-        other_cont = self.ax.contour(other_I, transform=self.ax.get_transform(self.wcs_other), levels=np.linspace(other_vmin, other_vmax, other_num), colors='grey')
+        other_cont = self.ax.contour(other_data, transform=self.ax.get_transform(self.wcs_other), levels=np.linspace(other_vmin, other_vmax, other_num), colors='grey')
         self.ax.clabel(other_cont, inline=True, fontsize=8)
 
-        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="")
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2e}Hz map in {2:s}.".format(obj, other_freq, other_unit))
 
-        plt.show()
+        self.fig2.canvas.draw()
     
     def plot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.) -> None:
-        self.run()
+        self.align()
         if self.aligned:
             self.overplot(other_vmin, other_vmax, other_num, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)
+            plt.show(block=True)
