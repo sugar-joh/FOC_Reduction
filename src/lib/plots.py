@@ -580,7 +580,7 @@ class align_maps(object):
     
     def on_close_align(self, event):
         self.aligned = True
-        print(self.get_aligned_wcs())
+        #print(self.get_aligned_wcs())
     
     def align(self):
         self.fig.canvas.draw()
@@ -595,7 +595,7 @@ class overplot_maps(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.):
+    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., savename=None):
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
         stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
@@ -606,6 +606,10 @@ class overplot_maps(align_maps):
         
         other_data = self.other_map[0].data
         other_unit = self.other_map[0].header['bunit']
+        other_convert = 1.
+        if other_unit.lower() == 'jy/beam':
+            other_unit = r"mJy/Beam"
+            other_convert = 1e3
         other_freq = self.other_map[0].header['crval3']
         
         convert_flux = self.Stokes_UV[0].header['photflam']
@@ -639,15 +643,18 @@ class overplot_maps(align_maps):
         self.ax.autoscale(False)
 
         #Display other map as contours
-        other_cont = self.ax.contour(other_data, transform=self.ax.get_transform(self.wcs_other), levels=np.linspace(other_vmin, other_vmax, other_num), colors='grey')
+        other_cont = self.ax.contour(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), levels=other_levels*other_convert, colors='grey')
         self.ax.clabel(other_cont, inline=True, fontsize=8)
 
-        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2e}Hz map in {2:s}.".format(obj, other_freq, other_unit))
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, other_unit))
+
+        if not(savename is None):
+            self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
         self.fig2.canvas.draw()
     
-    def plot(self, other_vmin, other_vmax, other_num, SNRp_cut=3., SNRi_cut=30.) -> None:
+    def plot(self, levels, SNRp_cut=3., SNRi_cut=30., savename=None) -> None:
         self.align()
         if self.aligned:
-            self.overplot(other_vmin, other_vmax, other_num, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)
+            self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
             plt.show(block=True)
