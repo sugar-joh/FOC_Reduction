@@ -568,11 +568,12 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
                 Dxy = np.array([pxsize,]*2)
             elif scale.lower() in ['arcsec','arcseconds']:
                 Dxy = np.floor(pxsize/w.wcs.cdelt/3600.).astype(int)
+            elif scale.lower() in ['full','integrate']:
+                Dxy = np.floor(image.shape).astype(int)
             else:
                 raise ValueError("'{0:s}' invalid scale for binning.".format(scale))
 
             if (Dxy <= 1.).any():
-                print(Dxy, pxsize, w.wcs.cdelt*3600.)
                 raise ValueError("Requested pixel size is below resolution.")
             new_shape = (image.shape//Dxy).astype(int)
 
@@ -1049,7 +1050,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
     # Routine for the FOC instrument
     if instr == 'FOC':
         # Get image from each polarizer and covariance matrix
-        pol_array, pol_cov = polarizer_avg(data_array, error_array, data_mask,
+        pol_array, pol_cov_m = polarizer_avg(data_array, error_array, data_mask,
                 headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
         pol0, pol60, pol120 = pol_array
 
@@ -1088,6 +1089,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         # Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
         sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
         pol_flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])
+        pol_cov = np.array([[4.*pol_cov_m[i,j]/(transmit[i]*transmit[j]) for j in range(pol_cov_m.shape[1])] for i in range(pol_cov_m.shape[0])])
 
         # Normalization parameter for Stokes parameters computation
         A = pol_eff[1]*pol_eff[2]*np.sin(-2.*theta[1]+2.*theta[2]) \
@@ -1141,9 +1143,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_U2_axis = (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
 
         # Add quadratically the uncertainty to the Stokes covariance matrix ## THIS IS WHERE THE PROBLEMATIC UNCERTAINTY IS ADDED TO THE PIPELINE
-        #Stokes_cov[0,0] += s_I2_axis
-        #Stokes_cov[1,1] += s_Q2_axis
-        #Stokes_cov[2,2] += s_U2_axis
+        Stokes_cov[0,0] += s_I2_axis
+        Stokes_cov[1,1] += s_Q2_axis
+        Stokes_cov[2,2] += s_U2_axis
 
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])

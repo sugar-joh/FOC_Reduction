@@ -328,7 +328,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         data_mask = np.ones(stkI.shape).astype(bool)
 
     #Plot Stokes parameters map
-    if display is None:
+    if display is None or display.lower() == 'default':
         plot_Stokes(Stokes, savename=savename, plots_folder=plots_folder)
 
     #Compute SNR and apply cuts
@@ -406,26 +406,27 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         cont = ax.contour(SNRp, levels=levelsP, colors='grey', linewidths=0.5)
     else:
         # Defaults to intensity map
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux*2.)
         im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
-        levelsI = np.linspace(SNRi_cut, SNRi.max(), 10)
-        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
 
-    fontprops = fm.FontProperties(size=16)
-    px_size = wcs.wcs.get_cdelt()[0]*3600.
-    px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
-    ax.add_artist(px_sc)
+    if (display is None) or not(display.lower() in ['default']):
+        fontprops = fm.FontProperties(size=16)
+        px_size = wcs.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        ax.add_artist(px_sc)
 
-    #pol.data[np.isfinite(pol.data)] = 1./2.
-    X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
-    U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-    Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
-    pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
-    ax.add_artist(pol_sc)
+        if step_vec == 0:
+            pol.data[np.isfinite(pol.data)] = 1./2.
+            step_vec = 1
+        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0])-0.5, np.linspace(0,stkI.data.shape[1],stkI.data.shape[1])-0.5)
+        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        ax.add_artist(pol_sc)
 
-    north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
-    ax.add_artist(north_dir)
+        north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        ax.add_artist(north_dir)
 
     # Display instrument FOV
     if not(rectangle is None):

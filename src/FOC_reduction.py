@@ -103,7 +103,7 @@ def main():
     rebin = True
     if rebin:
         pxsize = 0.10
-        px_scale = 'arcsec'         #pixel or arcsec
+        px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
@@ -117,10 +117,11 @@ def main():
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = 'IC5063_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
-    SNRp_cut = 7.    #P measurments with SNR>3
-    SNRi_cut = 180.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
+    figtype = '_combine_FWHM020_pol'    #additionnal informations
+    SNRp_cut = 3.    #P measurments with SNR>3
+    SNRi_cut = 70.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
+                    # if step_vec = 0 then all vectors are displayed at full length
 
     ##### Pipeline start
     ## Step 1:
@@ -150,12 +151,17 @@ def main():
         if (data < 0.).any():
             print("ETAPE 4 : ", data)
     # Align and rescale images with oversampling.
-    data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
+    data_mask = np.zeros(data_array.shape[1:]).astype(bool)
+    if px_scale.lower() not in ['full','integrate']:
+        data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 5 : ", data)
 
-    vertex = image_hull((1.-data_mask),step=5,null_val=0.,inside=True)
+    if px_scale.lower() not in ['full','integrate']:
+        vertex = image_hull((1.-data_mask),step=5,null_val=0.,inside=True)
+    else:
+        vertex = np.array([0.,0.,data_array.shape[2],data_array.shape[2]])
     shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
     rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'w']
 
@@ -206,13 +212,16 @@ def main():
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-    proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    if px_scale.lower() not in ['full','integrate']:
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+    else:
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display='default')
 
     return 0
 
