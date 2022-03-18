@@ -246,21 +246,21 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
     new_shape = np.array([v_array[1]-v_array[0],v_array[3]-v_array[2]])
     rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 0., 'b']
     if display:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10,10))
         data = data_array[0]
         instr = headers[0]['instrume']
         rootname = headers[0]['rootname']
         exptime = headers[0]['exptime']
         filt = headers[0]['filtnam1']
         #plots
-        im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower')
+        im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower', cmap='gray')
         x, y, width, height, angle, color = rectangle
         ax.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
         #position of centroid
-        ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], lw=1,
-                color='black')
-        ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], lw=1,
-                color='black')
+        ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], '--', lw=1,
+                color='grey', alpha=0.3)
+        ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
+                color='grey', alpha=0.3)
         ax.annotate(instr+":"+rootname, color='white', fontsize=5,
                 xy=(0.02, 0.95), xycoords='axes fraction')
         ax.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02),
@@ -273,10 +273,10 @@ def crop_array(data_array, headers, error_array=None, step=5, null_val=None,
 
         fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
         cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig.colorbar(im, cax=cbar_ax)
+        fig.colorbar(im, cax=cbar_ax, label=r'$Counts \cdot s^{-1}$')
 
         if not(savename is None):
-            fig.suptitle(savename+'_'+filt+'_crop_region')
+            #fig.suptitle(savename+'_'+filt+'_crop_region')
             fig.savefig(plots_folder+savename+'_'+filt+'_crop_region.png',
                     bbox_inches='tight')
             plot_obs(data_array, headers, vmin=data_array.min(),
@@ -486,7 +486,7 @@ def get_error(data_array, headers, sub_shape=(15,15), display=False,
         plt.legend()
 
         if not(savename is None):
-            fig.suptitle(savename+"_background_flux")
+            #fig.suptitle(savename+"_background_flux")
             fig.savefig(plots_folder+savename+"_background_flux.png",
                     bbox_inches='tight')
             vmin = np.min(np.log10(data[data > 0.]))
@@ -584,7 +584,11 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             # Propagate error
             rms_image = np.sqrt(bin_ndarray(image**2, new_shape=new_shape,
                 operation='average'))
-            new_error = np.sqrt(Dxy[0]*Dxy[1])*bin_ndarray(error,
+            if operation.lower() in ["mean", "average", "avg"]:
+                new_error = 1./np.sqrt(Dxy[0]*Dxy[1])*bin_ndarray(error,
+                    new_shape=new_shape, operation='average')
+            else:
+                new_error = np.sqrt(Dxy[0]*Dxy[1])*bin_ndarray(error,
                     new_shape=new_shape, operation='average')
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
 
@@ -1083,11 +1087,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         pol_eff[1] = pol_efficiency['pol60']
         pol_eff[2] = pol_efficiency['pol120']
 
-        # Orientation and error for each polarizer  ## THIS IS WHERE WE IMPLEMENT THE ERROR THAT IS GOING WRONG
+        # Orientation and error for each polarizer
         # POL0 = 0deg, POL60 = 60deg, POL120=120deg
         theta = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.])
         # Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
         sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
+        fmax = np.finfo(np.float64).max
         pol_flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])
         pol_cov = np.array([[4.*pol_cov_m[i,j]/(transmit[i]*transmit[j]) for j in range(pol_cov_m.shape[1])] for i in range(pol_cov_m.shape[0])])
 
@@ -1130,19 +1135,42 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes))
         dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes))
         dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes))
+        dI_dtheta = np.array([dI_dtheta1, dI_dtheta2, dI_dtheta3])
+        
         dQ_dtheta1 = 2.*pol_eff[0]/A*(np.cos(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*Q_stokes)
         dQ_dtheta2 = 2.*pol_eff[1]/A*(np.cos(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*Q_stokes)
         dQ_dtheta3 = 2.*pol_eff[2]/A*(np.cos(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*Q_stokes)
+        dQ_dtheta = np.array([dQ_dtheta1, dQ_dtheta2, dQ_dtheta3])
+        
         dU_dtheta1 = 2.*pol_eff[0]/A*(np.sin(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*U_stokes)
         dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes)
         dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes)
+        dU_dtheta = np.array([dU_dtheta1, dU_dtheta2, dU_dtheta3])
+        
+        # Compute the derivative of each polarization component with respect to the polarizer orientation
+        mask = I_stokes > 0.
+        dP_dtheta1 = np.ones(I_stokes.shape)*fmax
+        dP_dtheta2 = np.ones(I_stokes.shape)*fmax
+        dP_dtheta3 = np.ones(I_stokes.shape)*fmax
+        dP_dtheta1[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta1[mask] + U_stokes[mask]*dQ_dtheta1[mask]) - 1./I_stokes[mask]**2 * dI_dtheta1[mask]
+        dP_dtheta2[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta2[mask] + U_stokes[mask]*dQ_dtheta2[mask]) - 1./I_stokes[mask]**2 * dI_dtheta2[mask]
+        dP_dtheta3[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta3[mask] + U_stokes[mask]*dQ_dtheta3[mask]) - 1./I_stokes[mask]**2 * dI_dtheta3[mask]
+        dP_dtheta = np.array([dP_dtheta1, dP_dtheta2, dP_dtheta3])
+
+        dPA_dtheta1 = np.ones(I_stokes.shape)*fmax
+        dPA_dtheta2 = np.ones(I_stokes.shape)*fmax
+        dPA_dtheta3 = np.ones(I_stokes.shape)*fmax
+        dPA_dtheta1[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta1[mask] - U_stokes[mask]*dQ_dtheta1[mask])
+        dPA_dtheta2[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta2[mask] - U_stokes[mask]*dQ_dtheta2[mask])
+        dPA_dtheta3[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta3[mask] - U_stokes[mask]*dQ_dtheta3[mask])
+        dPA_dtheta = np.array([dPA_dtheta1, dPA_dtheta2, dPA_dtheta3])
 
         # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
-        s_I2_axis = (dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
-        s_Q2_axis = (dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
-        s_U2_axis = (dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
+        s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
+        s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
+        s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
 
-        # Add quadratically the uncertainty to the Stokes covariance matrix ## THIS IS WHERE THE PROBLEMATIC UNCERTAINTY IS ADDED TO THE PIPELINE
+        # Add quadratically the uncertainty to the Stokes covariance matrix
         Stokes_cov[0,0] += s_I2_axis
         Stokes_cov[1,1] += s_Q2_axis
         Stokes_cov[2,2] += s_U2_axis
@@ -1158,10 +1186,10 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
             I_stokes, Q_stokes, U_stokes = Stokes_array
             Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
 
-    return I_stokes, Q_stokes, U_stokes, Stokes_cov
+    return I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta
 
 
-def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
+def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, headers):
     """
     Compute the polarization degree (in %) and angle (in deg) and their
     respective errors from given Stokes parameters.
@@ -1215,13 +1243,24 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
 
     #Associated errors
+    sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
     fmax = np.finfo(np.float64).max
-
     s_P = np.ones(I_stokes.shape)*fmax
-    s_P[mask] = (1/I_stokes[mask])*np.sqrt((Q_stokes[mask]**2*Stokes_cov[1,1][mask] + U_stokes[mask]**2*Stokes_cov[2,2][mask] + 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])/(Q_stokes[mask]**2 + U_stokes[mask]**2) + ((Q_stokes[mask]/I_stokes[mask])**2 + (U_stokes[mask]/I_stokes[mask])**2)*Stokes_cov[0,0][mask] - 2.*(Q_stokes[mask]/I_stokes[mask])*Stokes_cov[0,1][mask] - 2.*(U_stokes[mask]/I_stokes[mask])*Stokes_cov[0,2][mask])
-    s_P[np.isnan(s_P)] = fmax
     s_PA = np.ones(I_stokes.shape)*fmax
+
+    # Propagate previously computed errors
+    s_P[mask] = (1/I_stokes[mask])*np.sqrt((Q_stokes[mask]**2*Stokes_cov[1,1][mask] + U_stokes[mask]**2*Stokes_cov[2,2][mask] + 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])/(Q_stokes[mask]**2 + U_stokes[mask]**2) + ((Q_stokes[mask]/I_stokes[mask])**2 + (U_stokes[mask]/I_stokes[mask])**2)*Stokes_cov[0,0][mask] - 2.*(Q_stokes[mask]/I_stokes[mask])*Stokes_cov[0,1][mask] - 2.*(U_stokes[mask]/I_stokes[mask])*Stokes_cov[0,2][mask])
     s_PA[mask] = (90./(np.pi*(Q_stokes[mask]**2 + U_stokes[mask]**2)))*np.sqrt(U_stokes[mask]**2*Stokes_cov[1,1][mask] + Q_stokes[mask]**2*Stokes_cov[2,2][mask] - 2.*Q_stokes[mask]*U_stokes[mask]*Stokes_cov[1,2][mask])
+    # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
+    s_P_axis = np.sqrt(np.sum([dP_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))], axis=0))
+    s_PA_axis = np.sqrt(np.sum([dPA_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))], axis=0))
+    # Add axis uncertainties quadratically
+#    with warnings.catch_warnings(record=True) as w:
+#        s_P[mask] = np.sqrt(s_P[mask]**2 + s_P_axis[mask]**2)
+#        s_PA[mask] = np.sqrt(s_PA[mask]**2 + s_PA_axis[mask]**2)
+
+    s_P[np.isnan(s_P)] = fmax
+    s_PA[np.isnan(s_PA)] = fmax
 
     # Catch expected "OverflowWarning" as wrong pixel have an overflowing error
     with warnings.catch_warnings(record=True) as w:

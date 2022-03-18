@@ -17,11 +17,11 @@ from lib.convex_hull import image_hull
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -60,9 +60,9 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
@@ -76,10 +76,6 @@ def main():
 #    globals()['data_folder'] = "../data/MKN78_x3nl020/"
 #    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
-
-#    globals()['data_folder'] = "../data/PictorA_x25d040/"
-#    infiles = ['x25d0401t_c0f.fits','x25d0402t_c0f.fits','x25d0403t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/PictorA_x25d040/"
 
 #    globals()['data_folder'] = "../data/3C273_x0u20/"
 #    infiles = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits','x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits','x0u20201t_c0f.fits','x0u20202t_c0f.fits','x0u20203t_c0f.fits','x0u20204t_c0f.fits','x0u20205t_c0f.fits','x0u20206t_c0f.fits','x0u20301t_c0f.fits','x0u20302t_c0f.fits','x0u20303t_c0f.fits','x0u20304t_c0f.fits','x0u20305t_c0f.fits','x0u20306t_c0f.fits']
@@ -116,11 +112,11 @@ def main():
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020_pol'    #additionnal informations
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_combine_FWHM020_wae'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
-    SNRi_cut = 70.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
+    SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
     ##### Pipeline start
@@ -163,7 +159,7 @@ def main():
     else:
         vertex = np.array([0.,0.,data_array.shape[2],data_array.shape[2]])
     shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
-    rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'w']
+    rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'g']
 
     # Rotate data to have North up
     ref_header = deepcopy(headers[0])
@@ -186,7 +182,7 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
 
     ## Step 3:
     # Rotate images to have North up
@@ -199,7 +195,7 @@ def main():
         rectangle[4] = alpha
         I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
-    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
+    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, headers)
 
     ## Step 4:
     # crop to desired region of interest (roi)
