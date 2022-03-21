@@ -113,7 +113,7 @@ def main():
     rotate_data = False              #rotation to North convention can give erroneous results
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020_wae'    #additionnal informations
+    figtype = '_combine_FWHM020_waeP'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -193,7 +193,7 @@ def main():
             [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, headers)
 

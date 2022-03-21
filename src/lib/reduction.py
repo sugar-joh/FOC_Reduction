@@ -61,6 +61,20 @@ globals()['trans2'] = {'f140w' : 0.21, 'f175w' : 0.24, 'f220w' : 0.39, 'f275w' :
 globals()['trans3'] = {'f120m' : 0.10, 'f130m' : 0.10, 'f140m' : 0.08, 'f152m' : 0.08, 'f165w' : 0.28, 'f170m' : 0.18, 'f195w' : 0.42, 'f190m' : 0.15, 'f210m' : 0.18, 'f231m' : 0.18, 'clear3' : 1.0}
 globals()['trans4'] = {'f253m' : 0.18, 'f278m' : 0.26, 'f307m' : 0.26, 'f130lp' : 0.92, 'f346m' : 0.58, 'f372m' : 0.73, 'f410m' : 0.58, 'f437m' : 0.71, 'f470m' : 0.79, 'f502m' : 0.82, 'f550m' : 0.77, 'clear4' : 1.0}
 globals()['pol_efficiency'] = {'pol0' : 0.92, 'pol60' : 0.92, 'pol120' : 0.91}
+# POL0 = 0deg, POL60 = 60deg, POL120=120deg
+globals()['theta'] = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.])
+# Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
+globals()['sigma_theta'] = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
+
+def princ_angle(ang):
+    """
+    Return the principal angle in the 0-180° quadrant.
+    """
+    while ang < 0.:
+        ang += 180.
+    while ang > 180.:
+        ang -= 180.
+    return ang
 
 
 def get_row_compressor(old_dimension, new_dimension, operation='sum'):
@@ -1088,25 +1102,21 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         pol_eff[2] = pol_efficiency['pol120']
 
         # Orientation and error for each polarizer
-        # POL0 = 0deg, POL60 = 60deg, POL120=120deg
-        theta = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.])
-        # Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
-        sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
         fmax = np.finfo(np.float64).max
-        pol_flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])
+        pol_flux = 2.*np.array([pol0/transmit[0], pol60/transmit[1], pol120/transmit[2]])#np.array([pol0, pol60, pol120])#
         pol_cov = np.array([[4.*pol_cov_m[i,j]/(transmit[i]*transmit[j]) for j in range(pol_cov_m.shape[1])] for i in range(pol_cov_m.shape[0])])
 
-        # Normalization parameter for Stokes parameters computation
-        A = pol_eff[1]*pol_eff[2]*np.sin(-2.*theta[1]+2.*theta[2]) \
-                + pol_eff[2]*pol_eff[0]*np.sin(-2.*theta[2]+2.*theta[0]) \
-                + pol_eff[0]*pol_eff[1]*np.sin(-2.*theta[0]+2.*theta[1])
         coeff_stokes = np.zeros((3,3))
         # Coefficients linking each polarizer flux to each Stokes parameter
         for i in range(3):
-            coeff_stokes[0,i] = pol_eff[(i+1)%3]*pol_eff[(i+2)%3]*np.sin(-2.*theta[(i+1)%3]+2.*theta[(i+2)%3])/A
-            coeff_stokes[1,i] = (-pol_eff[(i+1)%3]*np.sin(2.*theta[(i+1)%3]) + pol_eff[(i+2)%3]*np.sin(2.*theta[(i+2)%3]))/A
-            coeff_stokes[2,i] = (pol_eff[(i+1)%3]*np.cos(2.*theta[(i+1)%3]) - pol_eff[(i+2)%3]*np.cos(2.*theta[(i+2)%3]))/A
+            coeff_stokes[0,i] = pol_eff[(i+1)%3]*pol_eff[(i+2)%3]*np.sin(-2.*theta[(i+1)%3]+2.*theta[(i+2)%3])#*2./transmit[i]
+            coeff_stokes[1,i] = (-pol_eff[(i+1)%3]*np.sin(2.*theta[(i+1)%3]) + pol_eff[(i+2)%3]*np.sin(2.*theta[(i+2)%3]))#*2./transmit[i]
+            coeff_stokes[2,i] = (pol_eff[(i+1)%3]*np.cos(2.*theta[(i+1)%3]) - pol_eff[(i+2)%3]*np.cos(2.*theta[(i+2)%3]))#*2./transmit[i]
 
+        # Normalization parameter for Stokes parameters computation
+        A = coeff_stokes[0,:].sum()
+        coeff_stokes = coeff_stokes/A
+        
         I_stokes = np.sum([coeff_stokes[0,i]*pol_flux[i] for i in range(3)], axis=0)
         Q_stokes = np.sum([coeff_stokes[1,i]*pol_flux[i] for i in range(3)], axis=0)
         U_stokes = np.sum([coeff_stokes[2,i]*pol_flux[i] for i in range(3)], axis=0)
@@ -1149,31 +1159,31 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         
         # Compute the derivative of each polarization component with respect to the polarizer orientation
         mask = I_stokes > 0.
-        dP_dtheta1 = np.ones(I_stokes.shape)*fmax
-        dP_dtheta2 = np.ones(I_stokes.shape)*fmax
-        dP_dtheta3 = np.ones(I_stokes.shape)*fmax
+        dP_dtheta1 = np.zeros(I_stokes.shape)*fmax
+        dP_dtheta2 = np.zeros(I_stokes.shape)*fmax
+        dP_dtheta3 = np.zeros(I_stokes.shape)*fmax
         dP_dtheta1[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta1[mask] + U_stokes[mask]*dQ_dtheta1[mask]) - 1./I_stokes[mask]**2 * dI_dtheta1[mask]
         dP_dtheta2[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta2[mask] + U_stokes[mask]*dQ_dtheta2[mask]) - 1./I_stokes[mask]**2 * dI_dtheta2[mask]
         dP_dtheta3[mask] = 1./(I_stokes[mask]*np.sqrt(Q_stokes[mask]**2 + U_stokes[mask]**2))*(Q_stokes[mask]*dQ_dtheta3[mask] + U_stokes[mask]*dQ_dtheta3[mask]) - 1./I_stokes[mask]**2 * dI_dtheta3[mask]
         dP_dtheta = np.array([dP_dtheta1, dP_dtheta2, dP_dtheta3])
 
-        dPA_dtheta1 = np.ones(I_stokes.shape)*fmax
-        dPA_dtheta2 = np.ones(I_stokes.shape)*fmax
-        dPA_dtheta3 = np.ones(I_stokes.shape)*fmax
+        dPA_dtheta1 = np.zeros(I_stokes.shape)*fmax
+        dPA_dtheta2 = np.zeros(I_stokes.shape)*fmax
+        dPA_dtheta3 = np.zeros(I_stokes.shape)*fmax
         dPA_dtheta1[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta1[mask] - U_stokes[mask]*dQ_dtheta1[mask])
         dPA_dtheta2[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta2[mask] - U_stokes[mask]*dQ_dtheta2[mask])
         dPA_dtheta3[mask] = 90./np.pi*1./(U_stokes[mask]**2 + Q_stokes[mask]**2)*(Q_stokes[mask]*dU_dtheta3[mask] - U_stokes[mask]*dQ_dtheta3[mask])
         dPA_dtheta = np.array([dPA_dtheta1, dPA_dtheta2, dPA_dtheta3])
 
         # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
-        s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dI_dtheta1**2*sigma_theta[0]**2 + dI_dtheta2**2*sigma_theta[1]**2 + dI_dtheta3**2*sigma_theta[2]**2)
-        s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dQ_dtheta1**2*sigma_theta[0]**2 + dQ_dtheta2**2*sigma_theta[1]**2 + dQ_dtheta3**2*sigma_theta[2]**2)
-        s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0) #(dU_dtheta1**2*sigma_theta[0]**2 + dU_dtheta2**2*sigma_theta[1]**2 + dU_dtheta3**2*sigma_theta[2]**2)
+        s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
+        s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
+        s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
 
         # Add quadratically the uncertainty to the Stokes covariance matrix
-        Stokes_cov[0,0] += s_I2_axis
-        Stokes_cov[1,1] += s_Q2_axis
-        Stokes_cov[2,2] += s_U2_axis
+#        Stokes_cov[0,0] += s_I2_axis
+#        Stokes_cov[1,1] += s_Q2_axis
+#        Stokes_cov[2,2] += s_U2_axis
 
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
@@ -1243,7 +1253,6 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta,
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
 
     #Associated errors
-    sigma_theta = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
     fmax = np.finfo(np.float64).max
     s_P = np.ones(I_stokes.shape)*fmax
     s_PA = np.ones(I_stokes.shape)*fmax
@@ -1255,9 +1264,9 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta,
     s_P_axis = np.sqrt(np.sum([dP_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))], axis=0))
     s_PA_axis = np.sqrt(np.sum([dPA_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))], axis=0))
     # Add axis uncertainties quadratically
-#    with warnings.catch_warnings(record=True) as w:
-#        s_P[mask] = np.sqrt(s_P[mask]**2 + s_P_axis[mask]**2)
-#        s_PA[mask] = np.sqrt(s_PA[mask]**2 + s_PA_axis[mask]**2)
+    with warnings.catch_warnings(record=True) as w:
+        s_P[mask] = np.sqrt(s_P[mask]**2 + s_P_axis[mask]**2)
+        s_PA[mask] = np.sqrt(s_PA[mask]**2 + s_PA_axis[mask]**2)
 
     s_P[np.isnan(s_P)] = fmax
     s_PA[np.isnan(s_PA)] = fmax
@@ -1294,7 +1303,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta,
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
 
-def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang, SNRi_cut=None):
+def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, dP_dtheta, dPA_dtheta, data_mask, headers, ang, SNRi_cut=None):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1377,6 +1386,13 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
     center = np.array(new_I_stokes.shape)/2
 
+    #Compute new derivatives of P, PA on rotated parameters
+    new_dP_dtheta = deepcopy(dP_dtheta)
+    new_dPA_dtheta = deepcopy(dPA_dtheta)
+    for i in range(len(dP_dtheta)):
+        new_dP_dtheta[i] = sc_rotate(dP_dtheta[i], ang, reshape=False, cval=0.)
+        new_dPA_dtheta[i] = sc_rotate(dPA_dtheta[i], ang, reshape=False, cval=0.)
+    
     #Update headers to new angle
     new_headers = []
     mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
@@ -1419,9 +1435,9 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_U_stokes[np.isnan(new_U_stokes)] = 0.
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers, new_data_mask
+    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_dP_dtheta, new_dPA_dtheta, new_headers, new_data_mask
 
-def rotate_data(data_array, error_array, headers, data_mask, ang):
+def rotate_data(data_array, error_array, data_mask, headers, ang):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1496,5 +1512,6 @@ def rotate_data(data_array, error_array, headers, data_mask, ang):
         new_header.update(new_wcs.to_header())
 
         new_headers.append(new_header)
+    globals()['theta'] = theta - alpha
 
     return new_data_array, new_error_array, new_headers, new_data_mask
