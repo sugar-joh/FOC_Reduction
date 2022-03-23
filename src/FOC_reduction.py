@@ -12,6 +12,7 @@ import lib.fits as proj_fits        #Functions to handle fits files
 import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
 from lib.convex_hull import image_hull
+from lib.deconvolve import from_file_psf
 
 
 def main():
@@ -21,6 +22,7 @@ def main():
     infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
             'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
             'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    psf_file = 'NGC1068_f253m00.fits'
     globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
@@ -62,6 +64,7 @@ def main():
 
 #    globals()['data_folder'] = "../data/IC5063_x3nl030/"
 #    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    psf_file = 'IC5063_f502m00.fits'
 #    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
@@ -86,6 +89,7 @@ def main():
     deconvolve = False
     if deconvolve:
         psf = 'gaussian'  #Can be user-defined as well
+        #psf = from_file_psf(data_folder+psf_file)
         psf_FWHM = 0.15
         psf_scale = 'arcsec'
         psf_shape=(9,9)
