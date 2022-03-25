@@ -109,7 +109,7 @@ def main():
     align_center = 'image'        #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'gaussian'  #gaussian_after, gaussian or combine
+    smoothing_function = 'combine'  #gaussian_after, gaussian or combine
     smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
@@ -118,8 +118,8 @@ def main():
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020_wae'    #additionnal informations
-    SNRp_cut = 3.    #P measurments with SNR>3
-    SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 10.    #P measurments with SNR>3
+    SNRi_cut = 100.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -131,14 +131,17 @@ def main():
         if (data < 0.).any():
             print("ETAPE 1 : ", data)
     # Crop data to remove outside blank margins.
+    print(">Crop")
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
     for data in data_array:
         if (data < 0.).any():
             print("ETAPE 2 : ", data)
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
+        print(">Deconvolve")
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
+    print(">Get error")
     data_array, error_array, headers = proj_red.get_error(data_array, headers, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
     for data in data_array:
         if (data < 0.).any():
@@ -146,6 +149,7 @@ def main():
     # Rebin data to desired pixel size.
     Dxy = np.ones(2)
     if rebin:
+        print(">Rebin")
         data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
     for data in data_array:
         if (data < 0.).any():
@@ -153,6 +157,7 @@ def main():
     # Align and rescale images with oversampling.
     data_mask = np.zeros(data_array.shape[1:]).astype(bool)
     if px_scale.lower() not in ['full','integrate']:
+        print(">Align")
         data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
     for data in data_array:
         if (data < 0.).any():
@@ -168,6 +173,7 @@ def main():
     # Rotate data to have North up
     ref_header = deepcopy(headers[0])
     if rotate_data:
+        print(">Rotate data")
         alpha = ref_header['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
@@ -186,12 +192,14 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
+    print(">Compute Stokes")
     I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
 
     ## Step 3:
     # Rotate images to have North up
     ref_header = deepcopy(headers[0])
     if rotate_stokes:
+        print(">Rotate stokes")
         alpha = ref_header['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
             [np.sin(-alpha), np.cos(-alpha)]])
@@ -199,6 +207,7 @@ def main():
         rectangle[4] = alpha
         I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
     # Compute polarimetric parameters (polarization degree and angle).
+    print(">Compute Pol")
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
     ## Step 4:
@@ -209,7 +218,7 @@ def main():
 
     ## Step 5:
     # Save image to FITS.
-    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, figname+figtype, data_folder=data_folder, return_hdul=True)
+    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, data_mask, figname+figtype, data_folder=data_folder, return_hdul=True)
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate']:

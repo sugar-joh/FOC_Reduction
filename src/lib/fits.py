@@ -78,7 +78,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
 
 def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
-        s_P_P, PA, s_PA, s_PA_P, headers, filename, data_folder="",
+        s_P_P, PA, s_PA, s_PA_P, headers, data_mask, filename, data_folder="",
         return_hdul=False):
     """
     Save computed polarimetry parameters to a single fits file,
@@ -135,12 +135,15 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     primary_hdu = fits.PrimaryHDU(data=I_stokes, header=header)
     hdul.append(primary_hdu)
 
+    data_mask = data_mask.astype(float, copy=False)
+
     #Add Q, U, Stokes_cov, P, s_P, PA, s_PA to the HDUList
     for data, name in [[Q_stokes,'Q_stokes'],[U_stokes,'U_stokes'],
             [Stokes_cov,'IQU_cov_matrix'],[P, 'Pol_deg'],
             [debiased_P, 'Pol_deg_debiased'],[s_P, 'Pol_deg_err'],
             [s_P_P, 'Pol_deg_err_Poisson_noise'],[PA, 'Pol_ang'],
-            [s_PA, 'Pol_ang_err'],[s_PA_P, 'Pol_ang_err_Poisson_noise']]:
+            [s_PA, 'Pol_ang_err'],[s_PA_P, 'Pol_ang_err_Poisson_noise'],
+            [data_mask, 'Data_mask']]:
         hdu_header = header.copy()
         hdu_header['datatype'] = name
         hdu = fits.ImageHDU(data=data,header=hdu_header)

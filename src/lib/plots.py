@@ -224,6 +224,8 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     #pol_err_Poisson = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err_Poisson_noise' for i in range(len(Stokes))])]
     pang = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])]
     pang_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes))])]
+    if data_mask is None:
+        data_mask = Stokes[np.argmax([Stokes[i].header['datatype']=='Data_mask' for i in range(len(Stokes))])].data.astype(bool)
 
     pivot_wav = Stokes[0].header['photplam']
     convert_flux = Stokes[0].header['photflam']
@@ -271,9 +273,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
-        print("SNRi contour levels : ", levelsI)
-        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
+        levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
+        print("Total flux contour levels : ", levelsI)
+        cont = ax.contour(stkI.data*convert_flux, levels=levelsI, colors='grey', linewidths=0.5)
         #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['pol_flux']:
         # Display polarisation flux
@@ -281,6 +283,10 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask])
         im = ax.imshow(stkI.data*convert_flux*pol.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
+        print("Polarized flux contour levels : ", levelsPf)
+        cont = ax.contour(stkI.data*convert_flux*pol.data, levels=levelsPf, colors='grey', linewidths=0.5)
+        #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
         vmin, vmax = 0., 100.
@@ -303,15 +309,19 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
         im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
-        levelsI = np.linspace(SNRi_cut, np.max(SNRi[SNRi > 0.]), 10)
-        cont = ax.contour(SNRi, levels=levelsI, colors='grey', linewidths=0.5)
+        levelsSNRi = np.linspace(SNRi_cut, vmax*0.99, 10)
+        print("SNRi contour levels : ", levelsSNRi)
+        cont = ax.contour(SNRi, levels=levelsSNRi, colors='grey', linewidths=0.5)
+        #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
         vmin, vmax = SNRp_cut, np.max(SNRp[SNRp > 0.])
         im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P/\sigma_{P}$")
-        levelsP = np.linspace(SNRp_cut, np.max(SNRp[SNRp > 0.]), 10)
-        cont = ax.contour(SNRp, levels=levelsP, colors='grey', linewidths=0.5)
+        levelsSNRp = np.linspace(SNRp_cut, vmax*0.99, 10)
+        print("SNRp contour levels : ", levelsSNRp)
+        cont = ax.contour(SNRp, levels=levelsSNRp, colors='grey', linewidths=0.5)
+        #ax.clabel(cont,inline=True,fontsize=6)
     else:
         # Defaults to intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux*2.)
