@@ -67,6 +67,17 @@ globals()['theta'] = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.]
 globals()['sigma_theta'] = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
 
 
+def princ_angle(ang):
+    """
+    Return the principal angle in the 0-180° quadrant.
+    """
+    while ang < 0.:
+        ang += 180.
+    while ang > 180.:
+        ang -= 180.
+    return ang
+
+
 def get_row_compressor(old_dimension, new_dimension, operation='sum'):
     """
     Return the matrix that allows to compress an array from an old dimension of
@@ -454,19 +465,9 @@ def get_error(data_array, headers, sub_shape=(15,15), display=False,
         #flatfielding uncertainties
         #estimated to less than 3%
         err_flat = data_array[i]*0.03
-        if i==0:
-            pr = data_array[i] > 0.
-            print("Background error = {0:2.2f}%".format(np.median(error_array[i][pr]/data_array[i][pr]*100.)))
-            print("Wavelength polarizer dependence error = {0:2.2f}%".format(np.median(err_wav[pr]/data_array[i][pr]*100.)))
-            print("PSF polarizer difference error = {0:2.2f}%".format(np.median(err_psf[pr]/data_array[i][pr]*100.)))
-            print("Flatfield polarizer difference error = {0:2.2f}%".format(np.median(err_flat[pr]/data_array[i][pr]*100.)))
 
         error_array[i] = np.sqrt(error_array[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
-        if i==0:
-            pr = data_array[i] > 0.
-            print("Total estimated error = {0:2.2f}%".format(np.median(error_array[i][pr]/data_array[i][pr]*100.)))
-
         background[i] = sub_image.sum()
         if (data_array[i] < 0.).any():
             print(data_array[i])
@@ -610,11 +611,6 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
                 new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
                     new_shape=new_shape, operation='sum')[mask]/sum_image[mask])
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
-            if i==0:
-                pr = rebin_data > 0.
-                print("Rebin RMS error = {0:2.2f}%".format(np.median(rms_image[pr]/rebin_data[pr]*100.)))
-                print("Rebin weigthed sum squarred error = {0:2.2f}%".format(np.median(new_error[pr]/rebin_data[pr]*100.)))
-                print("Total rebin error = {0:2.2f}%".format(np.median(rebinned_error[0][pr]/rebin_data[pr]*100.)))
 
             # Update header
             w = w.slice((np.s_[::Dxy[0]], np.s_[::Dxy[1]]))
@@ -759,17 +755,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         shifted_image = sc_shift(rescaled_image[i], prec_shift, cval=0.)
         error_shift = np.abs(rescaled_image[i] - shifted_image)/2.
         #sum quadratically the errors
-        if i==0:
-            pr = rescaled_image[0] > 0.
-            print("Rescaled (aligned) error = {0:2.2f}%".format(np.median(rescaled_error[0][pr]/rescaled_image[0][pr]*100.)))
-            print("Shift error = {0:2.2f}%".format(np.median(error_shift[pr]/rescaled_image[0][pr]*100.)))
-        
         rescaled_error[i] = np.sqrt(rescaled_error[i]**2 + error_shift**2)
-
-        if i==0:
-            pr = rescaled_image[0] > 0.
-            print("Total align error = {0:2.2f}%".format(np.median(rescaled_error[0][pr]/rescaled_image[0][pr]*100.)))
-        #rescaled_error[i][1-rescaled_mask[i]] = 0.
 
         shifts.append(shift)
         errors.append(error)
@@ -890,9 +876,6 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
     
-    pr = smoothed > 0.
-    print("Smoothed error = {0:2.2f}%".format(np.median(error[pr]/smoothed[pr]*100.)))
-
     return smoothed, error
 
 
@@ -997,9 +980,6 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             err120 = np.sqrt(np.sum(err120_array**2,axis=0))
             polerr_array = np.array([err0, err60, err120])
             
-            pr = pol0 > 0.
-            print("Summed POL0 error = {0:2.2f}%".format(np.median(err0[pr]/pol0[pr]*100.)))
-
             # Update headers
             for header in headers:
                 if header['filtnam1']=='POL0':
@@ -1033,9 +1013,6 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
         polarizer_cov[0,0] = err0**2
         polarizer_cov[1,1] = err60**2
         polarizer_cov[2,2] = err120**2
-
-        pr = pol0 > 0.
-        print("Total POL0 error = {0:2.2f}%".format(np.median(err0[pr]/pol0[pr]*100.)))
 
     return polarizer_array, polarizer_cov
 
@@ -1191,25 +1168,11 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
 
-        prI = I_stokes > 0.
-        print("Propagated I_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[0,0][prI])/I_stokes[prI]*100.)))
-        print("Axis I_stokes error = {0:2.2f}%".format(np.median(np.sqrt(s_I2_axis[prI])/I_stokes[prI]*100.)))
-        prQ = Q_stokes > 0.
-        print("Propagated Q_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[1,1][prQ])/Q_stokes[prQ]*100.)))
-        print("Axis Q_stokes error = {0:2.2f}%".format(np.median(np.sqrt(s_Q2_axis[prQ])/Q_stokes[prQ]*100.)))
-        prU = U_stokes > 0.
-        print("Propagated U_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[2,2][prU])/U_stokes[prU]*100.)))
-        print("Axis U_stokes error = {0:2.2f}%".format(np.median(np.sqrt(s_U2_axis[prU])/U_stokes[prU]*100.)))
-
         # Add quadratically the uncertainty to the Stokes covariance matrix
         Stokes_cov[0,0] += s_I2_axis
         Stokes_cov[1,1] += s_Q2_axis
         Stokes_cov[2,2] += s_U2_axis
         
-        print("Total I_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[0,0][prI])/I_stokes[prI]*100.)))
-        print("Total Q_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[1,1][prQ])/Q_stokes[prQ]*100.)))
-        print("Total U_stokes error = {0:2.2f}%".format(np.median(np.sqrt(Stokes_cov[2,2][prU])/U_stokes[prU]*100.)))
-
         if not(FWHM is None) and (smoothing.lower() in ['gaussian_after','gauss_after']):
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
             Stokes_error = np.array([np.sqrt(Stokes_cov[i,i]) for i in range(3)])
@@ -1220,6 +1183,31 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 
             I_stokes, Q_stokes, U_stokes = Stokes_array
             Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
+        
+        #Compute integrated values for P, PA before any rotation
+        mask = (1-data_mask).astype(bool)
+        n_pix = I_stokes[mask].size
+        I_diluted = I_stokes[mask].sum()
+        Q_diluted = Q_stokes[mask].sum()
+        U_diluted = U_stokes[mask].sum()
+        I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[0,0][mask]))
+        Q_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[1,1][mask]))
+        U_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[2,2][mask]))
+        IQ_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[0,1][mask]**2))
+        IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[0,2][mask]**2))
+        QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(Stokes_cov[1,2][mask]**2))
+
+        P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
+        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+
+        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+
+        for header in headers:
+            header['P_int'] = (P_diluted, 'Integrated polarization degree')
+            header['P_int_err'] = (P_diluted_err, 'Integrated polarization degree error')
+            header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+            header['PA_int_err'] = (PA_diluted_err, 'Integrated polarization angle error')
 
     return I_stokes, Q_stokes, U_stokes, Stokes_cov
 
@@ -1316,11 +1304,6 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     debiased_P[np.isnan(debiased_P)] = 0.
     s_P_P[np.isnan(s_P_P)] = fmax
     s_PA_P[np.isnan(s_PA_P)] = fmax
-
-    prP = P > 0.
-    prPA = PA > 0.
-    print("Propagated P error = {0:2.2f}%".format(np.median(s_P[prP]/P[prP]*100.)))
-    print("Propagated PA error = {0:2.2f}%".format(np.median(s_PA[prPA]/PA[prPA]*100.)))
 
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
@@ -1450,12 +1433,31 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_U_stokes[np.isnan(new_U_stokes)] = 0.
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
-    prI = new_I_stokes > 0.
-    prQ = new_Q_stokes > 0.
-    prU = new_U_stokes > 0.
-    print("Propagated rotated I_stokes error = {0:2.2f}%".format(np.median(np.sqrt(new_Stokes_cov[0,0][prI])/new_I_stokes[prI]*100.)))
-    print("Propagated rotated Q_stokes error = {0:2.2f}%".format(np.median(np.sqrt(new_Stokes_cov[1,1][prQ])/new_Q_stokes[prQ]*100.)))
-    print("Propagated rotated U_stokes error = {0:2.2f}%".format(np.median(np.sqrt(new_Stokes_cov[2,2][prU])/new_U_stokes[prU]*100.)))
+    #Compute updated integrated values for P, PA
+    mask = (1-new_data_mask).astype(bool)
+    n_pix = new_I_stokes[mask].size
+    I_diluted = new_I_stokes[mask].sum()
+    Q_diluted = new_Q_stokes[mask].sum()
+    U_diluted = new_U_stokes[mask].sum()
+    I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[0,0][mask]))
+    Q_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[1,1][mask]))
+    U_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[2,2][mask]))
+    IQ_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[0,1][mask]**2))
+    IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[0,2][mask]**2))
+    QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(new_Stokes_cov[1,2][mask]**2))
+
+    P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
+    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+
+    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+
+    for header in new_headers:
+        header['P_int'] = (P_diluted, 'Integrated polarization degree')
+        header['P_int_err'] = (P_diluted_err, 'Integrated polarization degree error')
+        header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+        header['PA_int_err'] = (PA_diluted_err, 'Integrated polarization angle error')
+
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers, new_data_mask
 
@@ -1496,9 +1498,6 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
             cval=0.))
         new_error_array.append(sc_rotate(error_array[i], ang, order=5, reshape=False,
             cval=error_array.mean()))
-        if i==0:
-            pr = new_data_array[0] > 0.
-            print("Rotated data error = {0:2.2f}%".format(np.median(new_error_array[0][pr]/new_data_array[0][pr]*100.)))
     new_data_array = np.array(new_data_array)
     new_data_mask = sc_rotate(data_mask, ang, order=5, reshape=False, cval=True)
     new_error_array = np.array(new_error_array)

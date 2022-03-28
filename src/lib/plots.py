@@ -233,7 +233,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     #Get image mask
     if data_mask is None:
-        data_mask = np.ones(stkI.shape).astype(bool)
+        data_mask = np.zeros(stkI.shape).astype(bool)
 
     #Plot Stokes parameters map
     if display is None or display.lower() == 'default':
@@ -353,43 +353,15 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         ax.add_patch(Rectangle((x, y), width, height, angle=angle,
             edgecolor=color, fill=False))
 
-    # Compute integrated parameters and associated errors for pixels in the cut
-    n_pix = mask.size
-    I_int = stkI.data[mask].sum()
-    Q_int = stkQ.data[mask].sum()
-    U_int = stkU.data[mask].sum()
-    I_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,0][mask]))
-    Q_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,1][mask]))
-    U_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[2,2][mask]))
-    IQ_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,1][mask]**2))
-    IU_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2][mask]**2))
-    QU_int_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2][mask]**2))
-
-    P_int = np.sqrt(Q_int**2+U_int**2)/I_int
-    P_int_err = (1./I_int)*np.sqrt((Q_int**2*Q_int_err**2 + U_int**2*U_int_err**2 + 2.*Q_int*U_int*QU_int_err)/(Q_int**2 + U_int**2) + ((Q_int/I_int)**2 + (U_int/I_int)**2)*I_int_err**2 - 2.*(Q_int/I_int)*IQ_int_err - 2.*(U_int/I_int)*IU_int_err)
-
-    PA_int = princ_angle((90./np.pi)*np.arctan2(U_int,Q_int))
-    PA_int_err = (90./(np.pi*(Q_int**2 + U_int**2)))*np.sqrt(U_int**2*Q_int_err**2 + Q_int**2*U_int_err**2 - 2.*Q_int*U_int*QU_int_err)
-
-    # Compute integrated parameters and associated errors for all pixels
+    #Get integrated values from header
     n_pix = stkI.data[data_mask].size
     I_diluted = stkI.data[data_mask].sum()
-    Q_diluted = stkQ.data[data_mask].sum()
-    U_diluted = stkU.data[data_mask].sum()
     I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,0][data_mask]))
-    Q_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,1][data_mask]))
-    U_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[2,2][data_mask]))
-    IQ_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,1][data_mask]**2))
-    IU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0,2][data_mask]**2))
-    QU_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[1,2][data_mask]**2))
 
-    P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
-    #P_diluted_err = np.sqrt(2/n_pix)*100.
-
-    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
-    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
-    #PA_diluted_err = P_diluted_err/(2.*P_diluted)*180./np.pi
+    P_diluted = Stokes[0].header['P_int']
+    P_diluted_err = Stokes[0].header['P_int_err']
+    PA_diluted = Stokes[0].header['PA_int']
+    PA_diluted_err = Stokes[0].header['PA_int_err']
 
     ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
 
