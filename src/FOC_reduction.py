@@ -184,14 +184,15 @@ def main():
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
     ## Step 4:
-    # crop to desired region of interest (roi)
-#    stokescrop = proj_plots.crop_map(deepcopy(stokes_test), deepcopy(data_mask), snrp_cut=snrp_cut, snri_cut=snri_cut)
-#    stokescrop.run()
-#    stokes_crop, data_mask = stokescrop.crop()
-
-    ## Step 5:
     # Save image to FITS.
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, data_mask, figname+figtype, data_folder=data_folder, return_hdul=True)
+
+    ## Step 5:
+    # crop to desired region of interest (roi)
+    stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test))
+    stokescrop.crop()
+    stokescrop.writeto(data_folder+figname+figtype+"_crop.fits")
+    stokes_crop, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate']:

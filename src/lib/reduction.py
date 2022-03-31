@@ -1389,7 +1389,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
                     reshape=False, cval=0.)
         new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
-    center = np.array(new_I_stokes.shape)/2
+    old_center = np.array(I_stokes.shape)/2
+    new_center = np.array(new_I_stokes.shape)/2
 
     #Update headers to new angle
     new_headers = []
@@ -1417,7 +1418,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
             newpc = np.dot(mrot, new_wcs.wcs.get_pc())
             new_wcs.wcs.pc = newpc
-        new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - center) + center
+        new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center) + new_center
         new_wcs.wcs.set()
         new_header.update(new_wcs.to_header())
 
