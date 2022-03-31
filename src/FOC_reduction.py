@@ -18,12 +18,12 @@ from lib.deconvolve import from_file_psf
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    psf_file = 'NGC1068_f253m00.fits'
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    psf_file = 'NGC1068_f253m00.fits'
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -62,10 +62,10 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-    psf_file = 'IC5063_f502m00.fits'
-    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    psf_file = 'IC5063_f502m00.fits'
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
@@ -94,7 +94,7 @@ def main():
         psf_scale = 'arcsec'
         psf_shape=(9,9)
         iterations = 10
-    # Cropping
+    # Initial crop
     display_crop = False
     # Error estimation
     error_sub_shape = (75,75)
@@ -115,8 +115,10 @@ def main():
     # Rotation
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
+    # Final crop
+    crop = True        #Crop to desired ROI
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
+    figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations
     SNRp_cut = 10.    #P measurments with SNR>3
     SNRi_cut = 100.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
@@ -189,10 +191,12 @@ def main():
 
     ## Step 5:
     # crop to desired region of interest (roi)
-    stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test))
-    stokescrop.crop()
-    stokescrop.writeto(data_folder+figname+figtype+"_crop.fits")
-    stokes_crop, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
+    if crop:
+        figtype += "_crop"
+        stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test))
+        stokescrop.crop()
+        stokescrop.writeto(data_folder+figname+figtype+".fits")
+        Stokes_test, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate']:

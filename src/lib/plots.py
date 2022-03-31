@@ -338,7 +338,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         if step_vec == 0:
             pol.data[np.isfinite(pol.data)] = 1./2.
             step_vec = 1
-        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0])-0.5, np.linspace(0,stkI.data.shape[1],stkI.data.shape[1])-0.5)
+        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[1],stkI.data.shape[1])-0.5, np.linspace(0,stkI.data.shape[0],stkI.data.shape[0])-0.5)
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
@@ -796,7 +796,6 @@ class crop_Stokes(crop_map):
             else:
                 dataset.data = dataset.data[vertex[2]:vertex[3], vertex[0]:vertex[1]]
             dataset.header.update(self.wcs_crop.to_header())
-        self.data_mask = self.hdul_crop[-1].data
 
         try:
             convert_flux = self.hdul_crop[0].header['photflam']
@@ -820,4 +819,4 @@ class crop_Stokes(crop_map):
     
     @property
     def data_mask(self):
-        return self.data_mask
+        return self.hdul_crop[-1].data
