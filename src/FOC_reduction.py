@@ -116,7 +116,7 @@ def main():
     rotate_stokes = True           #rotation to North convention can give erroneous results
     rotate_data = False              #rotation to North convention can give erroneous results
     # Final crop
-    crop = True        #Crop to desired ROI
+    crop = False        #Crop to desired ROI
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations
@@ -188,6 +188,7 @@ def main():
     ## Step 4:
     # Save image to FITS.
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, data_mask, figname+figtype, data_folder=data_folder, return_hdul=True)
+    data_mask = Stokes_test[-1].data.astype(bool)
 
     ## Step 5:
     # crop to desired region of interest (roi)

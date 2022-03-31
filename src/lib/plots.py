@@ -242,6 +242,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     #Compute SNR and apply cuts
     pol.data[pol.data == 0.] = np.nan
+    pol_err.data[pol_err.data == 0.] = np.nan
     SNRp = pol.data/pol_err.data
     SNRp[np.isnan(SNRp)] = 0.
     pol.data[SNRp < SNRp_cut] = np.nan
@@ -386,39 +387,55 @@ class align_maps(object):
     """
     Class to interactively align maps with different WCS.
     """
-    def __init__(self, Stokes, other_map):
+    def __init__(self, map1, other_map):
         self.aligned = False
-        self.Stokes_UV = Stokes
+        self.map = map1
         self.other_map = other_map
 
-        self.wcs_UV = WCS(self.Stokes_UV[0]).deepcopy()
-        convert_flux = self.Stokes_UV[0].header['photflam']
+        self.wcs_map = WCS(self.map[0]).deepcopy()
+        if self.wcs_map.naxis > 2:
+            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
+            self.map[0].data = self.map[0].data[0,0]
+        
         self.wcs_other = WCS(self.other_map[0]).deepcopy()
         if self.wcs_other.naxis > 2:
             self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
             self.other_map[0].data = self.other_map[0].data[0,0]
+        
+        try:
+            convert_flux = self.map[0].header['photflam']
+        except KeyError:
+            convert_flux = 1.
+        try:
+            other_convert = self.other_map[0].header['photflam']
+        except KeyError:
+            other_convert = 1.
+        
         #Get data
-        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
+        data = self.map[0].data
         other_data = self.other_map[0].data
 
         plt.rcParams.update({'font.size': 16})
         self.fig = plt.figure(figsize=(25,15))
         #Plot the UV map
-        self.ax1 = self.fig.add_subplot(121, projection=self.wcs_UV)
+        self.ax1 = self.fig.add_subplot(121, projection=self.wcs_map)
         self.ax1.set_facecolor('k')
 
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im1 = self.ax1.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
+        im1 = self.ax1.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
 
         fontprops = fm.FontProperties(size=16)
-        px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
+        px_size = self.wcs_map.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax1.add_artist(px_sc)
         
-        north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
-        self.ax1.add_artist(north_dir1)
+        try:
+            north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.map[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+            self.ax1.add_artist(north_dir1)
+        except KeyError:
+            pass
 
-        self.cr_UV, = self.ax1.plot(*self.wcs_UV.wcs.crpix, 'r+')
+        self.cr_map, = self.ax1.plot(*self.wcs_map.wcs.crpix, 'r+')
 
         self.ax1.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
 
@@ -426,14 +443,20 @@ class align_maps(object):
         self.ax2 = self.fig.add_subplot(122, projection=self.wcs_other)
         self.ax2.set_facecolor('k')
 
-        vmin, vmax = 0., np.max(other_data[other_data > 0.])
-        im2 = self.ax2.imshow(other_data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
+        im2 = self.ax2.imshow(other_data*other_convert, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax2.add_artist(px_sc)
         
+        try:
+            north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+            self.ax2.add_artist(north_dir2)
+        except KeyError:
+            pass
+
         self.cr_other, = self.ax2.plot(*self.wcs_other.wcs.crpix, 'r+')
 
         self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
@@ -445,7 +468,7 @@ class align_maps(object):
         self.breset = Button(self.axreset, 'Leave as is')
      
     def get_aligned_wcs(self):
-        return self.wcs_UV, self.wcs_other
+        return self.wcs_map, self.wcs_other
 
     def onclick_ref(self, event) -> None:
         if self.fig.canvas.manager.toolbar.mode == '':
@@ -453,7 +476,7 @@ class align_maps(object):
                 x = event.xdata
                 y = event.ydata
 
-                self.cr_UV.set(data=[x,y])
+                self.cr_map.set(data=[x,y])
                 self.fig.canvas.draw_idle()
             
             if (event.inaxes is not None) and (event.inaxes == self.ax2):
@@ -464,7 +487,7 @@ class align_maps(object):
                 self.fig.canvas.draw_idle()
     
     def reset_align(self, event):
-        self.wcs_UV.wcs.crpix = WCS(self.Stokes_UV[0].header).wcs.crpix[:2]
+        self.wcs_map.wcs.crpix = WCS(self.map[0].header).wcs.crpix[:2]
         self.wcs_other.wcs.crpix = WCS(self.other_map[0].header).wcs.crpix[:2]
         self.fig.canvas.draw_idle()
 
@@ -474,9 +497,9 @@ class align_maps(object):
         self.aligned = True
 
     def apply_align(self, event):
-        self.wcs_UV.wcs.crpix = np.array(self.cr_UV.get_data())
+        self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())
         self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
-        self.wcs_other.wcs.crval = self.wcs_UV.wcs.crval
+        self.wcs_other.wcs.crval = self.wcs_map.wcs.crval
         self.fig.canvas.draw_idle()
 
         if self.aligned:
@@ -496,6 +519,7 @@ class align_maps(object):
         self.fig.canvas.mpl_connect('close_event', self.on_close_align)
         plt.show(block=True)
         return self.get_aligned_wcs()
+
 
 class overplot_radio(align_maps):
     """
@@ -555,12 +579,15 @@ class overplot_radio(align_maps):
 
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, other_unit))
 
-        #Display pixel scale
+        #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
-        
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        self.ax.add_artist(north_dir)
+
+ 
         if not(savename is None):
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
@@ -629,11 +656,14 @@ class overplot_pol(align_maps):
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
-        #Display pixel scale
+        #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        self.ax.add_artist(north_dir)
+
         
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
 
@@ -718,7 +748,7 @@ class crop_map(object):
         #Update WCS and header in new cropped image
         crpix = np.array(self.wcs.wcs.crpix)
         self.wcs_crop = self.wcs.deepcopy()
-        self.wcs_crop.wcs.array_shape = shape
+        self.wcs_crop.array_shape = shape
         if self.crpix_in_RS():
             self.wcs_crop.wcs.crpix -= self.RSextent[::2]
         else:
