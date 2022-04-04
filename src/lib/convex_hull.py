@@ -7,6 +7,33 @@ from copy import deepcopy
 import numpy as np
 
 
+def clean_ROI(image):
+    H,J = [],[]
+
+    shape = np.array(image.shape)
+    row, col = np.indices(shape)
+
+    for i in range(0,shape[0]):
+        r = row[i,:][image[i,:]>0.]
+        c = col[i,:][image[i,:]>0.]
+        if len(r)>1 and len(c)>1:
+            H.append((r[0],c[0]))
+            H.append((r[-1],c[-1]))
+    H = np.array(H)
+    for j in range(0,shape[1]):
+        r = row[:,j][image[:,j]>0.]
+        c = col[:,j][image[:,j]>0.]
+        if len(r)>1 and len(c)>1:
+            J.append((r[0],c[0]))
+            J.append((r[-1],c[-1]))
+    J = np.array(J)
+    xmin = np.min([H[:,1].min(),J[:,1].min()])
+    xmax = np.max([H[:,1].max(),J[:,1].max()])+1
+    ymin = np.min([H[:,0].min(),J[:,0].min()])
+    ymax = np.max([H[:,0].max(),J[:,0].max()])+1
+    return np.array([xmin,xmax,ymin,ymax])
+
+
 # Define angle and vectors operations
 def vector(A, B):
     """

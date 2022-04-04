@@ -12,7 +12,7 @@ prototypes :
 import numpy as np
 from astropy.io import fits
 from astropy import wcs
-from lib.convex_hull import image_hull
+from lib.convex_hull import image_hull, clean_ROI
 
 
 def get_obs_data(infiles, data_folder="", compute_flux=False):
@@ -78,33 +78,6 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     return data_array, headers
 
 
-def clean_ROI(image):
-    H,J = [],[]
-
-    shape = np.array(image.shape)
-    row, col = np.indices(shape)
-
-    for i in range(0,shape[0]):
-        r = row[i,:][image[i,:]>0.]
-        c = col[i,:][image[i,:]>0.]
-        if len(r)>1 and len(c)>1:
-            H.append((r[0],c[0]))
-            H.append((r[-1],c[-1]))
-    H = np.array(H)
-    for j in range(0,shape[1]):
-        r = row[:,j][image[:,j]>0.]
-        c = col[:,j][image[:,j]>0.]
-        if len(r)>1 and len(c)>1:
-            J.append((r[0],c[0]))
-            J.append((r[-1],c[-1]))
-    J = np.array(J)
-    xmin = np.min([H[:,1].min(),J[:,1].min()])-1
-    xmax = np.max([H[:,1].max(),J[:,1].max()])+1
-    ymin = np.min([H[:,0].min(),J[:,0].min()])-1
-    ymax = np.max([H[:,0].max(),J[:,0].max()])+1
-    return np.array([xmin,xmax,ymin,ymax])
-
-
 def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         s_P_P, PA, s_PA, s_PA_P, headers, data_mask, filename, data_folder="",
         return_hdul=False):
@@ -145,10 +118,10 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
     new_wcs = wcs.WCS(ref_header).deepcopy()
     
-    vertex = clean_ROI(1.-data_mask)
+    vertex = clean_ROI(data_mask)
     shape = vertex[1::2]-vertex[0::2]
     new_wcs.array_shape = shape
-    new_wcs.wcs.crpix -= vertex[0::2]
+    new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
 
     header = new_wcs.to_header()
     header['instrume'] = (ref_header['instrume'], 'Instrument from which data is reduced')
@@ -179,7 +152,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     new_Stokes_cov = np.zeros((3,3,shape[0],shape[1]))
     for i in range(3):
         for j in range(3):
-            Stokes_cov[i,j][data_mask] = 0.
+            Stokes_cov[i,j][(1-data_mask).astype(bool)] = 0.
             new_Stokes_cov[i,j] = Stokes_cov[i,j][vertex[0]:vertex[1],vertex[2]:vertex[3]]
     Stokes_cov = new_Stokes_cov
     

@@ -13,7 +13,7 @@ from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-from matplotlib.widgets import RectangleSelector, Button
+from matplotlib.widgets import RectangleSelector, Button, Slider
 from matplotlib.transforms import Bbox
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
@@ -219,22 +219,18 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     stkQ = Stokes[np.argmax([Stokes[i].header['datatype']=='Q_stokes' for i in range(len(Stokes))])]
     stkU = Stokes[np.argmax([Stokes[i].header['datatype']=='U_stokes' for i in range(len(Stokes))])]
     stk_cov = Stokes[np.argmax([Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])]
-    #pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg' for i in range(len(Stokes))])]
     pol = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes))])]
     pol_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])]
-    #pol_err_Poisson = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_deg_err_Poisson_noise' for i in range(len(Stokes))])]
     pang = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])]
-    pang_err = Stokes[np.argmax([Stokes[i].header['datatype']=='Pol_ang_err' for i in range(len(Stokes))])]
-    if data_mask is None:
-        data_mask = Stokes[np.argmax([Stokes[i].header['datatype']=='Data_mask' for i in range(len(Stokes))])].data.astype(bool)
+    try:
+        if data_mask is None:
+            data_mask = Stokes[np.argmax([Stokes[i].header['datatype']=='Data_mask' for i in range(len(Stokes))])].data.astype(bool)
+    except KeyError:
+        data_mask = np.ones(stkI.shape).astype(bool)
 
     pivot_wav = Stokes[0].header['photplam']
     convert_flux = Stokes[0].header['photflam']
     wcs = WCS(Stokes[0]).deepcopy()
-
-    #Get image mask
-    if data_mask is None:
-        data_mask = np.zeros(stkI.shape).astype(bool)
 
     #Plot Stokes parameters map
     if display is None or display.lower() == 'default':
@@ -252,7 +248,6 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     SNRi[maskI] = stkI.data[maskI]/np.sqrt(stk_cov.data[0,0][maskI])
     pol.data[SNRi < SNRi_cut] = np.nan
 
-    data_mask = (1.-data_mask).astype(bool)
     mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
 
     # Look for pixel of max polarization
@@ -339,13 +334,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         if step_vec == 0:
             pol.data[np.isfinite(pol.data)] = 1./2.
             step_vec = 1
-        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[1],stkI.data.shape[1])-0.5, np.linspace(0,stkI.data.shape[0],stkI.data.shape[0])-0.5)
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         ax.add_artist(pol_sc)
 
-        north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-Stokes[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
         ax.add_artist(north_dir)
 
     # Display instrument FOV
@@ -382,6 +377,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     plt.show()
     return fig, ax
+
 
 class align_maps(object):
     """
@@ -430,7 +426,7 @@ class align_maps(object):
         self.ax1.add_artist(px_sc)
         
         try:
-            north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.map[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+            north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
             self.ax1.add_artist(north_dir1)
         except KeyError:
             pass
@@ -452,7 +448,7 @@ class align_maps(object):
         self.ax2.add_artist(px_sc)
         
         try:
-            north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+            north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
             self.ax2.add_artist(north_dir2)
         except KeyError:
             pass
@@ -527,6 +523,8 @@ class overplot_radio(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
     def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., savename=None):
+        self.Stokes_UV = self.map
+        self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
         stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
@@ -568,7 +566,7 @@ class overplot_radio(align_maps):
 
         pol.data[np.isfinite(pol.data)] = 1./2.
         step_vec = 1
-        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         self.ax.autoscale(False)
@@ -584,7 +582,7 @@ class overplot_radio(align_maps):
         px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
  
@@ -598,6 +596,7 @@ class overplot_radio(align_maps):
         if self.aligned:
             self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
             plt.show(block=True)
+
 
 class overplot_pol(align_maps):
     """
@@ -646,7 +645,7 @@ class overplot_pol(align_maps):
         #Display full size polarization vectors
         pol.data[np.isfinite(pol.data)] = 1./2.
         step_vec = 1
-        X, Y = np.meshgrid(np.linspace(0,stkI.data.shape[0],stkI.data.shape[0]), np.linspace(0,stkI.data.shape[1],stkI.data.shape[1]))
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
 
@@ -661,7 +660,7 @@ class overplot_pol(align_maps):
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 2})
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
         
@@ -750,7 +749,7 @@ class crop_map(object):
         self.wcs_crop = self.wcs.deepcopy()
         self.wcs_crop.array_shape = shape
         if self.crpix_in_RS():
-            self.wcs_crop.wcs.crpix -= self.RSextent[::2]
+            self.wcs_crop.wcs.crpix = np.array(self.wcs_crop.wcs.crpix) - self.RSextent[::2]
         else:
             self.wcs_crop.wcs.crval = self.wcs.wcs_pix2world([self.RScenter],1)[0]
             self.wcs_crop.wcs.crpix = self.RScenter-self.RSextent[::2]
@@ -793,6 +792,7 @@ class crop_map(object):
     def writeto(self, filename):
         self.hdul_crop.writeto(filename,overwrite=True)
 
+
 class crop_Stokes(crop_map):
     """
     Class to interactively crop a polarization map to desired Region of Interest.
@@ -810,7 +810,7 @@ class crop_Stokes(crop_map):
         self.wcs_crop = self.wcs.deepcopy()
         self.wcs_crop.array_shape = shape
         if self.crpix_in_RS():
-            self.wcs_crop.wcs.crpix -= self.RSextent[::2]
+            self.wcs_crop.wcs.crpix = np.array(self.wcs_crop.wcs.crpix) - self.RSextent[::2]
         else:
             self.wcs_crop.wcs.crval = self.wcs.wcs_pix2world([self.RScenter],1)[0]
             self.wcs_crop.wcs.crpix = self.RScenter-self.RSextent[::2]
@@ -850,3 +850,150 @@ class crop_Stokes(crop_map):
     @property
     def data_mask(self):
         return self.hdul_crop[-1].data
+
+class pol_map(object):
+    """
+    Class to interactively study polarization maps.
+    """
+    def __init__(self,Stokes, SNRp_cut=3., SNRi_cut=30.):
+
+        self.Stokes = Stokes
+        self.wcs = deepcopy(WCS(Stokes[0].header))
+        self.SNRp_cut = SNRp_cut
+        self.SNRi_cut = SNRi_cut
+        self.SNRi = deepcopy(self.SNRi_cut)
+        self.SNRp = deepcopy(self.SNRp_cut)
+        self.region = None
+
+        #Get data
+        self.pivot_wav = self.Stokes[0].header['photplam']
+        self.convert_flux = self.Stokes[0].header['photflam']
+        self.I = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='I_stokes' for i in range(len(Stokes))])].data
+        self.Q = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Q_stokes' for i in range(len(Stokes))])].data
+        self.U = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='U_stokes' for i in range(len(Stokes))])].data
+        self.IQU_cov = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(Stokes))])].data
+        self.P = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(Stokes))])].data
+        self.s_P = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(Stokes))])].data
+        self.PA = self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_ang' for i in range(len(Stokes))])].data
+
+        #Create figure
+        fontprops = fm.FontProperties(size=16)
+        self.fig = plt.figure(figsize=(15,15))
+        self.fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
+        self.ax = self.fig.add_subplot(111,projection=self.wcs)
+        self.ax.set_facecolor('black')
+
+        self.ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
+        self.ax.coords[0].set_axislabel('Right Ascension (J2000)')
+        self.ax.coords[0].set_axislabel_position('t')
+        self.ax.coords[0].set_ticklabel_position('t')
+        self.ax.coords[1].set_axislabel('Declination (J2000)')
+        self.ax.coords[1].set_axislabel_position('l')
+        self.ax.coords[1].set_ticklabel_position('l')
+        self.ax.axis('equal')
+ 
+        #Display total flux
+        im = self.ax.imshow(self.I*self.convert_flux, vmin=0., vmax=self.I[self.I > 0.].max()*self.convert_flux, aspect='auto', cmap='inferno')
+        cbar_ax = self.fig.add_axes([0.95, 0.12, 0.01, 0.75])
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        #Display polarization vectors in SNR_cut
+        self.pol_vector()
+        
+        #Display scales and orientation
+        px_size = self.wcs.wcs.cdelt[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='white', fontproperties=fontprops)
+        self.ax.add_artist(px_sc)
+        pol_sc = AnchoredSizeBar(self.ax.transData, 2., r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='white', fontproperties=fontprops)
+        self.ax.add_artist(pol_sc)
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
+        self.ax.add_artist(north_dir)
+       
+        #Display integrated values in ROI
+        self.pol_int
+
+        #Set axes for sliders (SNRp_cut, SNRi_cut)
+        ax_I_cut = self.fig.add_axes([0.125, 0.080, 0.35, 0.01])
+        ax_P_cut = self.fig.add_axes([0.125, 0.055, 0.35, 0.01])
+        ax_reset = self.fig.add_axes([0.125, 0.020, 0.05, 0.02])
+        SNRi_max = np.max(self.I[self.IQU_cov[0,0]>0.]/np.sqrt(self.IQU_cov[0,0][self.IQU_cov[0,0]>0.]))
+        SNRp_max = np.max(self.P[self.s_P>0.]/self.s_P[self.s_P > 0.])
+        s_I_cut = Slider(ax_I_cut,r"$SNR^{I}_{cut}$",1.,SNRi_max,valstep=1,valinit=self.SNRi_cut)
+        s_P_cut = Slider(ax_P_cut,r"$SNR^{P}_{cut}$",1.,SNRp_max,valstep=1,valinit=self.SNRp_cut)
+        b_reset = Button(ax_reset,"Reset")
+
+        def update_snri(val):
+            self.SNRi = val
+            self.quiver.remove()
+            self.pol_vector()
+            self.fig.canvas.draw_idle()
+
+        def update_snrp(val):
+            self.SNRp = val
+            self.quiver.remove()
+            self.pol_vector()
+            self.fig.canvas.draw_idle()
+
+        def reset(event):
+            s_I_cut.reset()
+            s_P_cut.reset()
+
+        s_I_cut.on_changed(update_snri)
+        s_P_cut.on_changed(update_snrp)
+        b_reset.on_clicked(reset)
+
+        plt.show(block=True)
+
+    @property
+    def cut(self):
+        s_I = np.sqrt(self.IQU_cov[0,0])
+        SNRp_mask, SNRi_mask = np.zeros(self.P.shape).astype(bool), np.zeros(self.I.shape).astype(bool)
+        SNRp_mask[self.s_P > 0.] = self.P[self.s_P > 0.] / self.s_P[self.s_P > 0.] > self.SNRp
+        SNRi_mask[s_I > 0.] = self.I[s_I > 0.] / s_I[s_I > 0.] > self.SNRi
+        return np.logical_and(SNRi_mask,SNRp_mask)
+    
+    def pol_vector(self):
+        P_cut = np.ones(self.P.shape)*np.nan
+        P_cut[self.cut] = self.P[self.cut]
+        X, Y = np.meshgrid(np.arange(self.I.shape[1]),np.arange(self.I.shape[0]))
+        XY_U, XY_V = P_cut*np.cos(np.pi/2. + self.PA*np.pi/180.), P_cut*np.sin(np.pi/2. + self.PA*np.pi/180.)
+
+        self.quiver = self.ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, color='white')
+        return self.quiver
+    
+    @property
+    def pol_int(self):
+        if self.region is None:
+            n_pix = self.I.size
+            s_I = np.sqrt(self.IQU_cov[0,0])
+            I_reg = self.I.sum()
+            I_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_I**2))
+            P_reg = self.Stokes[0].header['P_int']
+            P_reg_err = self.Stokes[0].header['P_int_err']
+            PA_reg = self.Stokes[0].header['PA_int']
+            PA_reg_err = self.Stokes[0].header['PA_int_err']
+        else:
+            n_pix = self.I[self.region].size
+            s_I = np.sqrt(self.IQU_cov[0,0])
+            s_Q = np.sqrt(self.IQU_cov[1,1])
+            s_U = np.sqrt(self.IQU_cov[2,2])
+            s_IQ = self.IQU_cov[0,1]
+            s_IU = self.IQU_cov[0,2]
+            s_QU = self.IQU_cov[1,2]
+
+            I_reg = self.I[self.region].sum()
+            Q_reg = self.Q[self.region].sum()
+            U_reg = self.U[self.region].sum()
+            I_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_I[self.region]**2))
+            Q_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_Q[self.region]**2))
+            U_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_U[self.region]**2))
+            IQ_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_IQ[self.region]**2))
+            IU_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_IU[self.region]**2))
+            QU_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_QU[self.region]**2))
+
+            P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
+            P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
+
+            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
+            PA_reg_err = (90./(np.pi*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)
+
+        return self.ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,P_reg_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,PA_reg_err), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction')

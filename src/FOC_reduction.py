@@ -13,17 +13,18 @@ import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
 from lib.convex_hull import image_hull
 from lib.deconvolve import from_file_psf
+import matplotlib.pyplot as plt
 
 
 def main():
     ##### User inputs
     ## Input and output locations
-    globals()['data_folder'] = "../data/NGC1068_x274020/"
-    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-    psf_file = 'NGC1068_f253m00.fits'
-    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+#    globals()['data_folder'] = "../data/NGC1068_x274020/"
+#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+#    psf_file = 'NGC1068_f253m00.fits'
+#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -62,10 +63,10 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-#    psf_file = 'IC5063_f502m00.fits'
-#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+    psf_file = 'IC5063_f502m00.fits'
+    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
@@ -118,7 +119,7 @@ def main():
     # Final crop
     crop = False        #Crop to desired ROI
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
+    figname = 'IC5063_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations
     SNRp_cut = 10.    #P measurments with SNR>3
     SNRi_cut = 100.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
@@ -141,12 +142,12 @@ def main():
     if rebin:
         data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
     # Align and rescale images with oversampling.
-    data_mask = np.zeros(data_array.shape[1:]).astype(bool)
+    data_mask = np.ones(data_array.shape[1:]).astype(bool)
     if px_scale.lower() not in ['full','integrate']:
         data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
 
     if px_scale.lower() not in ['full','integrate']:
-        vertex = image_hull((1.-data_mask),step=5,null_val=0.,inside=True)
+        vertex = image_hull(data_mask,step=5,null_val=0.,inside=True)
     else:
         vertex = np.array([0.,0.,data_array.shape[2],data_array.shape[2]])
     shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])

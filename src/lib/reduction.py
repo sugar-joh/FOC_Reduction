@@ -50,7 +50,7 @@ from astropy import log
 log.setLevel('ERROR')
 import warnings
 from lib.deconvolve import deconvolve_im, gaussian_psf
-from lib.convex_hull import image_hull
+from lib.convex_hull import image_hull, clean_ROI
 from lib.plots import plot_obs
 from lib.cross_correlation import phase_cross_correlation
 
@@ -723,8 +723,11 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     res_shape = int(np.ceil(np.sqrt(2.5)*np.max(shape[1:])))
     rescaled_image = np.zeros((shape[0],res_shape,res_shape))
     rescaled_error = np.ones((shape[0],res_shape,res_shape))
-    rescaled_mask = np.ones((shape[0],res_shape,res_shape),dtype=bool)
+    rescaled_mask = np.zeros((shape[0],res_shape,res_shape),dtype=bool)
     res_center = (np.array(rescaled_image.shape[1:])/2).astype(int)
+    res_shift = res_center-ref_center
+    res_mask = np.zeros((res_shape,res_shape),dtype=bool)
+    res_mask[res_shift[0]:res_shift[0]+shape[1], res_shift[1]:res_shift[1]+shape[2]] = True
 
     shifts, errors = [], []
     for i,image in enumerate(data_array):
@@ -734,21 +737,19 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         shift, error, phase_diff = phase_cross_correlation(ref_data, image,
                 upsample_factor=upsample_factor)
         # Rescale image to requested output
-        center = np.fix(ref_center-shift).astype(int)
-        res_shift = res_center-ref_center
         rescaled_image[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(image)
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(error_array[i])
-        rescaled_mask[i,res_shift[0]:res_shift[0]+shape[1],
-                res_shift[1]:res_shift[1]+shape[2]] = False
         # Shift images to align
         rescaled_image[i] = sc_shift(rescaled_image[i], shift, cval=0.)
         rescaled_error[i] = sc_shift(rescaled_error[i], shift, cval=background[i])
-        rescaled_mask[i] = sc_shift(rescaled_mask[i], shift, cval=True)
+        curr_mask = sc_shift(res_mask, shift, cval=False)
+        mask_vertex = clean_ROI(curr_mask)
+        rescaled_mask[i,mask_vertex[2]:mask_vertex[3],mask_vertex[0]:mask_vertex[1]] = True
 
         rescaled_image[i][rescaled_image[i] < 0.] = 0.
-        rescaled_image[i][1-rescaled_mask[i]] = 0.
+        rescaled_image[i][(1-rescaled_mask[i]).astype(bool)] = 0.
 
         # Uncertainties from shifting
         prec_shift = np.array([1.,1.])/upsample_factor
@@ -840,13 +841,13 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
         for r in range(smoothed.shape[0]):
             for c in range(smoothed.shape[1]):
                 # Compute distance from current pixel
-                dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
+                dist_rc = np.where(data_mask, np.sqrt((r-xx)**2+(c-yy)**2), fmax)
                 # Catch expected "OverflowWarning" as we overflow values that are not in the image
                 with warnings.catch_warnings(record=True) as w:
                     g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
                 # Apply weighted combination
-                smoothed[r,c] = (1.-data_mask[r,c])*np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc)
-                error[r,c] = (1.-data_mask[r,c])*np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc)
+                smoothed[r,c] = np.where(data_mask[r,c], np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc), 0.)
+                error[r,c] = np.where(data_mask[r,c], np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc), 0.)
 
         # Nan handling
         error[np.isnan(smoothed)] = 0.
@@ -861,12 +862,12 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             xx, yy = np.indices(image.shape)
             for r in range(image.shape[0]):
                 for c in range(image.shape[1]):
-                    dist_rc = np.where(data_mask, fmax, np.sqrt((r-xx)**2+(c-yy)**2))
+                    dist_rc = np.where(data_mask, np.sqrt((r-xx)**2+(c-yy)**2), fmax)
                     # Catch expected "OverflowWarning" as we overflow values that are not in the image
                     with warnings.catch_warnings(record=True) as w:
                         g_rc = np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2)
-                    smoothed[i][r,c] = (1.-data_mask[r,c])*np.sum(image*g_rc)
-                    error[i][r,c] = (1.-data_mask[r,c])*np.sqrt(np.sum(error_array[i]**2*g_rc**2))
+                    smoothed[i][r,c] = np.where(data_mask[r,c], np.sum(image*g_rc), 0.)
+                    error[i][r,c] = np.where(data_mask[r,c], np.sqrt(np.sum(error_array[i]**2*g_rc**2)), 0.)
 
             # Nan handling
             error[i][np.isnan(smoothed[i])] = 0.
@@ -1185,7 +1186,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
             Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
         
         #Compute integrated values for P, PA before any rotation
-        mask = (1-data_mask).astype(bool)
+        mask = deepcopy(data_mask).astype(bool)
         n_pix = I_stokes[mask].size
         I_diluted = I_stokes[mask].sum()
         Q_diluted = Q_stokes[mask].sum()
@@ -1383,7 +1384,9 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_I_stokes = sc_rotate(new_I_stokes, ang, order=5, reshape=False, cval=0.)
     new_Q_stokes = sc_rotate(new_Q_stokes, ang, order=5, reshape=False, cval=0.)
     new_U_stokes = sc_rotate(new_U_stokes, ang, order=5, reshape=False, cval=0.)
-    new_data_mask = (sc_rotate(data_mask.astype(float)*10., ang, order=5, reshape=False, cval=10.).astype(int)).astype(bool)
+    new_data_mask = sc_rotate(data_mask.astype(float)*10., ang, order=5, reshape=False, cval=0.)
+    new_data_mask[new_data_mask < 2] = 0.
+    new_data_mask = new_data_mask.astype(bool)
     for i in range(3):
         for j in range(3):
             new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang,
@@ -1435,7 +1438,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_Stokes_cov[np.isnan(new_Stokes_cov)] = fmax
 
     #Compute updated integrated values for P, PA
-    mask = (1-new_data_mask).astype(bool)
+    mask = deepcopy(new_data_mask).astype(bool)
     n_pix = new_I_stokes[mask].size
     I_diluted = new_I_stokes[mask].sum()
     Q_diluted = new_Q_stokes[mask].sum()
@@ -1500,7 +1503,9 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
         new_error_array.append(sc_rotate(error_array[i], ang, order=5, reshape=False,
             cval=error_array.mean()))
     new_data_array = np.array(new_data_array)
-    new_data_mask = sc_rotate(data_mask, ang, order=5, reshape=False, cval=True)
+    new_data_mask = sc_rotate(data_mask*10., ang, order=5, reshape=False, cval=0.)
+    new_data_mask[new_data_mask < 2] = 0.
+    new_data_mask = new_data_mask.astype(bool)
     new_error_array = np.array(new_error_array)
 
     for i in range(new_data_array.shape[0]):

@@ -1,11 +1,15 @@
 #!/usr/bin/python3
 from astropy.io import fits
 import numpy as np
+from copy import deepcopy
 from plots import overplot_radio
 
-Stokes_UV = fits.open("../../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020_pol.fits")
+Stokes_UV = fits.open("../../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020.fits")
 Stokes_18GHz = fits.open("../../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
 Stokes_24GHz = fits.open("../../data/IC5063_x3nl030/radio/IC5063.24GHz.fits")
+Stokes_103GHz = fits.open("../../data/IC5063_x3nl030/radio/I5063_103GHz.fits")
+Stokes_229GHz = fits.open("../../data/IC5063_x3nl030/radio/I5063_229GHz.fits")
+Stokes_357GHz = fits.open("../../data/IC5063_x3nl030/radio/I5063_357GHz.fits")
 
 levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
 
@@ -18,3 +22,15 @@ A.plot(levels=levels18GHz, SNRp_cut=10.0, SNRi_cut=100.0, savename='../../plots/
 levels24GHz = levelsMorganti*0.46*1e-3
 B = overplot_radio(Stokes_UV, Stokes_24GHz)
 B.plot(levels=levels24GHz, SNRp_cut=10.0, SNRi_cut=100.0, savename='../../plots/IC5063_x3nl030/24GHz_overplot_forced.png')
+
+levels103GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_103GHz[0].data[Stokes_103GHz[0].data > 0.]))
+C = overplot_radio(Stokes_UV, Stokes_103GHz)
+C.plot(levels=levels103GHz, SNRp_cut=10.0, SNRi_cut=100.0, savename='../../plots/IC5063_x3nl030/103GHz_overplot_forced.png')
+
+levels229GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_229GHz[0].data[Stokes_229GHz[0].data > 0.]))
+D = overplot_radio(Stokes_UV, Stokes_229GHz)
+D.plot(levels=levels229GHz, SNRp_cut=10.0, SNRi_cut=100.0, savename='../../plots/IC5063_x3nl030/229GHz_overplot_forced.png')
+
+levels357GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_357GHz[0].data[Stokes_357GHz[0].data > 0.]))
+E = overplot_radio(Stokes_UV, Stokes_357GHz)
+E.plot(levels=levels357GHz, SNRp_cut=10.0, SNRi_cut=100.0, savename='../../plots/IC5063_x3nl030/357GHz_overplot_forced.png')
