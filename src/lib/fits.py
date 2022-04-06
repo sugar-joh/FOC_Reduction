@@ -118,10 +118,11 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
     new_wcs = wcs.WCS(ref_header).deepcopy()
     
-    vertex = clean_ROI(data_mask)
-    shape = vertex[1::2]-vertex[0::2]
-    new_wcs.array_shape = shape
-    new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
+    if data_mask.shape != (1,1):
+        vertex = clean_ROI(data_mask)
+        shape = vertex[1::2]-vertex[0::2]
+        new_wcs.array_shape = shape
+        new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
 
     header = new_wcs.to_header()
     header['instrume'] = (ref_header['instrume'], 'Instrument from which data is reduced')
@@ -138,25 +139,27 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     header['PA_int_err'] = (ref_header['PA_int_err'], 'Integrated polarization angle error')
 
     #Crop Data to mask
-    I_stokes = I_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    Q_stokes = Q_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    U_stokes = U_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    P = P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    debiased_P = debiased_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    s_P = s_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    s_P_P = s_P_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    PA = PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    s_PA = s_PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    s_PA_P = s_PA_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    
-    new_Stokes_cov = np.zeros((3,3,shape[0],shape[1]))
-    for i in range(3):
-        for j in range(3):
-            Stokes_cov[i,j][(1-data_mask).astype(bool)] = 0.
-            new_Stokes_cov[i,j] = Stokes_cov[i,j][vertex[0]:vertex[1],vertex[2]:vertex[3]]
-    Stokes_cov = new_Stokes_cov
-    
-    data_mask = data_mask[vertex[0]:vertex[1],vertex[2]:vertex[3]].astype(float, copy=False)
+    if data_mask.shape != (1,1):
+        I_stokes = I_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        Q_stokes = Q_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        U_stokes = U_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        P = P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        debiased_P = debiased_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        s_P = s_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        s_P_P = s_P_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        PA = PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        s_PA = s_PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        s_PA_P = s_PA_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        
+        new_Stokes_cov = np.zeros((3,3,shape[0],shape[1]))
+        for i in range(3):
+            for j in range(3):
+                Stokes_cov[i,j][(1-data_mask).astype(bool)] = 0.
+                new_Stokes_cov[i,j] = Stokes_cov[i,j][vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        Stokes_cov = new_Stokes_cov
+        
+        data_mask = data_mask[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+    data_mask = data_mask.astype(float, copy=False)
 
     #Create HDUList object
     hdul = fits.HDUList([])

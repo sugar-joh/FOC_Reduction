@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #-*- coding:utf-8 -*-
 """
 Main script where are progressively added the steps for the FOC pipeline reduction.
@@ -19,12 +19,12 @@ import matplotlib.pyplot as plt
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-#    psf_file = 'NGC1068_f253m00.fits'
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+    psf_file = 'NGC1068_f253m00.fits'
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -63,10 +63,10 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-    psf_file = 'IC5063_f502m00.fits'
-    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    psf_file = 'IC5063_f502m00.fits'
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
@@ -104,14 +104,14 @@ def main():
     rebin = True
     if rebin:
         pxsize = 0.10
-        px_scale = 'arcsec'         #pixel, arcsec or full
+        px_scale = 'full'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'        #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'       #pixel or arcsec
     # Rotation
     rotate_stokes = True           #rotation to North convention can give erroneous results
@@ -119,8 +119,8 @@ def main():
     # Final crop
     crop = False        #Crop to desired ROI
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_full'    #additionnal informations
     SNRp_cut = 10.    #P measurments with SNR>3
     SNRi_cut = 100.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted

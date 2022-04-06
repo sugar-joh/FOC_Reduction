@@ -2,7 +2,7 @@
 from astropy.io import fits
 import numpy as np
 from copy import deepcopy
-from plots import overplot_radio
+from lib.plots import overplot_radio
 
 Stokes_UV = fits.open("../../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020.fits")
 Stokes_18GHz = fits.open("../../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
