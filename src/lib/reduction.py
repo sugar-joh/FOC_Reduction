@@ -500,9 +500,34 @@ def get_error(data_array, headers, sub_shape=(15,15), display=False,
         ax.set_title("Background flux and error computed for each image")
         plt.legend()
 
+        fig2, ax2 = plt.subplots(figsize=(10,10))
+        data0 = data[0]*convert_flux
+        instr = headers[0]['instrume']
+        rootname = headers[0]['rootname']
+        exptime = headers[0]['exptime']
+        filt = headers[0]['filtnam1']
+        #plots
+        im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
+        x, y, width, height, angle, color = rectangle[0]
+        ax2.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
+        ax2.annotate(instr+":"+rootname, color='white', fontsize=5,
+                xy=(0.02, 0.95), xycoords='axes fraction')
+        ax2.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02),
+                xycoords='axes fraction')
+        ax2.annotate(exptime, color='white', fontsize=5, xy=(0.80, 0.02),
+                xycoords='axes fraction')
+        ax2.set(title="Location of background computation.",
+                xlabel='pixel offset',
+                ylabel='pixel offset')
+
+        fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
+        cbar_ax = fig2.add_axes([0.9, 0.12, 0.02, 0.75])
+        fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+
         if not(savename is None):
-            #fig.suptitle(savename+"_background_flux")
             fig.savefig(plots_folder+savename+"_background_flux.png",
+                    bbox_inches='tight')
+            fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png',
                     bbox_inches='tight')
             vmin = np.min(np.log10(data[data > 0.]))
             vmax = np.max(np.log10(data[data > 0.]))
@@ -510,7 +535,6 @@ def get_error(data_array, headers, sub_shape=(15,15), display=False,
                     rectangle=rectangle,
                     savename=savename+"_background_location",
                     plots_folder=plots_folder)
-
         else:
             vmin = np.min(np.log10(data[data > 0.]))
             vmax = np.max(np.log10(data[data > 0.]))
@@ -1186,7 +1210,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
             Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
         
         #Compute integrated values for P, PA before any rotation
-        mask = deepcopy(data_mask).astype(bool)
+        mask = np.logical_and(data_mask.astype(bool), (I_stokes > 0.))
         n_pix = I_stokes[mask].size
         I_diluted = I_stokes[mask].sum()
         Q_diluted = Q_stokes[mask].sum()

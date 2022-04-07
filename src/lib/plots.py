@@ -1137,17 +1137,18 @@ class pol_map(object):
         ax_save = self.fig.add_axes([0.850, 0.070, 0.05, 0.02])
         b_save = Button(ax_save, "Save")
         ax_text_save = self.fig.add_axes([0.3, 0.020, 0.5, 0.025],visible=False)
-        text_box = TextBox(ax_text_save, "Save to:", initial='')
+        text_save = TextBox(ax_text_save, "Save to:", initial='')
 
         def saveplot(event):
             ax_text_save.set(visible=True)
             ax_snr_reset.set(visible=False)
             ax_save.set(visible=False)
+            ax_dump.set(visible=False)
             self.fig.canvas.draw_idle()
 
         b_save.on_clicked(saveplot)
 
-        def submit(expression):
+        def submit_save(expression):
             ax_text_save.set(visible=False)
             if expression != '':
                 save_fig = plt.figure(figsize=(15,15))
@@ -1161,12 +1162,57 @@ class pol_map(object):
                     expression += '.png'
                 save_fig.savefig(expression, bbox_inches='tight', dpi=200)
                 plt.close(save_fig)
-                text_box.set_val('')
+                text_save.set_val('')
             ax_snr_reset.set(visible=True)
             ax_save.set(visible=True)
+            ax_dump.set(visible=True)
             self.fig.canvas.draw_idle()
 
-        text_box.on_submit(submit)
+        text_save.on_submit(submit_save)
+
+        #Set axe for data dump
+        ax_dump = self.fig.add_axes([0.850, 0.045, 0.05, 0.02])
+        b_dump = Button(ax_dump, "Dump")
+        ax_text_dump = self.fig.add_axes([0.3, 0.020, 0.5, 0.025],visible=False)
+        text_dump = TextBox(ax_text_dump, "Dump to:", initial='')
+
+        def dump(event):
+            ax_text_dump.set(visible=True)
+            ax_snr_reset.set(visible=False)
+            ax_save.set(visible=False)
+            ax_dump.set(visible=False)
+            self.fig.canvas.draw_idle()
+
+            shape = np.array(self.I.shape)
+            center = (shape/2).astype(int)
+            cdelt_arcsec = self.wcs.wcs.cdelt*3600
+            xx, yy = np.indices(shape)
+            x, y = (xx-center[0])*cdelt_arcsec[0], (yy-center[1])*cdelt_arcsec[1]
+
+            P, PA = np.zeros(shape), np.zeros(shape)
+            P[self.cut] = self.P[self.cut]
+            PA[self.cut] = self.PA[self.cut]
+            dump_list = []
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    dump_list.append([x[i,j], y[i,j], self.I[i,j]*self.convert_flux, self.Q[i,j]*self.convert_flux, self.U[i,j]*self.convert_flux, P[i,j], PA[i,j]])
+            self.data_dump = np.array(dump_list)
+
+        b_dump.on_clicked(dump)
+
+        def submit_dump(expression):
+            ax_text_dump.set(visible=False)
+            if expression != '':
+                if not expression[-4:] in ['.txt', '.dat']:
+                    expression += '.txt'
+                np.savetxt(expression, self.data_dump)
+                text_dump.set_val('')
+            ax_snr_reset.set(visible=True)
+            ax_save.set(visible=True)
+            ax_dump.set(visible=True)
+            self.fig.canvas.draw_idle()
+
+        text_dump.on_submit(submit_dump)
 
         #Set axes for display buttons
         ax_tf = self.fig.add_axes([0.925, 0.085, 0.05, 0.02])
