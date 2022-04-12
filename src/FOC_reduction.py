@@ -14,6 +14,7 @@ import lib.plots as proj_plots      #Functions for plotting data
 from lib.convex_hull import image_hull
 from lib.deconvolve import from_file_psf
 import matplotlib.pyplot as plt
+from astropy.wcs import WCS
 
 
 def main():
@@ -25,6 +26,11 @@ def main():
             'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
     psf_file = 'NGC1068_f253m00.fits'
     globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#    psf_file = 'IC5063_f502m00.fits'
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -63,11 +69,6 @@ def main():
 #            'x3995202r_c0f.fits','x3995206r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
 
-#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-#    psf_file = 'IC5063_f502m00.fits'
-#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
-
 #    globals()['data_folder'] = "../data/MKN3_x3nl010/"
 #    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
 #    globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
@@ -93,13 +94,14 @@ def main():
         #psf = from_file_psf(data_folder+psf_file)
         psf_FWHM = 0.15
         psf_scale = 'arcsec'
-        psf_shape=(9,9)
-        iterations = 10
+        psf_shape=(25,25)
+        iterations = 5
+        algo="richardson"
     # Initial crop
-    display_crop = False
+    display_crop = True
     # Error estimation
-    error_sub_shape = (75,75)
-    display_error = False
+    error_sub_shape = (10,10)
+    display_error = True
     # Data binning
     rebin = True
     if rebin:
@@ -107,22 +109,23 @@ def main():
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
-    align_center = 'image'        #If None will align image to image center
-    display_data = False
+    align_center = 'image'          #If None will align image to image center
+    display_data = True
     # Smoothing
-    smoothing_function = 'combine'  #gaussian_after, gaussian or combine
+    smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
     smoothing_FWHM = 0.20           #If None, no smoothing is done
-    smoothing_scale = 'arcsec'       #pixel or arcsec
+    smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
-    rotate_stokes = True           #rotation to North convention can give erroneous results
-    rotate_data = False              #rotation to North convention can give erroneous results
+    rotate_stokes = True            #rotation to North convention can give erroneous results
+    rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
-    crop = False        #Crop to desired ROI
+    crop = False                    #Crop to desired ROI
+    final_display = True
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations
-    SNRp_cut = 10.    #P measurments with SNR>3
-    SNRi_cut = 100.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 5.    #P measurments with SNR>3
+    SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -134,17 +137,41 @@ def main():
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
-        data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations)
-    # Estimate error from data background, estimated from sub-image of desired sub_shape.
-    data_array, error_array, headers = proj_red.get_error(data_array, headers, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
-    # Rebin data to desired pixel size.
-    Dxy = np.ones(2)
-    if rebin:
-        data_array, error_array, headers, Dxy = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation)
-    # Align and rescale images with oversampling.
+        data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations, algo=algo)
+    Dxy = np.ones(2)*10
     data_mask = np.ones(data_array.shape[1:]).astype(bool)
+    # Align and rescale images with oversampling.
     if px_scale.lower() not in ['full','integrate']:
-        data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
+        data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, upsample_factor=int(Dxy.min()), ref_center=align_center, return_shifts=False)
+        im = plt.imshow(error_array[0]/data_array[0]*100, origin='lower', vmin=0, vmax=100)
+        plt.colorbar(im)
+        wcs = WCS(headers[0])
+        plt.plot(*wcs.wcs.crpix,'r+')
+        plt.title("Align error")
+        plt.show()
+    # Rotate data to have North up
+    ref_header = deepcopy(headers[0])
+    if rotate_data:
+        alpha = ref_header['orientat']
+        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
+        data_array, error_array, headers, data_mask = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
+        im = plt.imshow(error_array[0]/data_array[0]*100, origin='lower', vmin=0, vmax=100)
+        plt.colorbar(im)
+        wcs = WCS(headers[0])
+        plt.plot(*wcs.wcs.crpix,'r+')
+        plt.title("Rotate error")
+        plt.show()
+    # Rebin data to desired pixel size.
+    if rebin:
+        data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
+    # Estimate error from data background, estimated from sub-image of desired sub_shape.
+    data_array, error_array, headers = proj_red.get_error(data_array, headers, error_array, data_mask, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
+    im = plt.imshow(error_array[0]/data_array[0]*100, origin='lower', vmin=0, vmax=100)
+    plt.colorbar(im)
+    wcs = WCS(headers[0])
+    plt.plot(*wcs.wcs.crpix,'r+')
+    plt.title("Background error")
+    plt.show()
 
     if px_scale.lower() not in ['full','integrate']:
         vertex = image_hull(data_mask,step=5,null_val=0.,inside=True)
@@ -153,14 +180,6 @@ def main():
     shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
     rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'g']
 
-    # Rotate data to have North up
-    ref_header = deepcopy(headers[0])
-    if rotate_data:
-        alpha = ref_header['orientat']
-        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
-        rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
-        rectangle[4] = alpha
-        data_array, error_array, headers, data_mask = proj_red.rotate_data(data_array, error_array, data_mask, headers, -ref_header['orientat'])
     #Plot array for checking output
     if display_data:
         proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
@@ -172,6 +191,13 @@ def main():
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
     I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    
+    im = plt.imshow(np.sqrt(Stokes_cov[0,0])/I_stokes*100, origin='lower', vmin=0, vmax=100)
+    plt.colorbar(im)
+    wcs = WCS(headers[0])
+    plt.plot(*wcs.wcs.crpix,'r+')
+    plt.title("Stokes error")
+    plt.show()
 
     ## Step 3:
     # Rotate images to have North up
@@ -183,6 +209,13 @@ def main():
         rectangle[0:2] = np.dot(mrot, np.asarray(rectangle[0:2]))+np.array(data_array.shape[1:])/2
         rectangle[4] = alpha
         I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -ref_header['orientat'], SNRi_cut=None)
+        im = plt.imshow(np.sqrt(Stokes_cov[0,0])/I_stokes*100, origin='lower', vmin=0, vmax=100)
+        plt.colorbar(im)
+        wcs = WCS(headers[0])
+        plt.plot(*wcs.wcs.crpix,'r+')
+        plt.title("Rotate Stokes error")
+        plt.show()
+        
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 
@@ -201,7 +234,7 @@ def main():
         Stokes_test, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
 
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    if px_scale.lower() not in ['full','integrate']:
+    if px_scale.lower() not in ['full','integrate'] and final_display:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display=None)
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
@@ -209,7 +242,7 @@ def main():
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
-    else:
+    elif final_display:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, rectangle=None, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display='default')
 
     return 0

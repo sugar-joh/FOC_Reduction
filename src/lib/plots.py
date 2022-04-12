@@ -1109,6 +1109,8 @@ class pol_map(object):
                 self.ax.reset_wcs(self.wcs)
                 self.ax_cosmetics()
                 self.display()
+                self.ax.set_xlim(0,self.I.shape[1])
+                self.ax.set_ylim(0,self.I.shape[0])
                 self.pol_vector()
             else:
                 self.cropped = True
@@ -1229,26 +1231,31 @@ class pol_map(object):
         def d_tf(event):
             self.display_selection = 'total_flux'
             self.display()
+            self.pol_int()
         b_tf.on_clicked(d_tf)
 
         def d_pf(event):
             self.display_selection = 'pol_flux'
             self.display()
+            self.pol_int()
         b_pf.on_clicked(d_pf)
 
         def d_p(event):
             self.display_selection = 'pol_deg'
             self.display()
+            self.pol_int()
         b_p.on_clicked(d_p)
 
         def d_snri(event):
             self.display_selection = 'snri'
             self.display()
+            self.pol_int()
         b_snri.on_clicked(d_snri)
 
         def d_snrp(event):
             self.display_selection = 'snrp'
             self.display()
+            self.pol_int()
         b_snrp.on_clicked(d_snrp)
 
         plt.show()
@@ -1359,8 +1366,6 @@ class pol_map(object):
             if hasattr(self, 'im'):
                 self.im.remove()
             self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno')
-            ax.set_xlim(0,self.data.shape[1])
-            ax.set_ylim(0,self.data.shape[0])
             self.cbar = plt.colorbar(self.im, cax=self.cbar_ax, label=label)
             fig.canvas.draw_idle()
             return self.im
@@ -1412,12 +1417,12 @@ class pol_map(object):
             I_reg = self.I[self.region].sum()
             Q_reg = self.Q[self.region].sum()
             U_reg = self.U[self.region].sum()
-            I_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_I[self.region]**2))
-            Q_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_Q[self.region]**2))
-            U_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_U[self.region]**2))
-            IQ_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_IQ[self.region]**2))
-            IU_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_IU[self.region]**2))
-            QU_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_QU[self.region]**2))
+            I_reg_err = np.sqrt(np.sum(s_I[self.region]**2))
+            Q_reg_err = np.sqrt(np.sum(s_Q[self.region]**2))
+            U_reg_err = np.sqrt(np.sum(s_U[self.region]**2))
+            IQ_reg_err = np.sqrt(np.sum(s_IQ[self.region]**2))
+            IU_reg_err = np.sqrt(np.sum(s_IU[self.region]**2))
+            QU_reg_err = np.sqrt(np.sum(s_QU[self.region]**2))
 
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg

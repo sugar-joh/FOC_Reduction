@@ -467,6 +467,8 @@ def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
 
    return im_deconv
 
+def gaussian2d(x,y,sigma):
+   return np.exp(-(x**2+y**2)/(2*sigma**2))/(2*np.pi*sigma**2)
 
 def gaussian_psf(FWHM=1., shape=(5,5)):
    """
@@ -489,11 +491,10 @@ def gaussian_psf(FWHM=1., shape=(5,5)):
    stdev = FWHM/(2.*np.sqrt(2.*np.log(2.)))
 
    # Create kernel of desired shape
-   xx, yy = np.indices(shape)
-   x0, y0 = (np.array(shape)-1.)/2.
-   kernel = np.exp(-0.5*((xx-x0)**2+(yy-y0)**2)/stdev**2)
-
-   return kernel
+   x, y = np.meshgrid(np.arange(-shape[0]/2,shape[0]/2),np.arange(-shape[1]/2,shape[1]/2))
+   kernel = gaussian2d(x, y, stdev)
+   
+   return kernel/kernel.sum()
 
 def from_file_psf(filename):
    """
@@ -511,7 +512,7 @@ def from_file_psf(filename):
    """
    with fits.open(filename) as f:
       psf = f[0].data
-      if (type(psf) != numpy.ndarray) or len(psf) != 2:
+      if (type(psf) != np.ndarray) or len(psf) != 2:
          raise ValueError("Invalid PSF image in PrimaryHDU at {0:s}".format(filename))
    #Return the normalized Point Spread Function
    kernel = psf/psf.max()

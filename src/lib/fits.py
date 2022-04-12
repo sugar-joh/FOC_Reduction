@@ -13,6 +13,7 @@ import numpy as np
 from astropy.io import fits
 from astropy import wcs
 from lib.convex_hull import image_hull, clean_ROI
+import matplotlib.pyplot as plt
 
 
 def get_obs_data(infiles, data_folder="", compute_flux=False):
@@ -140,25 +141,25 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
 
     #Crop Data to mask
     if data_mask.shape != (1,1):
-        I_stokes = I_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        Q_stokes = Q_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        U_stokes = U_stokes[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        P = P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        debiased_P = debiased_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        s_P = s_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        s_P_P = s_P_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        PA = PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        s_PA = s_PA[vertex[0]:vertex[1],vertex[2]:vertex[3]]
-        s_PA_P = s_PA_P[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        I_stokes = I_stokes[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        Q_stokes = Q_stokes[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        U_stokes = U_stokes[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        P = P[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        debiased_P = debiased_P[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        s_P = s_P[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        s_P_P = s_P_P[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        PA = PA[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        s_PA = s_PA[vertex[2]:vertex[3],vertex[0]:vertex[1]]
+        s_PA_P = s_PA_P[vertex[2]:vertex[3],vertex[0]:vertex[1]]
         
-        new_Stokes_cov = np.zeros((3,3,shape[0],shape[1]))
+        new_Stokes_cov = np.zeros((*Stokes_cov.shape[:-2],*shape[::-1]))
         for i in range(3):
             for j in range(3):
                 Stokes_cov[i,j][(1-data_mask).astype(bool)] = 0.
-                new_Stokes_cov[i,j] = Stokes_cov[i,j][vertex[0]:vertex[1],vertex[2]:vertex[3]]
+                new_Stokes_cov[i,j] = Stokes_cov[i,j][vertex[2]:vertex[3],vertex[0]:vertex[1]]
         Stokes_cov = new_Stokes_cov
         
-        data_mask = data_mask[vertex[0]:vertex[1],vertex[2]:vertex[3]]
+        data_mask = data_mask[vertex[2]:vertex[3],vertex[0]:vertex[1]]
     data_mask = data_mask.astype(float, copy=False)
 
     #Create HDUList object
@@ -166,6 +167,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
 
     #Add I_stokes as PrimaryHDU
     header['datatype'] = ('I_stokes', 'type of data stored in the HDU')
+    I_stokes[(1-data_mask).astype(bool)] = 0.
     primary_hdu = fits.PrimaryHDU(data=I_stokes, header=header)
     hdul.append(primary_hdu)
 
@@ -178,6 +180,8 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
             [data_mask, 'Data_mask']]:
         hdu_header = header.copy()
         hdu_header['datatype'] = name
+        if not name == 'IQU_cov_matrix':
+            data[(1-data_mask).astype(bool)] = 0.
         hdu = fits.ImageHDU(data=data,header=hdu_header)
         hdul.append(hdu)
 
