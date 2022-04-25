@@ -261,6 +261,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
     new_shape = np.array([v_array[1]-v_array[0],v_array[3]-v_array[2]])
     rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 0., 'b']
     if display:
+        plt.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(figsize=(10,10))
         data = data_array[0]
         instr = headers[0]['instrume']
@@ -276,13 +277,13 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
                 color='grey', alpha=0.3)
         ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
                 color='grey', alpha=0.3)
-        ax.annotate(instr+":"+rootname, color='white', fontsize=5,
+        ax.annotate(instr+":"+rootname, color='white', fontsize=10,
                 xy=(0.02, 0.95), xycoords='axes fraction')
-        ax.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02),
+        ax.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02),
                 xycoords='axes fraction')
-        ax.annotate(exptime, color='white', fontsize=5, xy=(0.80, 0.02),
+        ax.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
                 xycoords='axes fraction')
-        ax.set(title="Location of cropped image.",
+        ax.set(#title="Location of cropped image.",
                 xlabel='pixel offset',
                 ylabel='pixel offset')
 
@@ -430,7 +431,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
     if error_array is None:
         error_array = np.zeros(data_array.shape)
     if not data_mask is None:
-        data, error, mask = data_array, error_array, data_mask#_ = crop_array(data_array, headers, error_array, data_mask, step=5, null_val=0., inside=False)
+        data, error, mask = data_array, error_array, data_mask
     else:
         data, error, _ = crop_array(data_array, headers, error_array, step=5, null_val=0., inside=False)
         mask = np.ones(data[0].shape, dtype=bool)
@@ -487,6 +488,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
             print(data_array[i])
 
     if display:
+        plt.rcParams.update({'font.size': 20})
         convert_flux = headers[0]['photflam']
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
@@ -500,7 +502,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
         for f in np.unique(filt):
             mask = [fil==f for fil in filt]
             ax.scatter(date_time[mask], background[mask]*convert_flux,
-                    color=dict_filt[f],label="Filter : {0:s}".format(f))
+                    color=dict_filt[f],label="{0:s}".format(f))
         ax.errorbar(date_time, background*convert_flux,
                 yerr=error_array[:,0,0]*convert_flux, fmt='+k',
                 markersize=0, ecolor=c_filt)
@@ -511,7 +513,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
         ax.xaxis.set_major_formatter(formatter)
         ax.set_xlabel("Observation date and time")
         ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        ax.set_title("Background flux and error computed for each image")
+        #ax.set_title("Background flux and error computed for each image")
         plt.legend()
 
         fig2, ax2 = plt.subplots(figsize=(10,10))
@@ -524,13 +526,13 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
         im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
         x, y, width, height, angle, color = rectangle[0]
         ax2.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
-        ax2.annotate(instr+":"+rootname, color='white', fontsize=5,
+        ax2.annotate(instr+":"+rootname, color='white', fontsize=10,
                 xy=(0.02, 0.95), xycoords='axes fraction')
-        ax2.annotate(filt, color='white', fontsize=10, xy=(0.02, 0.02),
+        ax2.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02),
                 xycoords='axes fraction')
-        ax2.annotate(exptime, color='white', fontsize=5, xy=(0.80, 0.02),
+        ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
                 xycoords='axes fraction')
-        ax2.set(title="Location of background computation.",
+        ax2.set(#title="Location of background computation.",
                 xlabel='pixel offset',
                 ylabel='pixel offset')
 
@@ -911,7 +913,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             weights = np.ones(error_array[i].shape)
             if smoothing.lower()[:6] in ['weight']:
                 weights = 1./error_array[i]**2
-                weights /= weights.sum()
+                #weights /= weights.max()
             kernel = gaussian2d(x, y, stdev)
             kernel /= kernel.sum()
             smoothed[i] = convolve2d(image*weights/image.sum(),kernel,'same')*image.sum()

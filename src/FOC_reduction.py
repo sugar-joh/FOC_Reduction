@@ -98,10 +98,10 @@ def main():
         iterations = 5
         algo="richardson"
     # Initial crop
-    display_crop = True
+    display_crop = False
     # Error estimation
     error_sub_shape = (10,10)
-    display_error = True
+    display_error = False
     # Data binning
     rebin = True
     if rebin:
@@ -110,7 +110,7 @@ def main():
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
-    display_data = True
+    display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
     smoothing_FWHM = 0.20           #If None, no smoothing is done
@@ -120,7 +120,7 @@ def main():
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True
+    final_display = False
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations

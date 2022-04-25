@@ -81,6 +81,7 @@ def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
         be saved. Not used if savename is None.
         Defaults to current folder.
     """
+    plt.rcParams.update({'font.size': 10})
     if shape is None:
         shape = np.array([np.ceil(np.sqrt(data_array.shape[0])).astype(int),]*2)
     fig, ax = plt.subplots(shape[0], shape[1], figsize=(10,10), dpi=200,
@@ -147,6 +148,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     wcs = WCS(Stokes[0]).deepcopy()
 
     # Plot figure
+    plt.rcParams.update({'font.size': 10})
     fig = plt.figure(figsize=(30,10))
 
     ax = fig.add_subplot(131, projection=wcs)
