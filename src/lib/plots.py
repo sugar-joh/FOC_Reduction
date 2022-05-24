@@ -996,6 +996,8 @@ class pol_map(object):
     """
     def __init__(self,Stokes, SNRp_cut=3., SNRi_cut=30., selection=None):
 
+        if type(Stokes) == str:
+            Stokes = fits.open(Stokes)
         self.Stokes = deepcopy(Stokes)
         self.SNRp_cut = SNRp_cut
         self.SNRi_cut = SNRi_cut
