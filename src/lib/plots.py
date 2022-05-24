@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.path import Path
 from matplotlib.widgets import RectangleSelector, Button, Slider, TextBox, LassoSelector
+from matplotlib.colors import LogNorm
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -391,14 +392,20 @@ class align_maps(object):
         self.other_map = other_map
 
         self.wcs_map = WCS(self.map[0]).deepcopy()
-        if self.wcs_map.naxis > 2:
+        if self.wcs_map.naxis == 4:
             self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
             self.map[0].data = self.map[0].data[0,0]
+        elif self.wcs_map.naxis == 3:
+            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
+            self.map[0].data = self.map[0].data[1]
         
         self.wcs_other = WCS(self.other_map[0]).deepcopy()
-        if self.wcs_other.naxis > 2:
+        if self.wcs_other.naxis == 4:
             self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
             self.other_map[0].data = self.other_map[0].data[0,0]
+        elif self.wcs_other.naxis == 3:
+            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
+            self.other_map[0].data = self.other_map[0].data[1]
         
         try:
             convert_flux = self.map[0].header['photflam']
@@ -442,7 +449,7 @@ class align_maps(object):
         self.ax2.set_facecolor('k')
 
         vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
-        im2 = self.ax2.imshow(other_data*other_convert, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im2 = self.ax2.imshow(other_data*other_convert, norm=LogNorm(), aspect='auto', cmap='inferno', alpha=1.)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
@@ -605,7 +612,9 @@ class overplot_pol(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, SNRp_cut=3., SNRi_cut=30., savename=None):
+    def overplot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+        self.Stokes_UV = self.map
+        self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
         stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
@@ -653,7 +662,7 @@ class overplot_pol(align_maps):
 
         #Display "other" intensity map
         vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
-        im = self.ax.imshow(other_data*other_convert, vmin=vmin, vmax=vmax, transform=self.ax.get_transform(self.wcs_other), cmap='inferno', alpha=1.)
+        im = self.ax.imshow(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), cmap='inferno', alpha=1., **kwargs)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
@@ -673,10 +682,10 @@ class overplot_pol(align_maps):
 
         self.fig2.canvas.draw()
     
-    def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None) -> None:
+    def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
         self.align()
         if self.aligned:
-            self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
+            self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
             plt.show(block=True)
 
 
