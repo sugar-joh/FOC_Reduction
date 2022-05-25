@@ -386,7 +386,7 @@ class align_maps(object):
     """
     Class to interactively align maps with different WCS.
     """
-    def __init__(self, map1, other_map):
+    def __init__(self, map1, other_map, **kwargs):
         self.aligned = False
         self.map = map1
         self.other_map = other_map
@@ -449,7 +449,13 @@ class align_maps(object):
         self.ax2.set_facecolor('k')
 
         vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
-        im2 = self.ax2.imshow(other_data*other_convert, norm=LogNorm(), aspect='auto', cmap='inferno', alpha=1.)
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i                    
+        im2 = self.ax2.imshow(other_data*other_convert, aspect='auto', **kwargs)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
@@ -662,7 +668,13 @@ class overplot_pol(align_maps):
 
         #Display "other" intensity map
         vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
-        im = self.ax.imshow(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), cmap='inferno', alpha=1., **kwargs)
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i                    
+        im = self.ax.imshow(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 

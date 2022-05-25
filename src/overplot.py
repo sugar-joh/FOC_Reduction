@@ -41,5 +41,5 @@ E.plot(levels=levels357GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC50
 F = overplot_pol(Stokes_UV, Stokes_S2)
 F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/S2_overplot_forced.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
 
-G = overplot_pol(Stokes_UV, Stokes_IR)
-G.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15))
+G = overplot_pol(Stokes_UV, Stokes_IR, norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+G.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
