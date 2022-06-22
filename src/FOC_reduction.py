@@ -20,17 +20,17 @@ from astropy.wcs import WCS
 def main():
     ##### User inputs
     ## Input and output locations
-    globals()['data_folder'] = "../data/NGC1068_x274020/"
-    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-    psf_file = 'NGC1068_f253m00.fits'
-    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+#    globals()['data_folder'] = "../data/NGC1068_x274020/"
+#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+##    psf_file = 'NGC1068_f253m00.fits'
+#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
-#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
 #    psf_file = 'IC5063_f502m00.fits'
-#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -122,10 +122,10 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = False
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
+    figname = 'IC5063_FOC'         #target/intrument name
     figtype = '_combine_FWHM020'    #additionnal informations
-    SNRp_cut = 5.    #P measurments with SNR>3
-    SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 3.    #P measurments with SNR>3
+    SNRi_cut = 60.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -176,13 +176,13 @@ def main():
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
     I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
-    
+
     ## Step 3:
     # Rotate images to have North up
     if rotate_stokes:
         alpha = headers[0]['orientat']
         I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -alpha, SNRi_cut=None)
-        
+
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
 

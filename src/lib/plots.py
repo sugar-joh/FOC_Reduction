@@ -271,7 +271,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if display is None:
         # If no display selected, show intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
         print("Total flux contour levels : ", levelsI)
@@ -281,7 +281,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         # Display polarisation flux
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
         vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask])
-        im = ax.imshow(stkI.data*convert_flux*pol.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux*pol.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
         print("Polarized flux contour levels : ", levelsPf)
@@ -290,24 +290,24 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
         vmin, vmax = 0., 100.
-        im = ax.imshow(pol.data*100., vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(pol.data*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P$ [%]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
         vmin, vmax = 0., 10.
         p_err = deepcopy(pol_err.data)
         p_err[p_err > vmax/100.] = np.nan
-        im = ax.imshow(p_err*100., vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(p_err*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['s_i','i_err']:
         # Display intensity error map
         vmin, vmax = 0., np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
-        im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
         vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
-        im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
         levelsSNRi = np.linspace(SNRi_cut, vmax*0.99, 10)
         print("SNRi contour levels : ", levelsSNRi)
@@ -316,7 +316,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
         vmin, vmax = SNRp_cut, np.max(SNRp[SNRp > 0.])
-        im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P/\sigma_{P}$")
         levelsSNRp = np.linspace(SNRp_cut, vmax*0.99, 10)
         print("SNRp contour levels : ", levelsSNRp)
@@ -325,7 +325,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     else:
         # Defaults to intensity map
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux*2.)
-        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
     if (display is None) or not(display.lower() in ['default']):
@@ -398,7 +398,7 @@ class align_maps(object):
         elif self.wcs_map.naxis == 3:
             self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
             self.map[0].data = self.map[0].data[1]
-        
+
         self.wcs_other = WCS(self.other_map[0]).deepcopy()
         if self.wcs_other.naxis == 4:
             self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
@@ -406,7 +406,7 @@ class align_maps(object):
         elif self.wcs_other.naxis == 3:
             self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
             self.other_map[0].data = self.other_map[0].data[1]
-        
+
         try:
             convert_flux = self.map[0].header['photflam']
         except KeyError:
@@ -415,7 +415,7 @@ class align_maps(object):
             other_convert = self.other_map[0].header['photflam']
         except KeyError:
             other_convert = 1.
-        
+
         #Get data
         data = self.map[0].data
         other_data = self.other_map[0].data
@@ -427,13 +427,13 @@ class align_maps(object):
         self.ax1.set_facecolor('k')
 
         vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
-        im1 = self.ax1.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im1 = self.ax1.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_map.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax1.add_artist(px_sc)
-        
+
         try:
             north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
             self.ax1.add_artist(north_dir1)
@@ -454,14 +454,14 @@ class align_maps(object):
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
-                    kwargs[key_i] = val_i                    
-        im2 = self.ax2.imshow(other_data*other_convert, aspect='auto', **kwargs)
+                    kwargs[key_i] = val_i
+        im2 = self.ax2.imshow(other_data*other_convert, aspect='equal', **kwargs)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax2.add_artist(px_sc)
-        
+
         try:
             north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
             self.ax2.add_artist(north_dir2)
@@ -477,7 +477,7 @@ class align_maps(object):
         self.bapply = Button(self.axapply, 'Apply reference')
         self.axreset = self.fig.add_axes([0.60, 0.01, 0.1, 0.04])
         self.breset = Button(self.axreset, 'Leave as is')
-     
+
     def get_aligned_wcs(self):
         return self.wcs_map, self.wcs_other
 
@@ -489,14 +489,14 @@ class align_maps(object):
 
                 self.cr_map.set(data=[x,y])
                 self.fig.canvas.draw_idle()
-            
+
             if (event.inaxes is not None) and (event.inaxes == self.ax2):
                 x = event.xdata
                 y = event.ydata
 
                 self.cr_other.set(data=[x,y])
                 self.fig.canvas.draw_idle()
-    
+
     def reset_align(self, event):
         self.wcs_map.wcs.crpix = WCS(self.map[0].header).wcs.crpix[:2]
         self.wcs_other.wcs.crpix = WCS(self.other_map[0].header).wcs.crpix[:2]
@@ -504,7 +504,7 @@ class align_maps(object):
 
         if self.aligned:
             plt.close()
-        
+
         self.aligned = True
 
     def apply_align(self, event):
@@ -515,13 +515,13 @@ class align_maps(object):
 
         if self.aligned:
             plt.close()
-        
+
         self.aligned = True
-    
+
     def on_close_align(self, event):
         self.aligned = True
         #print(self.get_aligned_wcs())
-    
+
     def align(self):
         self.fig.canvas.draw()
         self.fig.canvas.mpl_connect('button_press_event', self.onclick_ref)
@@ -547,7 +547,7 @@ class overplot_radio(align_maps):
         pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
         pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
         pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
-        
+
         other_data = self.other_map[0].data
         other_convert = 1.
         other_unit = self.other_map[0].header['bunit']
@@ -555,7 +555,7 @@ class overplot_radio(align_maps):
             other_unit = r"mJy/Beam"
             other_convert = 1e3
         other_freq = self.other_map[0].header['crval3']
-        
+
         convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
@@ -575,7 +575,7 @@ class overplot_radio(align_maps):
 
         #Display UV intensity map with polarization vectors
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = self.ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=1.)
+        im = self.ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
@@ -600,12 +600,12 @@ class overplot_radio(align_maps):
         north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
- 
+
         if not(savename is None):
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
         self.fig2.canvas.draw()
-    
+
     def plot(self, levels, SNRp_cut=3., SNRi_cut=30., savename=None) -> None:
         self.align()
         if self.aligned:
@@ -628,9 +628,9 @@ class overplot_pol(align_maps):
         pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
         pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
         pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
-        
+
         convert_flux = self.Stokes_UV[0].header['photflam']
-        
+
         other_data = self.other_map[0].data
         try:
             other_convert = self.other_map[0].header['photflam']
@@ -654,9 +654,9 @@ class overplot_pol(align_maps):
 
         #Display Stokes I as contours
         levels_stkI = np.rint(np.linspace(10,99,10))/100.*np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        cont_stkI = self.ax.contour(stkI.data*convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey')
-        self.ax.clabel(cont_stkI, inline=True, fontsize=8)
-        
+        cont_stkI = self.ax.contour(stkI.data*convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.)
+        #self.ax.clabel(cont_stkI, inline=True, fontsize=8)
+
         self.ax.autoscale(False)
 
         #Display full size polarization vectors
@@ -673,27 +673,27 @@ class overplot_pol(align_maps):
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
-                    kwargs[key_i] = val_i                    
+                    kwargs[key_i] = val_i
         im = self.ax.imshow(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
-        px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
+        px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
         north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
-        
+
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
 
         if not(savename is None):
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
         self.fig2.canvas.draw()
-    
+
     def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
         self.align()
         if self.aligned:
@@ -711,7 +711,7 @@ class crop_map(object):
         self.hdul = hdul
         self.header = deepcopy(self.hdul[0].header)
         self.wcs = WCS(self.header).deepcopy()
-        
+
         self.data = deepcopy(self.hdul[0].data)
         try:
             self.convert_flux = self.header['photflam']
@@ -758,16 +758,16 @@ class crop_map(object):
             wcs = self.wcs
         if convert_flux is None:
             convert_flux = self.convert_flux
-        
+
         vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
         if hasattr(self, 'im'):
             self.im.remove()
-        self.im = self.ax.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno', alpha=self.mask_alpha, origin='lower')
+        self.im = self.ax.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=self.mask_alpha, origin='lower')
         if hasattr(self, 'cr'):
             self.cr[0].set_data(*wcs.wcs.crpix)
         else:
             self.cr = self.ax.plot(*wcs.wcs.crpix, 'r+')
-        self.fig.canvas.draw_idle()        
+        self.fig.canvas.draw_idle()
         return self.im
 
     @property
@@ -811,10 +811,10 @@ class crop_map(object):
             header = self.header
             data = self.data
             wcs = self.wcs
-        
+
         vertex = self.RSextent.astype(int)
         shape = vertex[1::2] - vertex[0::2]
-        
+
         extent = np.array(self.im.get_extent())
         shape_im = extent[1::2] - extent[0::2]
         if (shape_im.astype(int) != shape).any() and (self.RSextent != self.extent).any():
@@ -827,7 +827,7 @@ class crop_map(object):
             else:
                 self.wcs_crop.wcs.crval = wcs.wcs_pix2world([self.RScenter],1)[0]
                 self.wcs_crop.wcs.crpix = self.RScenter-self.RSextent[::2]
-             
+
             # Crop dataset
             self.data_crop = deepcopy(data[vertex[2]:vertex[3], vertex[0]:vertex[1]])
 
@@ -853,7 +853,7 @@ class crop_map(object):
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                         drawtype='box', button=[1], interactive=True)
         self.fig.canvas.draw_idle()
-    
+
     def on_close(self, event) -> None:
         if not hasattr(self, 'hdul_crop'):
             self.hdul_crop = self.hdul
@@ -890,7 +890,7 @@ class crop_Stokes(crop_map):
             hdul = self.hdul
             data = self.data
             wcs = self.wcs
-        
+
         vertex = self.RSextent.astype(int)
         shape = vertex[1::2] - vertex[0::2]
 
@@ -907,7 +907,7 @@ class crop_Stokes(crop_map):
             else:
                 self.wcs_crop.wcs.crval = wcs.wcs_pix2world([self.RScenter],1)[0]
                 self.wcs_crop.wcs.crpix = self.RScenter-self.RSextent[::2]
-             
+
             # Crop dataset
             for dataset in self.hdul_crop:
                 if dataset.header['datatype']=='IQU_cov_matrix':
@@ -941,7 +941,7 @@ class crop_Stokes(crop_map):
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                         drawtype='box', button=[1], interactive=True)
         self.fig.canvas.draw_idle()
-    
+
     @property
     def data_mask(self):
         return self.hdul_crop[-1].data
@@ -967,13 +967,13 @@ class image_lasso_selector:
             self.ax = ax
             self.mask_alpha = 0.1
             self.embedded = True
-        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='auto', cmap='inferno',alpha=self.mask_alpha)
+        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='equal', cmap='inferno',alpha=self.mask_alpha)
         plt.ion()
-        
+
         lineprops = {'color': 'grey', 'linewidth': 1, 'alpha': 0.8}
         self.lasso = LassoSelector(self.ax, self.onselect,props=lineprops, useblit=False)
         self.lasso.set_visible(True)
-        
+
         pix_x = np.arange(self.img.shape[0])
         pix_y = np.arange(self.img.shape[1])
         xv, yv = np.meshgrid(pix_y,pix_x)
@@ -993,10 +993,10 @@ class image_lasso_selector:
         p = Path(verts)
         self.indices = p.contains_points(self.pix, radius=0).reshape(self.img.shape[:2])
         self.update_mask()
-        
+
     def update_mask(self):
         self.displayed.remove()
-        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='auto', cmap='inferno',alpha=self.mask_alpha)
+        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='equal', cmap='inferno',alpha=self.mask_alpha)
         array = self.displayed.get_array().data
 
         self.mask = np.zeros(self.img.shape[:2],dtype=bool)
@@ -1040,14 +1040,14 @@ class pol_map(object):
         self.ax = self.fig.add_subplot(111,projection=self.wcs)
         self.ax_cosmetics()
         self.cbar_ax = self.fig.add_axes([0.925, 0.12, 0.01, 0.75])
- 
+
         #Display selected data (Default to total flux)
         self.display()
         #Display polarization vectors in SNR_cut
         self.pol_vector()
         #Display integrated values in ROI
         self.pol_int()
-        
+
         #Set axes for sliders (SNRp_cut, SNRi_cut)
         ax_I_cut = self.fig.add_axes([0.125, 0.080, 0.35, 0.01])
         ax_P_cut = self.fig.add_axes([0.125, 0.055, 0.35, 0.01])
@@ -1121,7 +1121,7 @@ class pol_map(object):
         b_crop = Button(ax_crop,"Crop")
         self.cropped = False
         b_crop_reset = Button(ax_crop_reset,"Reset")
-        
+
         def crop(event):
             if self.cropped:
                 self.cropped = False
@@ -1284,7 +1284,7 @@ class pol_map(object):
         b_snrp.on_clicked(d_snrp)
 
         plt.show()
-    
+
     @property
     def wcs(self):
         return deepcopy(WCS(self.Stokes[0].header))
@@ -1312,7 +1312,7 @@ class pol_map(object):
     @property
     def data_mask(self):
         return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Data_mask' for i in range(len(self.Stokes))])].data
-    
+
     def set_data_mask(self, mask):
         self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Data_mask' for i in range(len(self.Stokes))])].data = mask.astype(float)
 
@@ -1337,7 +1337,7 @@ class pol_map(object):
         ax.coords[1].set_axislabel_position('l')
         ax.coords[1].set_ticklabel_position('l')
         ax.axis('equal')
-        
+
         #Display scales and orientation
         fontprops = fm.FontProperties(size=14)
         px_size = self.wcs.wcs.cdelt[0]*3600.
@@ -1357,7 +1357,7 @@ class pol_map(object):
     def display(self, fig=None, ax=None):
         if self.display_selection is None:
             self.display_selection = "total_flux"
-        
+
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
             vmin, vmax = 0., np.max(self.data[self.data > 0.])
@@ -1390,12 +1390,12 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'im'):
                 self.im.remove()
-            self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno')
+            self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
             self.cbar = plt.colorbar(self.im, cax=self.cbar_ax, label=label)
             fig.canvas.draw_idle()
             return self.im
         else:
-            im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='auto', cmap='inferno')
+            im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
             ax.set_xlim(0,self.data.shape[1])
             ax.set_ylim(0,self.data.shape[0])
             plt.colorbar(im, pad=0.025, aspect=80, label=label)
@@ -1419,7 +1419,7 @@ class pol_map(object):
         else:
             ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, color='white')
             fig.canvas.draw_idle()
-    
+
     def pol_int(self, fig=None, ax=None):
         if self.region is None:
             n_pix = self.I.size
@@ -1475,4 +1475,3 @@ class pol_map(object):
             if not self.region is None:
                 ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
-   

@@ -482,7 +482,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
         err_flat = data_array[i]*0.03
 
         error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
-        
+
         background[i] = sub_image.sum()
         if (data_array[i] < 0.).any():
             print(data_array[i])
@@ -808,7 +808,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
 
         shifts.append(shift)
         errors.append(error)
-    
+
     shifts = np.array(shifts)
     errors = np.array(errors)
 
@@ -818,7 +818,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     for i in range(len(headers_wcs)):
         headers_wcs[i].wcs.crpix = new_crpix[0]
         headers[i].update(headers_wcs[i].to_header())
-    
+
     data_mask = rescaled_mask.all(axis=0)
     data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask)
 
@@ -926,7 +926,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
 
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
-    
+
     return smoothed, error
 
 
@@ -1039,7 +1039,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             err60 = np.sqrt(np.sum(err60_array**2,axis=0))
             err120 = np.sqrt(np.sum(err120_array**2,axis=0))
             polerr_array = np.array([err0, err60, err120])
-            
+
             # Update headers
             for header in headers:
                 if header['filtnam1']=='POL0':
@@ -1186,12 +1186,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         Q_stokes = np.zeros(pol_array[0].shape)
         U_stokes = np.zeros(pol_array[0].shape)
         Stokes_cov = np.zeros((3,3,I_stokes.shape[0],I_stokes.shape[1]))
-        
+
         for i in range(I_stokes.shape[0]):
             for j in range(I_stokes.shape[1]):
                 I_stokes[i,j], Q_stokes[i,j], U_stokes[i,j] = np.dot(coeff_stokes, pol_flux[:,i,j]).T
                 Stokes_cov[:,:,i,j] = np.dot(coeff_stokes, np.dot(pol_cov[:,:,i,j], coeff_stokes.T))
-        
+
         mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
         if mask.any():
             print("WARNING : found {0:d} pixels for which I_pol > I_stokes".format(I_stokes[mask].size))
@@ -1201,17 +1201,17 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes))
         dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes))
         dI_dtheta = np.array([dI_dtheta1, dI_dtheta2, dI_dtheta3])
-        
+
         dQ_dtheta1 = 2.*pol_eff[0]/A*(np.cos(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*Q_stokes)
         dQ_dtheta2 = 2.*pol_eff[1]/A*(np.cos(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*Q_stokes)
         dQ_dtheta3 = 2.*pol_eff[2]/A*(np.cos(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*Q_stokes)
         dQ_dtheta = np.array([dQ_dtheta1, dQ_dtheta2, dQ_dtheta3])
-        
+
         dU_dtheta1 = 2.*pol_eff[0]/A*(np.sin(2.*theta[0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0]) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1]))*U_stokes)
         dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*theta[1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1]) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2]))*U_stokes)
         dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*theta[2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*theta[1]+2.*theta[2]) - pol_eff[0]*np.cos(-2.*theta[2]+2.*theta[0]))*U_stokes)
         dU_dtheta = np.array([dU_dtheta1, dU_dtheta2, dU_dtheta3])
-        
+
         # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
         s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
@@ -1221,7 +1221,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         Stokes_cov[0,0] += s_I2_axis
         Stokes_cov[1,1] += s_Q2_axis
         Stokes_cov[2,2] += s_U2_axis
-        
+
         if not(FWHM is None) and (smoothing.lower() in ['weighted_gaussian_after','weight_gauss_after','gaussian_after','gauss_after']):
             smoothing = smoothing.lower()[:-6]
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
@@ -1233,7 +1233,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 
             I_stokes, Q_stokes, U_stokes = Stokes_array
             Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
-        
+
         #Compute integrated values for P, PA before any rotation
         mask = np.logical_and(data_mask.astype(bool), (I_stokes > 0.))
         n_pix = I_stokes[mask].size
@@ -1419,11 +1419,11 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     mrot = np.array([[1., 0., 0.],
                     [0., np.cos(2.*alpha), np.sin(2.*alpha)],
                     [0, -np.sin(2.*alpha), np.cos(2.*alpha)]])
-    
+
     old_center = np.array(I_stokes.shape)/2
     shape = np.fix(np.array(I_stokes.shape)*np.sqrt(2.5)).astype(int)
     new_center = np.array(shape)/2
-    
+
     I_stokes = zeropad(I_stokes, shape)
     Q_stokes = zeropad(Q_stokes, shape)
     U_stokes = zeropad(U_stokes, shape)
@@ -1433,7 +1433,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_Q_stokes = np.zeros(shape)
     new_U_stokes = np.zeros(shape)
     new_Stokes_cov = np.zeros((*Stokes_cov.shape[:-2],*shape))
-    
+
     for i in range(shape[0]):
         for j in range(shape[1]):
             new_I_stokes[i,j], new_Q_stokes[i,j], new_U_stokes[i,j] = np.dot(mrot, np.array([I_stokes[i,j], Q_stokes[i,j], U_stokes[i,j]])).T
@@ -1554,7 +1554,7 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     old_center = np.array(data_array[0].shape)/2
     shape = np.fix(np.array(data_array[0].shape)*np.sqrt(2.5)).astype(int)
     new_center = np.array(shape)/2
-    
+
     data_array = zeropad(data_array, [data_array.shape[0],*shape])
     error_array = zeropad(error_array, [error_array.shape[0],*shape])
     data_mask = zeropad(data_mask, shape)
