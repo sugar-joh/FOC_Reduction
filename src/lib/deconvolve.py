@@ -1,5 +1,30 @@
 """
 Library functions for the implementation of various deconvolution algorithms.
+
+prototypes :
+   - gaussian_psf(FWHM, shape) -> kernel
+      Return the normalized gaussian point spread function over some kernel shape.
+   
+   - from_file_psf(filename) -> kernel
+      Get the point spread function from an external FITS file.
+   
+   - wiener(image, psf, alpha, clip) -> im_deconv
+      Implement the simplified Wiener filtering.
+   
+   - van_cittert(image, psf, alpha, iterations, clip, filter_epsilon) -> im_deconv
+      Implement Van-Cittert iterative algorithm.
+
+   - richardson_lucy(image, psf, iterations, clip, filter_epsilon) -> im_deconv
+      Implement Richardson-Lucy iterative algorithm.
+
+   - one_step_gradient(image, psf, iterations, clip, filter_epsilon) -> im_deconv
+      Implement One-step gradient iterative algorithm.
+
+   - conjgrad(image, psf, alpha, error, iterations) -> im_deconv
+      Implement the Conjugate Gradient algorithm.
+
+   - deconvolve_im(image, psf, alpha, error, iterations, clip, filter_epsilon, algo) -> im_deconv
+      Prepare data for deconvolution using specified algorithm.
 """
 
 import numpy as np
@@ -18,53 +43,108 @@ def abs2(x):
 
 
 def zeropad(arr, shape):
-    """Zero-pad array ARR to given shape.
+   """
+   Zero-pad array ARR to given shape.
+   The contents of ARR is approximately centered in the result.
+   """
+   rank = arr.ndim
+   if len(shape) != rank:
+      raise ValueError("bad number of dimensions")
+   diff = np.asarray(shape) - np.asarray(arr.shape)
+   if diff.min() < 0:
+      raise ValueError("output dimensions must be larger or equal input dimensions")
+   offset = diff//2
+   z = np.zeros(shape, dtype=arr.dtype)
+   if rank == 1:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      z[i0:n0] = arr
+   elif rank == 2:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      i1 = offset[1]; n1 = i1 + arr.shape[1]
+      z[i0:n0,i1:n1] = arr
+   elif rank == 3:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      i1 = offset[1]; n1 = i1 + arr.shape[1]
+      i2 = offset[2]; n2 = i2 + arr.shape[2]
+      z[i0:n0,i1:n1,i2:n2] = arr
+   elif rank == 4:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      i1 = offset[1]; n1 = i1 + arr.shape[1]
+      i2 = offset[2]; n2 = i2 + arr.shape[2]
+      i3 = offset[3]; n3 = i3 + arr.shape[3]
+      z[i0:n0,i1:n1,i2:n2,i3:n3] = arr
+   elif rank == 5:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      i1 = offset[1]; n1 = i1 + arr.shape[1]
+      i2 = offset[2]; n2 = i2 + arr.shape[2]
+      i3 = offset[3]; n3 = i3 + arr.shape[3]
+      i4 = offset[4]; n4 = i4 + arr.shape[4]
+      z[i0:n0,i1:n1,i2:n2,i3:n3,i4:n4] = arr
+   elif rank == 6:
+      i0 = offset[0]; n0 = i0 + arr.shape[0]
+      i1 = offset[1]; n1 = i1 + arr.shape[1]
+      i2 = offset[2]; n2 = i2 + arr.shape[2]
+      i3 = offset[3]; n3 = i3 + arr.shape[3]
+      i4 = offset[4]; n4 = i4 + arr.shape[4]
+      i5 = offset[5]; n5 = i5 + arr.shape[5]
+      z[i0:n0,i1:n1,i2:n2,i3:n3,i4:n4,i5:n5] = arr
+   else:
+      raise ValueError("too many dimensions")
+   return z
 
-    The contents of ARR is approximately centered in the result."""
-    rank = arr.ndim
-    if len(shape) != rank:
-        raise ValueError("bad number of dimensions")
-    diff = np.asarray(shape) - np.asarray(arr.shape)
-    if diff.min() < 0:
-        raise ValueError("output dimensions must be larger or equal input dimensions")
-    offset = diff//2
-    z = np.zeros(shape, dtype=arr.dtype)
-    if rank == 1:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        z[i0:n0] = arr
-    elif rank == 2:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        i1 = offset[1]; n1 = i1 + arr.shape[1]
-        z[i0:n0,i1:n1] = arr
-    elif rank == 3:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        i1 = offset[1]; n1 = i1 + arr.shape[1]
-        i2 = offset[2]; n2 = i2 + arr.shape[2]
-        z[i0:n0,i1:n1,i2:n2] = arr
-    elif rank == 4:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        i1 = offset[1]; n1 = i1 + arr.shape[1]
-        i2 = offset[2]; n2 = i2 + arr.shape[2]
-        i3 = offset[3]; n3 = i3 + arr.shape[3]
-        z[i0:n0,i1:n1,i2:n2,i3:n3] = arr
-    elif rank == 5:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        i1 = offset[1]; n1 = i1 + arr.shape[1]
-        i2 = offset[2]; n2 = i2 + arr.shape[2]
-        i3 = offset[3]; n3 = i3 + arr.shape[3]
-        i4 = offset[4]; n4 = i4 + arr.shape[4]
-        z[i0:n0,i1:n1,i2:n2,i3:n3,i4:n4] = arr
-    elif rank == 6:
-        i0 = offset[0]; n0 = i0 + arr.shape[0]
-        i1 = offset[1]; n1 = i1 + arr.shape[1]
-        i2 = offset[2]; n2 = i2 + arr.shape[2]
-        i3 = offset[3]; n3 = i3 + arr.shape[3]
-        i4 = offset[4]; n4 = i4 + arr.shape[4]
-        i5 = offset[5]; n5 = i5 + arr.shape[5]
-        z[i0:n0,i1:n1,i2:n2,i3:n3,i4:n4,i5:n5] = arr
-    else:
-        raise ValueError("too many dimensions")
-    return z
+
+def gaussian2d(x, y, sigma):
+   return np.exp(-(x**2+y**2)/(2*sigma**2))/(2*np.pi*sigma**2)
+
+
+def gaussian_psf(FWHM=1., shape=(5,5)):
+   """
+   Define the gaussian Point-Spread-Function of chosen shape and FWHM.
+   ----------
+   Inputs:
+   FWHM : float, optional
+      The Full Width at Half Maximum of the desired gaussian function for the
+      PSF in pixel increments.
+      Defaults to 1.
+   shape : tuple, optional
+      The shape of the PSF kernel. Must be of dimension 2.
+      Defaults to (5,5).
+   ----------
+   Returns:
+   kernel : numpy.ndarray
+      Kernel containing the weights of the desired gaussian PSF.
+   """
+   # Compute standard deviation from FWHM
+   stdev = FWHM/(2.*np.sqrt(2.*np.log(2.)))
+
+   # Create kernel of desired shape
+   x, y = np.meshgrid(np.arange(-shape[0]/2,shape[0]/2),np.arange(-shape[1]/2,shape[1]/2))
+   kernel = gaussian2d(x, y, stdev)
+   
+   return kernel/kernel.sum()
+
+
+def from_file_psf(filename):
+   """
+   Get the Point-Spread-Function from an external FITS file.
+   Such PSF can be generated using the TinyTim standalone program by STSCI.
+   See:
+   [1] https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny-tim-hst-psf-modeling
+   [2] https://doi.org/10.1117/12.892762
+   ----------
+   Inputs:
+   filename : str
+   ----------
+   kernel : numpy.ndarray
+      Kernel containing the weights of the desired gaussian PSF.
+   """
+   with fits.open(filename) as f:
+      psf = f[0].data
+      if (type(psf) != np.ndarray) or len(psf) != 2:
+         raise ValueError("Invalid PSF image in PrimaryHDU at {0:s}".format(filename))
+   #Return the normalized Point Spread Function
+   kernel = psf/psf.max()
+   return kernel
 
 
 def wiener(image, psf, alpha=0.1, clip=True):
@@ -88,9 +168,6 @@ def wiener(image, psf, alpha=0.1, clip=True):
    Returns:
    im_deconv : ndarray
       The deconvolved image.
-   ----------
-   References:
-   [1]
    """
    float_type = np.promote_types(image.dtype, np.float32)
    image = image.astype(float_type, copy=False)
@@ -135,9 +212,6 @@ def van_cittert(image, psf, alpha=0.1, iterations=20, clip=True, filter_epsilon=
    Returns:
    im_deconv : ndarray
       The deconvolved image.
-   ----------
-   References
-   [1] 
    """
    float_type = np.promote_types(image.dtype, np.float32)
    image = image.astype(float_type, copy=False)
@@ -231,9 +305,6 @@ def one_step_gradient(image, psf, iterations=20, clip=True, filter_epsilon=None)
    Returns:
    im_deconv : ndarray
       The deconvolved image.
-   ----------
-   References
-   [1] 
    """
    float_type = np.promote_types(image.dtype, np.float32)
    image = image.astype(float_type, copy=False)
@@ -282,9 +353,6 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
    Returns:
    im_deconv : ndarray
       The deconvolved image.
-   ----------
-   References:
-   [1]
    """
    float_type = np.promote_types(image.dtype, np.float32)
    image = image.astype(float_type, copy=False)
@@ -402,8 +470,8 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
 def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
                   filter_epsilon=None, algo='richardson'):
    """
-   Prepare an image for deconvolution using Richardson-Lucy algorithm and
-   return results.
+   Prepare an image for deconvolution using a chosen algorithm and return
+   results.
    ----------
    Inputs:
    image : numpy.ndarray
@@ -466,54 +534,3 @@ def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
    im_deconv = pxmax*norm_deconv
 
    return im_deconv
-
-def gaussian2d(x,y,sigma):
-   return np.exp(-(x**2+y**2)/(2*sigma**2))/(2*np.pi*sigma**2)
-
-def gaussian_psf(FWHM=1., shape=(5,5)):
-   """
-   Define the gaussian Point-Spread-Function of chosen shape and FWHM.
-   ----------
-   Inputs:
-   FWHM : float, optional
-      The Full Width at Half Maximum of the desired gaussian function for the
-      PSF in pixel increments.
-      Defaults to 1.
-   shape : tuple, optional
-      The shape of the PSF kernel. Must be of dimension 2.
-      Defaults to (5,5).
-   ----------
-   Returns:
-   kernel : numpy.ndarray
-      Kernel containing the weights of the desired gaussian PSF.
-   """
-   # Compute standard deviation from FWHM
-   stdev = FWHM/(2.*np.sqrt(2.*np.log(2.)))
-
-   # Create kernel of desired shape
-   x, y = np.meshgrid(np.arange(-shape[0]/2,shape[0]/2),np.arange(-shape[1]/2,shape[1]/2))
-   kernel = gaussian2d(x, y, stdev)
-   
-   return kernel/kernel.sum()
-
-def from_file_psf(filename):
-   """
-   Get the Point-Spread-Function from an external FITS file.
-   Such PSF can be generated using the TinyTim standalone program by STSCI.
-   See:
-   [1] https://www.stsci.edu/hst/instrumentation/focus-and-pointing/focus/tiny-tim-hst-psf-modeling
-   [2] https://doi.org/10.1117/12.892762
-   ----------
-   Inputs:
-   filename : str
-   ----------
-   kernel : numpy.ndarray
-      Kernel containing the weights of the desired gaussian PSF.
-   """
-   with fits.open(filename) as f:
-      psf = f[0].data
-      if (type(psf) != np.ndarray) or len(psf) != 2:
-         raise ValueError("Invalid PSF image in PrimaryHDU at {0:s}".format(filename))
-   #Return the normalized Point Spread Function
-   kernel = psf/psf.max()
-   return kernel

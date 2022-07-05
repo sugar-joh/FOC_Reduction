@@ -13,8 +13,8 @@ except ImportError:
 import numpy as np
 
 
-def _upsampled_dft(data, upsampled_region_size,
-                   upsample_factor=1, axis_offsets=None):
+def _upsampled_dft(data, upsampled_region_size, upsample_factor=1,
+                    axis_offsets=None):
     """
     Upsampled DFT by matrix multiplication.
     This code is intended to provide the same result as if the following

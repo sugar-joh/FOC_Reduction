@@ -5,7 +5,7 @@ prototypes :
     - get_obs_data(infiles, data_folder) -> data_array, headers
         Extract the observationnal data from fits files
 
-    - save_Stokes(I, Q, U, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, ref_header, filename, data_folder, return_hdul) -> ( HDUL_data )
+    - save_Stokes(I, Q, U, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, data_mask, filename, data_folder, return_hdul) -> ( HDUL_data )
         Save computed polarimetry parameters to a single fits file (and return HDUList)
 """
 
@@ -97,6 +97,8 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     headers : header list
         Header of reference some keywords will be copied from (CRVAL, CDELT,
         INSTRUME, PROPOSID, TARGNAME, ORIENTAT, EXPTOT).
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     filename : str
         Name that will be given to the file on writing (will appear in header).
     data_folder : str, optional

@@ -2,11 +2,38 @@
 Library functions for displaying  informations using matplotlib
 
 prototypes :
-    - plot_obs(data_array, headers, shape, vmin, vmax, savename, plots_folder)
-        Plots whole observation raw data in given display shape
+    - plot_obs(data_array, headers, shape, vmin, vmax, rectangle, savename, plots_folder)
+        Plots whole observation raw data in given display shape.
+    
+    - plot_Stokes(Stokes, savename, plots_folder)
+        Plot the I/Q/U maps from the Stokes HDUList.
 
-    - polarization_map(Stokes_hdul, SNRp_cut, SNRi_cut, step_vec, savename, plots_folder, display)
-        Plots polarization map of polarimetric parameters saved in an HDUList
+    - polarization_map(Stokes, data_mask, rectangle, SNRp_cut, SNRi_cut, step_vec, savename, plots_folder, display) -> fig, ax
+        Plots polarization map of polarimetric parameters saved in an HDUList.
+    
+    class align_maps(map, other_map, **kwargs)
+        Class to interactively align maps with different WCS.
+    
+    class overplot_radio(align_maps)
+        Class inherited from align_maps to overplot radio data as contours.
+    
+    class overplot_pol(align_maps)
+        Class inherited from align_maps to overplot UV polarization vectors on other maps.
+    
+    class crop_map(hdul, fig, ax)
+        Class to interactively crop a region of interest of a HDUList.
+    
+    class crop_Stokes(crop_map)
+        Class inherited from crop_map to work on polarization maps.
+    
+    class image_lasso_selector(img, fig, ax)
+        Class to interactively select part of a map to work on.
+    
+    class aperture(img, cdelt, radius, fig, ax)
+        Class to interactively simulate aperture integration.
+    
+    class pol_map(Stokes, SNRp_cut, SNRi_cut, selection)
+        Class to interactively study polarization maps making use of the cropping and selecting tools.
 """
 
 from copy import deepcopy
@@ -946,7 +973,8 @@ class crop_Stokes(crop_map):
     def data_mask(self):
         return self.hdul_crop[-1].data
 
-class image_lasso_selector:
+
+class image_lasso_selector(object):
     def __init__(self, img, fig=None, ax=None):
         """
         img must have shape (X, Y)
@@ -1012,7 +1040,7 @@ class image_lasso_selector:
             self.on_close()
 
 
-class aperture:
+class aperture(object):
     def __init__(self, img, cdelt=np.array([1.,1.]), radius=1., fig=None, ax=None):
         """
         img must have shape (X, Y)
@@ -1119,7 +1147,7 @@ class pol_map(object):
     """
     Class to interactively study polarization maps.
     """
-    def __init__(self,Stokes, SNRp_cut=3., SNRi_cut=30., selection=None):
+    def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=30., selection=None):
 
         if type(Stokes) == str:
             Stokes = fits.open(Stokes)
@@ -1194,6 +1222,7 @@ class pol_map(object):
                 self.data = self.Stokes[0].data
             if self.selected:
                 self.selected = False
+                self.select_instance.update_mask()
                 self.region = deepcopy(self.select_instance.mask.astype(bool))
                 self.select_instance.displayed.remove()
                 for coll in self.select_instance.cont.collections[:]:
@@ -1206,11 +1235,6 @@ class pol_map(object):
                 self.region = None
                 self.select_instance = aperture(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt, radius=s_aper_radius.val)
                 self.select_instance.circ.set_visible(True)
-                #k = 0
-                #while not self.select_instance.selected and k<60:
-                #    self.fig.canvas.start_event_loop(timeout=1)
-                #    k+=1
-                #select_aperture(event)
 
             self.fig.canvas.draw_idle()
         
@@ -1617,7 +1641,10 @@ class pol_map(object):
 
         if hasattr(self, 'cont'):
             for coll in self.cont.collections:
-                coll.remove()
+                try:
+                    coll.remove()
+                except:
+                    return
             del self.cont
         if fig is None:
             fig = self.fig

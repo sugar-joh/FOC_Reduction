@@ -5,36 +5,38 @@ prototypes :
     - bin_ndarray(ndarray, new_shape, operation) -> ndarray
         Bins an ndarray to new_shape.
 
-    - crop_array(data_array, error_array, step, null_val, inside) -> crop_data_array, crop_error_array
+    - crop_array(data_array, error_array, data_mask, step, null_val, inside, display, savename, plots_folder) -> crop_data_array, crop_error_array (, crop_mask), crop_headers
         Homogeneously crop out null edges off a data array.
 
-    - deconvolve_array(data_array, psf, FWHM, iterations) -> deconvolved_data_array
-        Homogeneously deconvolve a data array using Richardson-Lucy iterative algorithm
+    - deconvolve_array(data_array, headers, psf, FWHM, scale, shape, iterations, algo) -> deconvolved_data_array
+        Homogeneously deconvolve a data array using a chosen deconvolution algorithm.
 
-    - get_error(data_array, sub_shape, display, headers, savename, plots_folder) -> data_array, error_array
+    - get_error(data_array, headers, error_array, data_mask, sub_shape, display, savename, plots_folder, return_background) -> data_array, error_array, headers (, background)
         Compute the error (noise) on each image of the input array.
 
-    - rebin_array(data_array, error_array, headers, pxsize, scale, operation) -> rebinned_data, rebinned_error, rebinned_headers, Dxy
+    - rebin_array(data_array, error_array, headers, pxsize, scale, operation, data_mask) -> rebinned_data, rebinned_error, rebinned_headers, Dxy (, data_mask)
         Homegeneously rebin a data array given a target pixel size in scale units.
 
     - align_data(data_array, error_array, upsample_factor, ref_data, ref_center, return_shifts) -> data_array, error_array (, shifts, errors)
         Align data_array on ref_data by cross-correlation.
 
-    - smooth_data(data_array, error_array, FWHM, scale, smoothing) -> smoothed_array
+    - smooth_data(data_array, error_array, data_mask, headers, FWHM, scale, smoothing) -> smoothed_array, smoothed_error
         Smooth data by convoluting with a gaussian or by combining weighted images
 
-    - polarizer_avg(data_array, error_array, headers, FWHM, scale, smoothing) -> polarizer_array, pol_error_array
-        Average images in data_array on each used polarizer filter.
+    - polarizer_avg(data_array, error_array, data_mask, headers, FWHM, scale, smoothing) -> polarizer_array, polarizer_cov
+        Average images in data_array on each used polarizer filter and compute correlated errors.
 
-    - compute_Stokes(data_array, error_array, headers, FWHM, scale, smoothing) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux
-        Compute Stokes parameters I, Q and U and their respective errors from data_array.
+    - compute_Stokes(data_array, error_array, data_mask, headers, FWHM, scale, smoothing) -> I_stokes, Q_stokes, U_stokes, Stokes_cov
+        Compute Stokes parameters I, Q and U and their respective correlated errors from data_array.
 
-    - compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers) -> P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
-        Compute polarization degree (in %) and angle (in degree) and their
-        respective errors
+    - compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers) -> P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
+        Compute polarization degree (in %) and angle (in degree) and their respective errors.
 
-    - rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers, ang) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, pol_flux, headers
+    - rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang, SNRi_cut) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers
         Rotate I, Q, U given an angle in degrees using scipy functions.
+    
+    - rotate_data(data_array, error_array, data_mask, headers, ang) -> data_array, error_array, data_mask, headers
+        Rotate data before reduction given an angle in degrees using scipy functions.
 """
 
 from copy import deepcopy
@@ -206,6 +208,10 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
         the error in each pixel of the observation images in data_array.
         If None, will be initialized to zeros.
         Defaults to None.
+    data_mask : numpy.ndarray, optional
+        2D boolean array delimiting the data to work on.
+        If None, will be initialized with a full true mask.
+        Defaults to None.
     step : int, optional
         For images with straight edges, not all lines and columns need to be
         browsed in order to have a good convex hull. Step value determine
@@ -345,9 +351,14 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
         relevant values of 'psf' variable.
         Defaults to (9,9).
     iterations : int, optional
-        Number of iterations of Richardson-Lucy deconvolution algorithm. Act as
+        Number of iterations for iterative deconvolution algorithms. Act as
         as a regulation of the process.
         Defaults to 20.
+    algo : str, optional
+        Name of the deconvolution algorithm that will be used. Implemented 
+        algorithms are the following : 'Wiener', 'Van-Cittert',
+        'One Step Gradient', 'Conjugate Gradient' and 'Richardson-Lucy'.
+        Defaults to 'Richardson-Lucy'.
     ----------
     Returns:
     deconv_array : numpy.ndarray
@@ -394,6 +405,15 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=N
         Array containing the data to study (2D float arrays).
     headers : header list
         Headers associated with the images in data_array.
+    error_array : numpy.ndarray, optional
+        Array of images (2D floats, aligned and of the same shape) containing
+        the error in each pixel of the observation images in data_array.
+        If None, will be initialized to zeros.
+        Defaults to None.
+    data_mask : numpy.ndarray, optional
+        2D boolean array delimiting the data to work on.
+        If None, will be initialized with a full true mask.
+        Defaults to None.
     sub_shape : tuple, optional
         Shape of the sub-image to look for. Must be odd.
         Defaults to 10% of input array.
@@ -587,6 +607,10 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
         Set the way original components of the matrix are put together
         between summing ('sum') and averaging ('average', 'avg', 'mean') them.
         Defaults to 'sum'.
+    data_mask : numpy.ndarray, optional
+        2D boolean array delimiting the data to work on.
+        If None, will be initialized with a full true mask.
+        Defaults to None.
     ----------
     Returns:
     rebinned_data, rebinned_error : numpy.ndarray
@@ -595,6 +619,9 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
         Updated headers corresponding to the images in rebinned_data.
     Dxy : numpy.ndarray
         Array containing the rebinning factor in each direction of the image.
+    data_mask : numpy.ndarray, optional
+        Updated 2D boolean array delimiting the data to work on.
+        Only returned if inputed data_mask is not None.
     """
     # Check that all images are from the same instrument
     ref_header = headers[0]
@@ -716,6 +743,8 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         image with margins of value 0.
     rescaled_error : numpy.ndarray
         Array containing the errors on the aligned images in the rescaled array.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     shifts : numpy.ndarray
         Array containing the pixel shifts on the x and y directions from
         the reference image.
@@ -839,6 +868,8 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
     error_array : numpy.ndarray
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the images in data_array.
     FWHM : float, optional
@@ -942,6 +973,8 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
     error_array : numpy.ndarray
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the images in data_array.
     FWHM : float, optional
@@ -1089,6 +1122,8 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
     error_array : numpy.ndarray
         Array of images (2D floats, aligned and of the same shape) containing
         the error in each pixel of the observation images in data_array.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the images in data_array.
     FWHM : float, optional
@@ -1376,6 +1411,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         +45/-45deg linear polarization intensity
     Stokes_cov : numpy.ndarray
         Covariance matrix of the Stokes parameters I, Q, U.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the reduced images.
     ang : float
@@ -1401,6 +1438,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     new_headers : header list
         Updated list of headers corresponding to the reduced images accounting
         for the new orientation angle.
+    new_data_mask : numpy.ndarray
+        Updated 2D boolean array delimiting the data to work on.
     """
     #Apply cuts
     if not(SNRi_cut is None):
@@ -1520,7 +1559,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         header['PA_int_err'] = (PA_diluted_err, 'Integrated polarization angle error')
 
 
-    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_headers, new_data_mask
+    return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers
+
 
 def rotate_data(data_array, error_array, data_mask, headers, ang):
     """
@@ -1533,6 +1573,8 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
         Array of images (2D floats) to be rotated by angle ang.
     error_array : numpy.ndarray
         Array of error associated to images in data_array.
+    data_mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the reduced images.
     ang : float
@@ -1547,6 +1589,8 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     new_headers : header list
         Updated list of headers corresponding to the reduced images accounting
         for the new orientation angle.
+    new_data_mask : numpy.ndarray
+        Updated 2D boolean array delimiting the data to work on.
     """
     #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
     alpha = ang*np.pi/180.
@@ -1609,4 +1653,4 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
         new_headers.append(new_header)
     globals()['theta'] = theta - alpha
 
-    return new_data_array, new_error_array, new_headers, new_data_mask
+    return new_data_array, new_error_array, new_data_mask, new_headers
