@@ -20,17 +20,17 @@ from astropy.wcs import WCS
 def main():
     ##### User inputs
     ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
-#            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
-#            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
-##    psf_file = 'NGC1068_f253m00.fits'
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+    globals()['data_folder'] = "../data/NGC1068_x274020/"
+    infiles = ['x274020at.c0f.fits','x274020bt.c0f.fits','x274020ct.c0f.fits',
+            'x274020dt.c0f.fits','x274020et.c0f.fits','x274020ft.c0f.fits',
+            'x274020gt.c0f.fits','x274020ht.c0f.fits','x274020it.c0f.fits']
+#    psf_file = 'NGC1068_f253m00.fits'
+    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
-    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-#    psf_file = 'IC5063_f502m00.fits'
-    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+##    psf_file = 'IC5063_f502m00.fits'
+#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #    globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -105,7 +105,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.05
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -113,19 +113,19 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = False
+    final_display = True
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
-    SNRp_cut = 3.    #P measurments with SNR>3
-    SNRi_cut = 60.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_combine_FWHM010'    #additionnal informations
+    SNRp_cut = 5.    #P measurments with SNR>3
+    SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -146,7 +146,7 @@ def main():
         data_mask = np.ones(data_array.shape[1:]).astype(bool)
         alpha = headers[0]['orientat']
         mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
-        data_array, error_array, headers, data_mask = proj_red.rotate_data(data_array, error_array, data_mask, headers, -alpha)
+        data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -alpha)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, upsample_factor=10, ref_center=align_center, return_shifts=False)
@@ -181,7 +181,7 @@ def main():
     # Rotate images to have North up
     if rotate_stokes:
         alpha = headers[0]['orientat']
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, headers, data_mask = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -alpha, SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -alpha, SNRi_cut=None)
 
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
