@@ -191,8 +191,9 @@ def bin_ndarray(ndarray, new_shape, operation='sum'):
     return ndarray
 
 
-def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, null_val=None,
-        inside=False, display=False, savename=None, plots_folder=""):
+def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
+            null_val=None, inside=False, display=False, savename=None,
+            plots_folder=""):
     """
     Homogeneously crop an array: all contained images will have the same shape.
     'inside' parameter will decide how much should be cropped.
@@ -393,8 +394,9 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     return deconv_array
 
 
-def get_error(data_array, headers, error_array=None, data_mask=None, sub_shape=None, display=False,
-        savename=None, plots_folder="", return_background=False):
+def get_error(data_array, headers, error_array=None, data_mask=None,
+            sub_shape=None, display=False, savename=None, plots_folder="",
+            return_background=False):
     """
     Look for sub-image of shape sub_shape that have the smallest integrated
     flux (no source assumption) and define the background on the image by the
@@ -1180,28 +1182,21 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         # Stokes parameters
         #transmittance corrected
         transmit = np.ones((3,))   #will be filter dependant
-        filt2 = headers[0]['filtnam2']
-        filt3 = headers[0]['filtnam3']
-        filt4 = headers[0]['filtnam4']
+        filt2, filt3, filt4 = headers[0]['filtnam2'], headers[0]['filtnam3'], headers[0]['filtnam4']
         same_filt2 = np.array([filt2 == header['filtnam2'] for header in headers]).all()
         same_filt3 = np.array([filt3 == header['filtnam3'] for header in headers]).all()
         same_filt4 = np.array([filt4 == header['filtnam4'] for header in headers]).all()
-        if not (same_filt2 and same_filt3 and same_filt4):
+        if (same_filt2 and same_filt3 and same_filt4):
+            transmit2, transmit3, transmit4 = trans2[filt2.lower()], trans3[filt3.lower()], trans4[filt4.lower()]
+        else:
             print("WARNING : All images in data_array are not from the same \
                     band filter, the limiting transmittance will be taken.")
             transmit2 = np.min([trans2[header['filtnam2'].lower()] for header in headers])
             transmit3 = np.min([trans3[header['filtnam3'].lower()] for header in headers])
             transmit4 = np.min([trans4[header['filtnam4'].lower()] for header in headers])
-        else :
-            transmit2 = trans2[filt2.lower()]
-            transmit3 = trans3[filt3.lower()]
-            transmit4 = trans4[filt4.lower()]
         transmit *= transmit2*transmit3*transmit4
 
-        pol_eff = np.ones((3,))
-        pol_eff[0] = pol_efficiency['pol0']
-        pol_eff[1] = pol_efficiency['pol60']
-        pol_eff[2] = pol_efficiency['pol120']
+        pol_eff = np.array([pol_efficiency['pol0'], pol_efficiency['pol60'], pol_efficiency['pol120']])
 
         # Orientation and error for each polarizer
         fmax = np.finfo(np.float64).max
@@ -1393,7 +1388,8 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     return P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
 
 
-def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang, SNRi_cut=None):
+def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
+                ang, SNRi_cut=None):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1506,7 +1502,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
             px_dim = np.array([25., 25.])   # Pixel dimension in µm
             if ref_header['pxformt'].lower() == 'zoom':
                 px_dim[0] = 50.
-            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            #new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            new_cdelt = np.abs(np.linalg.eig(new_wcs.wcs.cd)[0])
             old_cd = new_wcs.wcs.cd
             del new_wcs.wcs.cd
             keys = ['CD1_1','CD1_2','CD2_1','CD2_2']

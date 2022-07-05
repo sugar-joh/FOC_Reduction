@@ -57,7 +57,8 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             px_dim = np.array([25., 25.])   # Pixel dimension in µm
             if header['pxformt'].lower() == 'zoom':
                 px_dim[0] = 50.
-            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            #new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
+            new_cdelt = np.abs(np.linalg.eig(new_wcs.wcs.cd)[0])
             if new_wcs.wcs.has_cd():
                 old_cd = new_wcs.wcs.cd
                 del new_wcs.wcs.cd
