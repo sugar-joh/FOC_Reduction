@@ -202,7 +202,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
 
 def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
-        step_vec=1, savename=None, plots_folder="", display=None):
+        step_vec=1, savename=None, plots_folder="", display="default"):
     """
     Plots polarization map from Stokes HDUList.
     ----------
@@ -263,7 +263,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     wcs = WCS(Stokes[0]).deepcopy()
 
     #Plot Stokes parameters map
-    if display is None or display.lower() == 'default':
+    if display is None or display.lower() in ['default']:
         plot_Stokes(Stokes, savename=savename, plots_folder=plots_folder)
 
     #Compute SNR and apply cuts
@@ -296,8 +296,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
     cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.75])
 
-    if display is None:
+    if display.lower() in ['intensity']:
         # If no display selected, show intensity map
+        display='i'
         vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
@@ -307,6 +308,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['pol_flux']:
         # Display polarisation flux
+        display='pf'
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
         vmin, vmax = 0., np.max(stkI.data[pf_mask]*convert_flux*pol.data[pf_mask])
         im = ax.imshow(stkI.data*convert_flux*pol.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
@@ -317,11 +319,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['p','pol','pol_deg']:
         # Display polarization degree map
+        display='p'
         vmin, vmax = 0., 100.
         im = ax.imshow(pol.data*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P$ [%]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
+        display='s_p'
         vmin, vmax = 0., 10.
         p_err = deepcopy(pol_err.data)
         p_err[p_err > vmax/100.] = np.nan
@@ -329,11 +333,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_P$ [%]")
     elif display.lower() in ['s_i','i_err']:
         # Display intensity error map
+        display='s_i'
         vmin, vmax = 0., np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
         im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
+        display='snri'
         vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
         im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
@@ -343,6 +349,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
+        display='snrp'
         vmin, vmax = SNRp_cut, np.max(SNRp[SNRp > 0.])
         im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P/\sigma_{P}$")
@@ -356,30 +363,6 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
-    if (display is None) or not(display.lower() in ['default']):
-        px_size = wcs.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
-        ax.add_artist(px_sc)
-
-        if step_vec == 0:
-            pol.data[np.isfinite(pol.data)] = 1./2.
-            step_vec = 1
-        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
-        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
-        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
-        ax.add_artist(pol_sc)
-
-        north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
-        ax.add_artist(north_dir)
-
-    # Display instrument FOV
-    if not(rectangle is None):
-        x, y, width, height, angle, color = rectangle
-        x, y = np.array([x, y])- np.array(stkI.data.shape)/2.
-        ax.add_patch(Rectangle((x, y), width, height, angle=angle,
-            edgecolor=color, fill=False))
-
     #Get integrated values from header
     n_pix = stkI.data[data_mask].size
     I_diluted = stkI.data[data_mask].sum()
@@ -390,7 +373,37 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     PA_diluted = Stokes[0].header['PA_int']
     PA_diluted_err = Stokes[0].header['PA_int_err']
 
-    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
+    px_size = wcs.wcs.get_cdelt()[0]*3600.
+    px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+    north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
+
+    if display.lower() in ['i','s_i','snri','pf','p','s_p','snrp']:
+        if step_vec == 0:
+            pol.data[np.isfinite(pol.data)] = 1./2.
+            step_vec = 1
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
+        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+        
+        ax.add_artist(pol_sc)
+        ax.add_artist(px_sc)
+        ax.add_artist(north_dir)
+        
+        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
+    else:
+        if display.lower() == 'default':
+            ax.add_artist(px_sc)
+            ax.add_artist(north_dir)
+        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2)), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
+
+    # Display instrument FOV
+    if not(rectangle is None):
+        x, y, width, height, angle, color = rectangle
+        x, y = np.array([x, y])- np.array(stkI.data.shape)/2.
+        ax.add_patch(Rectangle((x, y), width, height, angle=angle,
+            edgecolor=color, fill=False))
+
 
     ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')
