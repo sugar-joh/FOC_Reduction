@@ -43,6 +43,7 @@ from matplotlib.patches import Rectangle, Circle
 from matplotlib.path import Path
 from matplotlib.widgets import RectangleSelector, LassoSelector, Button, Slider, TextBox
 from matplotlib.colors import LogNorm
+from matplotlib.ticker import LogFormatter 
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -359,8 +360,10 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     else:
         # Defaults to intensity map
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux*2.)
-        im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        vmin, vmax = np.min(stkI.data[SNRi > SNRi_cut]*convert_flux)/10., np.max(stkI.data[SNRi > SNRi_cut]*convert_flux)
+        #im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        #cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
+        im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
     #Get integrated values from header
@@ -395,7 +398,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         if display.lower() == 'default':
             ax.add_artist(px_sc)
             ax.add_artist(north_dir)
-        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2)), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
+        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2)), color='white', xy=(0.01, 0.97), xycoords='axes fraction')
 
     # Display instrument FOV
     if not(rectangle is None):
@@ -405,7 +408,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
             edgecolor=color, fill=False))
 
 
-    ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
+    #ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')
     ax.coords[0].set_axislabel_position('t')
     ax.coords[0].set_ticklabel_position('t')
