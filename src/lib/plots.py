@@ -177,7 +177,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
     # Plot figure
     plt.rcParams.update({'font.size': 10})
-    fig = plt.figure(figsize=(30,10))
+    fig = plt.figure(figsize=(15,5))
 
     ax = fig.add_subplot(131, projection=wcs)
     im = ax.imshow(stkI, origin='lower', cmap='inferno')
@@ -288,8 +288,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         print("No pixel with polarization information above requested SNR.")
 
     #Plot the map
-    plt.rcParams.update({'font.size': 16})
-    fig = plt.figure(figsize=(15,15))
+    plt.rcParams.update({'font.size': 10})
+    plt.rcdefaults()
+    fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection=wcs)
     ax.set_facecolor('k')
     fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
@@ -356,9 +357,8 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
     if (display is None) or not(display.lower() in ['default']):
-        fontprops = fm.FontProperties(size=16)
         px_size = wcs.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         ax.add_artist(px_sc)
 
         if step_vec == 0:
@@ -367,7 +367,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
         Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
-        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         ax.add_artist(pol_sc)
 
         north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
@@ -390,7 +390,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     PA_diluted = Stokes[0].header['PA_int']
     PA_diluted_err = Stokes[0].header['PA_int_err']
 
-    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', fontsize=16, xy=(0.01, 0.92), xycoords='axes fraction')
+    ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
 
     ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')
@@ -403,7 +403,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     if not savename is None:
         #fig.suptitle(savename)
-        fig.savefig(plots_folder+savename+".png",bbox_inches='tight',dpi=200)
+        fig.savefig(plots_folder+savename+".png",bbox_inches='tight',dpi=300)
 
     plt.show()
     return fig, ax
@@ -1167,7 +1167,7 @@ class pol_map(object):
 
         #Create figure
         plt.rcParams.update({'font.size': 10})
-        self.fig = plt.figure(figsize=(15,15))
+        self.fig = plt.figure(figsize=(10,10))
         self.fig.subplots_adjust(hspace=0, wspace=0, right=0.88)
         self.ax = self.fig.add_subplot(111,projection=self.wcs)
         self.ax_cosmetics()
@@ -1189,6 +1189,7 @@ class pol_map(object):
         s_I_cut = Slider(ax_I_cut,r"$SNR^{I}_{cut}$",1.,int(SNRi_max*0.95),valstep=1,valinit=self.SNRi_cut)
         s_P_cut = Slider(ax_P_cut,r"$SNR^{P}_{cut}$",1.,int(SNRp_max*0.95),valstep=1,valinit=self.SNRp_cut)
         b_snr_reset = Button(ax_snr_reset,"Reset")
+        b_snr_reset.label.set_fontsize(8)
 
         def update_snri(val):
             self.SNRi = val
@@ -1214,7 +1215,9 @@ class pol_map(object):
         ax_aper_radius = self.fig.add_axes([0.55, 0.020, 0.10, 0.01])
         self.selected = False
         b_aper = Button(ax_aper,"Aperture")
+        b_aper.label.set_fontsize(8)
         b_aper_reset = Button(ax_aper_reset,"Reset")
+        b_aper_reset.label.set_fontsize(8)
         s_aper_radius = Slider(ax_aper_radius, r"$R_{aper}$", 0.5, 3.5, valstep=0.1, valinit=1)
 
         def select_aperture(event):
@@ -1264,8 +1267,10 @@ class pol_map(object):
         ax_select = self.fig.add_axes([0.55, 0.070, 0.05, 0.02])
         ax_roi_reset = self.fig.add_axes([0.605, 0.070, 0.05, 0.02])
         b_select = Button(ax_select,"Select")
+        b_select.label.set_fontsize(8)
         self.selected = False
         b_roi_reset = Button(ax_roi_reset,"Reset")
+        b_roi_reset.label.set_fontsize(8)
 
         def select_roi(event):
             if self.data is None:
@@ -1303,8 +1308,10 @@ class pol_map(object):
         ax_crop = self.fig.add_axes([0.70, 0.070, 0.05, 0.02])
         ax_crop_reset = self.fig.add_axes([0.755, 0.070, 0.05, 0.02])
         b_crop = Button(ax_crop,"Crop")
+        b_crop.label.set_fontsize(8)
         self.cropped = False
         b_crop_reset = Button(ax_crop_reset,"Reset")
+        b_crop_reset.label.set_fontsize(8)
 
         def crop(event):
             if self.cropped:
@@ -1347,6 +1354,7 @@ class pol_map(object):
         #Set axe for saving plot
         ax_save = self.fig.add_axes([0.850, 0.070, 0.05, 0.02])
         b_save = Button(ax_save, "Save")
+        b_save.label.set_fontsize(8)
         ax_text_save = self.fig.add_axes([0.3, 0.020, 0.5, 0.025],visible=False)
         text_save = TextBox(ax_text_save, "Save to:", initial='')
 
@@ -1384,6 +1392,7 @@ class pol_map(object):
         #Set axe for data dump
         ax_dump = self.fig.add_axes([0.850, 0.045, 0.05, 0.02])
         b_dump = Button(ax_dump, "Dump")
+        b_dump.label.set_fontsize(8)
         ax_text_dump = self.fig.add_axes([0.3, 0.020, 0.5, 0.025],visible=False)
         text_dump = TextBox(ax_text_dump, "Dump to:", initial='')
 

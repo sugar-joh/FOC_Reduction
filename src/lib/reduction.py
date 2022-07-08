@@ -510,7 +510,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
             print(data_array[i])
 
     if display:
-        plt.rcParams.update({'font.size': 20})
+        plt.rcParams.update({'font.size': 10})
         convert_flux = headers[0]['photflam']
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
