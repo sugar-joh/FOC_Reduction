@@ -52,25 +52,20 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
         new_wcs = wcs.WCS(header).deepcopy()
         if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt == np.array([1., 1.])).all():
             # Update WCS with relevant information
-            HST_aper = 2400.    # HST aperture in mm
-            f_ratio = header['f_ratio']
-            px_dim = np.array([25., 25.])   # Pixel dimension in µm
-            if header['pxformt'].lower() == 'zoom':
-                px_dim[0] = 50.
-            #new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
-            new_cdelt = np.abs(np.linalg.eig(new_wcs.wcs.cd)[0])
             if new_wcs.wcs.has_cd():
                 old_cd = new_wcs.wcs.cd
                 del new_wcs.wcs.cd
                 keys = list(new_wcs.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
                 for key in keys:
                     header.remove(key, ignore_missing=True)
+                new_cdelt = np.linalg.eig(old_cd)[0]
             elif (new_wcs.wcs.cdelt == np.array([1., 1.])).all() and \
                     (new_wcs.array_shape in [(512, 512),(1024,512),(512,1024),(1024,1024)]):
                 old_cd = new_wcs.wcs.pc
             new_wcs.wcs.pc = np.dot(old_cd, np.diag(1./new_cdelt))
             new_wcs.wcs.cdelt = new_cdelt
-            header.update(new_wcs.to_header())
+            for key, val in new_wcs.to_header().items():
+                header[key] = val
 
     if compute_flux:
         for i in range(len(infiles)):

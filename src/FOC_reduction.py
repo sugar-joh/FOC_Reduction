@@ -16,94 +16,99 @@ from lib.deconvolve import from_file_psf
 import matplotlib.pyplot as plt
 from astropy.wcs import WCS
 
+##### User inputs
+## Input and output locations
+#globals()['data_folder'] = "../data/NGC1068_x274020/"
+#globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
+#   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
+#   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
+##psf_file = 'NGC1068_f253m00.fits'
+#globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+
+#globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+##psf_file = 'IC5063_f502m00.fits'
+#globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+
+#globals()['data_folder'] = "../data/NGC1068_x14w010/"
+#globals()['infiles'] = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
+#   'x14w0104t_c0f.fits','x14w0105p_c0f.fits','x14w0106t_c0f.fits']
+#globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
+
+#globals()['data_folder'] = "../data/3C405_x136060/"
+#globals()['infiles'] = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+#globals()['plots_folder'] = "../plots/3C405_x136060/"
+
+#globals()['data_folder'] = "../data/CygnusA_x43w0/"
+#globals()['infiles'] = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
+#   'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
+#   'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
+#globals()['infiles'] = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
+#   'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits']
+#globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
+
+#globals()['data_folder'] = "../data/3C109_x3mc010/"
+#globals()['infiles'] = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
+#globals()['plots_folder'] = "../plots/3C109_x3mc010/"
+
+#globals()['data_folder'] = "../data/MKN463_x2rp030/"
+#globals()['infiles'] = ['x2rp0201t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0203t_c0f.fits',
+#   'x2rp0204t_c0f.fits', 'x2rp0205t_c0f.fits', 'x2rp0206t_c0f.fits',
+#   'x2rp0207t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0302t_c0f.fits',
+#   'x2rp0303t_c0f.fits', 'x2rp0304t_c0f.fits', 'x2rp0305t_c0f.fits',
+#   'x2rp0306t_c0f.fits', 'x2rp0307t_c0f.fits']
+#globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
+
+#globals()['data_folder'] = "../data/PG1630+377_x39510/"
+#globals()['infiles'] = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
+#   'x3995105r_c0f.fits', 'x3995109r_c0f.fits', 'x3995201r_c0f.fits',
+#   'x3995205r_c0f.fits', 'x3990202m_c0f.fits', 'x3990206m_c0f.fits',
+#   'x3995102r_c0f.fits', 'x3995106r_c0f.fits', 'x399510ar_c0f.fits',
+#   'x3995202r_c0f.fits','x3995206r_c0f.fits']
+#globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
+
+#globals()['data_folder'] = "../data/MKN3_x3nl010/"
+#globals()['infiles'] = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
+#globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
+
+#globals()['data_folder'] = "../data/MKN3_x3md010/"
+#globals()['infiles'] = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
+#globals()['infiles'] = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
+#globals()['plots_folder'] = "../plots/MKN3_x3md010/"
+
+#globals()['data_folder'] = "../data/MKN78_x3nl020/"
+#globals()['infiles'] = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
+#globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
+
+#globals()['data_folder'] = "../data/3C273_x0u20/"
+#globals()['infiles'] = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits',
+#   'x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits',
+#   'x0u20201t_c0f.fits','x0u20202t_c0f.fits','x0u20203t_c0f.fits',
+#   'x0u20204t_c0f.fits','x0u20205t_c0f.fits','x0u20206t_c0f.fits',
+#   'x0u20301t_c0f.fits','x0u20302t_c0f.fits','x0u20303t_c0f.fits',
+#   'x0u20304t_c0f.fits','x0u20305t_c0f.fits','x0u20306t_c0f.fits']
+#globals()['plots_folder'] = "../plots/3C273_x0u20/"
+
+#BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
+#globals()['data_folder'] = "../data/M87/POS1/"
+#globals()['infiles'] = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
+#globals()['infiles'] = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
+#globals()['infiles'] = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
+#globals()['infiles'] = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
+#globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
+#globals()['plots_folder'] = "../plots/M87/POS1/"
+
+#BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
+globals()['data_folder'] = "../data/M87/POS3/"
+globals()['infiles'] = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
+#globals()['infiles'] = ['x3be030at_c0f.fits','x3be030bt_c0f.fits','x3be030ct_c0f.fits','x3be0309t_c0f.fits'] #1996
+#globals()['infiles'] = ['x43r030em_c0f.fits','x43r030gm_c0f.fits','x43r030im_c0f.fits','x43r030lm_c0f.fits'] #1997
+#globals()['infiles'] = ['x43r130er_c0f.fits','x43r130fr_c0f.fits','x43r130ir_c0f.fits','x43r130lr_c0f.fits'] #1998
+#globals()['infiles'] = ['x43r230er_c0f.fits','x43r230fr_c0f.fits','x43r230ir_c0f.fits','x43r230lr_c0f.fits'] #1999
+globals()['plots_folder'] = "../plots/M87/POS3/"
+
 
 def main():
-    ##### User inputs
-    ## Input and output locations
-#    globals()['data_folder'] = "../data/NGC1068_x274020/"
-#    infiles = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
-#            'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
-#            'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-##    psf_file = 'NGC1068_f253m00.fits'
-#    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
-
-#    globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#    infiles = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-##    psf_file = 'IC5063_f502m00.fits'
-#    globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
-
-#    globals()['data_folder'] = "../data/NGC1068_x14w010/"
-#    infiles = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
-#            'x14w0104t_c0f.fits','x14w0105p_c0f.fits','x14w0106t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
-
-#    globals()['data_folder'] = "../data/3C405_x136060/"
-#    infiles = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/3C405_x136060/"
-
-#    globals()['data_folder'] = "../data/CygnusA_x43w0/"
-#    infiles = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
-#            'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
-#            'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
-#    infiles = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
-#            'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
-
-#    globals()['data_folder'] = "../data/3C109_x3mc010/"
-#    infiles = ['x3mc0101m_c0f.fits','x3mc0102m_c0f.fits','x3mc0103m_c0f.fits']
-#    globals()['plots_folder'] = "../plots/3C109_x3mc010/"
-
-#    globals()['data_folder'] = "../data/MKN463_x2rp030/"
-#    infiles = ['x2rp0201t_c0f.fits', 'x2rp0202t_c0f.fits', 'x2rp0203t_c0f.fits',
-#            'x2rp0204t_c0f.fits', 'x2rp0205t_c0f.fits', 'x2rp0206t_c0f.fits',
-#            'x2rp0207t_c0f.fits', 'x2rp0301t_c0f.fits', 'x2rp0302t_c0f.fits',
-#            'x2rp0303t_c0f.fits', 'x2rp0304t_c0f.fits', 'x2rp0305t_c0f.fits',
-#            'x2rp0306t_c0f.fits', 'x2rp0307t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/MKN463_x2rp030/"
-
-#    globals()['data_folder'] = "../data/PG1630+377_x39510/"
-#    infiles = ['x3990201m_c0f.fits', 'x3990205m_c0f.fits', 'x3995101r_c0f.fits',
-#            'x3995105r_c0f.fits', 'x3995109r_c0f.fits', 'x3995201r_c0f.fits',
-#            'x3995205r_c0f.fits', 'x3990202m_c0f.fits', 'x3990206m_c0f.fits',
-#            'x3995102r_c0f.fits', 'x3995106r_c0f.fits', 'x399510ar_c0f.fits',
-#            'x3995202r_c0f.fits','x3995206r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/PG1630+377_x39510/"
-
-#    globals()['data_folder'] = "../data/MKN3_x3nl010/"
-#    infiles = ['x3nl0101r_c0f.fits','x3nl0102r_c0f.fits','x3nl0103r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
-
-#    globals()['data_folder'] = "../data/MKN3_x3md010/"
-#    infiles = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
-#    infiles = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/MKN3_x3md010/"
-
-#    globals()['data_folder'] = "../data/MKN78_x3nl020/"
-#    infiles = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
-#    globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
-
-#    globals()['data_folder'] = "../data/3C273_x0u20/"
-#    infiles = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits','x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits','x0u20201t_c0f.fits','x0u20202t_c0f.fits','x0u20203t_c0f.fits','x0u20204t_c0f.fits','x0u20205t_c0f.fits','x0u20206t_c0f.fits','x0u20301t_c0f.fits','x0u20302t_c0f.fits','x0u20303t_c0f.fits','x0u20304t_c0f.fits','x0u20305t_c0f.fits','x0u20306t_c0f.fits']
-#    globals()['plots_folder'] = "../plots/3C273_x0u20/"
-
-#BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
-    globals()['data_folder'] = "../data/M87/POS1/"
-#    infiles = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
-#    infiles = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
-#    infiles = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
-#    infiles = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
-    infiles = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
-    globals()['plots_folder'] = "../plots/M87/POS1/"
-
-#BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
-#    globals()['data_folder'] = "../data/M87/POS3/"
-#    infiles = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
-#    infiles = ['x3be030at_c0f.fits','x3be030bt_c0f.fits','x3be030ct_c0f.fits','x3be0309t_c0f.fits'] #1996
-#    infiles = ['x43r030em_c0f.fits','x43r030gm_c0f.fits','x43r030im_c0f.fits','x43r030lm_c0f.fits'] #1997
-#    infiles = ['x43r130er_c0f.fits','x43r130fr_c0f.fits','x43r130ir_c0f.fits','x43r130lr_c0f.fits'] #1998
-#    infiles = ['x43r230er_c0f.fits','x43r230fr_c0f.fits','x43r230ir_c0f.fits','x43r230lr_c0f.fits'] #1999
-#    globals()['plots_folder'] = "../plots/M87/POS3/"
-
     ## Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -123,7 +128,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.20
+        pxsize = 0.05
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -131,7 +136,7 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 0.07           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
@@ -140,8 +145,8 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = 'M87_POS1_1999_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
+    figname = 'M87_POS3_1995_FOC'         #target/intrument name
+    figtype = '_combine_FWHM005'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -198,8 +203,7 @@ def main():
     ## Step 3:
     # Rotate images to have North up
     if rotate_stokes:
-        alpha = headers[0]['orientat']
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, -alpha, SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, SNRi_cut=None)
 
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)

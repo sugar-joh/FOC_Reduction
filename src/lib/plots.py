@@ -462,8 +462,8 @@ class align_maps(object):
         data = self.map[0].data
         other_data = self.other_map[0].data
 
-        plt.rcParams.update({'font.size': 16})
-        self.fig = plt.figure(figsize=(25,15))
+        plt.rcParams.update({'font.size': 10})
+        self.fig = plt.figure(figsize=(10,10))
         #Plot the UV map
         self.ax1 = self.fig.add_subplot(121, projection=self.wcs_map)
         self.ax1.set_facecolor('k')
@@ -522,8 +522,10 @@ class align_maps(object):
         #Selection button
         self.axapply = self.fig.add_axes([0.80, 0.01, 0.1, 0.04])
         self.bapply = Button(self.axapply, 'Apply reference')
+        self.bapply.label.set_fontsize(8)
         self.axreset = self.fig.add_axes([0.60, 0.01, 0.1, 0.04])
         self.breset = Button(self.axreset, 'Leave as is')
+        self.breset.label.set_fontsize(8)
 
     def get_aligned_wcs(self):
         return self.wcs_map, self.wcs_other
@@ -751,7 +753,8 @@ class overplot_pol(align_maps):
 
 class align_pol(object):
     def __init__(self, maps, **kwargs):
-        maps = np.array(maps)
+        order = np.argsort(np.array([curr[0].header['mjd-obs'] for curr in maps]))
+        maps = np.array(maps)[order]
         self.ref_map, self.other_maps = maps[0], maps[1:]
 
         self.wcs = WCS(self.ref_map[0].header)
@@ -797,13 +800,16 @@ class align_pol(object):
         plt.rcdefaults()
         fig = plt.figure(figsize=(10,10))
         ax = fig.add_subplot(111, projection=wcs)
-        ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", facecolor='k')
+        ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", facecolor='k',
+            title="target {0:s} observed on {1:s}".format(curr_map[0].header['targname'], curr_map[0].header['date-obs']))
         fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
         cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.75])
 
         if not ax_lim is None:
             lim = np.concatenate([wcs.world_to_pixel(ax_lim[i]) for i in range(len(ax_lim))])
             x_lim, y_lim = lim[0::2], lim[1::2]
+            print(x_lim[0], y_lim[0], wcs.pixel_to_world(x_lim[0], y_lim[0]))
+            print(x_lim[1], y_lim[1], wcs.pixel_to_world(x_lim[1], y_lim[1]))
             ax.set(xlim=x_lim,ylim=y_lim)
 
         if v_lim is None:
@@ -856,9 +862,11 @@ class align_pol(object):
         vmin, vmax = np.min([vmin, np.min(self.ref_map[0].data[self.ref_map[0].data > 0.])]), np.max([vmax, np.max(self.ref_map[0].data[self.ref_map[0].data > 0.])])
         v_lim = np.array([vmin, vmax])
 
-        fig, ax = self.single_plot(self.ref_map, self.wcs, v_lim = v_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
+        fig, ax = self.single_plot(self.ref_map, self.wcs, v_lim = v_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename+'_0', **kwargs)
         x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
         ax_lim = np.array([self.wcs.pixel_to_world(x_lim[i], y_lim[i]) for i in range(len(x_lim))])
+        print(x_lim[0], y_lim[0], ax_lim[0])
+        print(x_lim[1], y_lim[1], ax_lim[1])
         
         for i, curr_map in enumerate(self.other_maps):
             self.single_plot(curr_map, self.wcs_other[i], v_lim=v_lim, ax_lim=ax_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename+'_'+str(i+1), **kwargs)

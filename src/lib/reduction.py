@@ -651,7 +651,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             if scale.lower() in ['px', 'pixel']:
                 Dxy = np.array([pxsize,]*2)
             elif scale.lower() in ['arcsec','arcseconds']:
-                Dxy = np.floor(pxsize/w.wcs.cdelt/3600.).astype(int)
+                Dxy = np.floor(pxsize/np.abs(w.wcs.cdelt)/3600.).astype(int)
             elif scale.lower() in ['full','integrate']:
                 Dxy = np.floor(image.shape).astype(int)
             else:
@@ -1389,7 +1389,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
 
 
 def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
-                ang, SNRi_cut=None):
+                ang=None, SNRi_cut=None):
     """
     Use scipy.ndimage.rotate to rotate I_stokes to an angle, and a rotation
     matrix to rotate Q, U of a given angle in degrees and update header
@@ -1411,9 +1411,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
         2D boolean array delimiting the data to work on.
     headers : header list
         List of headers corresponding to the reduced images.
-    ang : float
+    ang : float, optional
         Rotation angle (in degrees) that should be applied to the Stokes
-        parameters
+        parameters. If None, will rotate to have North up.
+        Defaults to None.
     SNRi_cut : float, optional
         Cut that should be applied to the signal-to-noise ratio on I.
         Any SNR < SNRi_cut won't be displayed. If None, cut won't be applied.
@@ -1450,6 +1451,11 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
                     U_stokes[i,j] = eps*np.sqrt(Stokes_cov[2,2][i,j])
 
     #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
+    if ang is None:
+        ang = np.zeros((len(headers),))
+        for i,head in enumerate(headers):
+            ang[i] = -head['orientat']
+        ang = ang.mean()
     alpha = ang*np.pi/180.
     mrot = np.array([[1., 0., 0.],
                     [0., np.cos(2.*alpha), np.sin(2.*alpha)],
@@ -1490,33 +1496,22 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     #Update headers to new angle
     new_headers = []
     mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
-        [np.sin(-alpha), np.cos(-alpha)]])
+                    [np.sin(-alpha), np.cos(-alpha)]])
     for header in headers:
         new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
         new_wcs = WCS(header).deepcopy()
-        if new_wcs.wcs.has_cd():    # CD matrix
-            # Update WCS with relevant information
-            HST_aper = 2400.    # HST aperture in mm
-            f_ratio = header['f_ratio']
-            px_dim = np.array([25., 25.])   # Pixel dimension in µm
-            if ref_header['pxformt'].lower() == 'zoom':
-                px_dim[0] = 50.
-            #new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
-            new_cdelt = np.abs(np.linalg.eig(new_wcs.wcs.cd)[0])
-            old_cd = new_wcs.wcs.cd
-            del new_wcs.wcs.cd
-            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
-            for key in keys:
-                new_header.remove(key, ignore_missing=True)
-            new_wcs.wcs.pc = np.dot(mrot, np.dot(old_cd, np.diag(1./new_cdelt)))
-            new_wcs.wcs.cdelt = new_cdelt
-        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
-            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
-            new_wcs.wcs.pc = newpc
+
+        new_wcs.wcs.pc = np.dot(mrot, new_wcs.wcs.pc)
+        print(new_wcs.wcs.pc)
         new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center[::-1]) + new_center[::-1]
         new_wcs.wcs.set()
-        new_header.update(new_wcs.to_header())
+        for key, val in new_wcs.to_header().items():
+            new_header.set(key,val)
+        if new_wcs.wcs.pc[0,0] == 1.:
+            new_header.set('PC1_1',1.)
+        if new_wcs.wcs.pc[1,1] == 1.:
+            new_header.set('PC2_2',1.)
 
         new_headers.append(new_header)
 
@@ -1619,33 +1614,18 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     #Update headers to new angle
     new_headers = []
     mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)],
-        [np.sin(-alpha), np.cos(-alpha)]])
+            [np.sin(-alpha), np.cos(-alpha)]])
     for header in headers:
         new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
 
         new_wcs = WCS(header).deepcopy()
-        if new_wcs.wcs.has_cd():    # CD matrix
-            # Update WCS with relevant information
-            HST_aper = 2400.    # HST aperture in mm
-            f_ratio = ref_header['f_ratio']
-            px_dim = np.array([25., 25.])   # Pixel dimension in µm
-            if ref_header['pxformt'].lower() == 'zoom':
-                px_dim[0] = 50.
-            new_cdelt = 206.3/3600.*px_dim/(f_ratio*HST_aper)
-            old_cd = new_wcs.wcs.cd
-            del new_wcs.wcs.cd
-            keys = ['CD1_1','CD1_2','CD2_1','CD2_2']
-            for key in keys:
-                new_header.remove(key, ignore_missing=True)
-            new_wcs.wcs.pc = np.dot(mrot, np.dot(old_cd, np.diag(1./new_cdelt)))
-            new_wcs.wcs.cdelt = new_cdelt
-        elif new_wcs.wcs.has_pc():      # PC matrix + CDELT
-            newpc = np.dot(mrot, new_wcs.wcs.get_pc())
-            new_wcs.wcs.pc = newpc
+
+        new_wcs.wcs.pc = np.dot(mrot, new_wcs.wcs.pc)
         new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center[::-1]) + new_center[::-1]
         new_wcs.wcs.set()
-        new_header.update(new_wcs.to_header())
+        for key, val in new_wcs.to_header().items():
+            new_header[key] = val
 
         new_headers.append(new_header)
     globals()['theta'] = theta - alpha
