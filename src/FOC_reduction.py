@@ -24,7 +24,7 @@ def main():
 #    infiles = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
 #            'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
 #            'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-#    psf_file = 'NGC1068_f253m00.fits'
+##    psf_file = 'NGC1068_f253m00.fits'
 #    globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #    globals()['data_folder'] = "../data/IC5063_x3nl030/"
@@ -88,11 +88,11 @@ def main():
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
     globals()['data_folder'] = "../data/M87/POS1/"
-    infiles = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
+#    infiles = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
 #    infiles = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
 #    infiles = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
 #    infiles = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
-#    infiles = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
+    infiles = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
     globals()['plots_folder'] = "../plots/M87/POS1/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
@@ -123,7 +123,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.1
+        pxsize = 0.20
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -131,7 +131,7 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
@@ -140,8 +140,8 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = 'M87_POS1_1995_FOC'         #target/intrument name
-    figtype = '_combine_FWHM01'    #additionnal informations
+    figname = 'M87_POS1_1999_FOC'         #target/intrument name
+    figtype = '_combine_FWHM020'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted

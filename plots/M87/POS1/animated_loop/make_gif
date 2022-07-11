@@ -1,2 +1,1 @@
-convert -delay 20 -loop 0 *.jpg myimage.gif
-
+convert -delay 20 -loop 0 *.png test.gif

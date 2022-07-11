@@ -43,7 +43,6 @@ from matplotlib.patches import Rectangle, Circle
 from matplotlib.path import Path
 from matplotlib.widgets import RectangleSelector, LassoSelector, Button, Slider, TextBox
 from matplotlib.colors import LogNorm
-from matplotlib.ticker import LogFormatter 
 import matplotlib.font_manager as fm
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
@@ -327,7 +326,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
         display='s_p'
-        vmin, vmax = 0., 10.
+        vmin, vmax = 0., np.max(pol_err.data[SNRp > SNRp_cut])*100.
         p_err = deepcopy(pol_err.data)
         p_err[p_err > vmax/100.] = np.nan
         im = ax.imshow(p_err*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
@@ -470,11 +469,16 @@ class align_maps(object):
         self.ax1.set_facecolor('k')
 
         vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
-        im1 = self.ax1.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
+        im1 = self.ax1.imshow(data*convert_flux, aspect='equal', **kwargs)
 
-        fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_map.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         self.ax1.add_artist(px_sc)
 
         try:
@@ -552,6 +556,7 @@ class align_maps(object):
 
     def apply_align(self, event):
         self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())
+        self.wcs_map.wcs.crval = np.array(self.wcs_map.pixel_to_world_values(*self.wcs_map.wcs.crpix))
         self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
         self.wcs_other.wcs.crval = self.wcs_map.wcs.crval
         self.fig.canvas.draw_idle()
@@ -650,10 +655,10 @@ class overplot_radio(align_maps):
         self.fig2.canvas.draw()
 
     def plot(self, levels, SNRp_cut=3., SNRi_cut=30., savename=None) -> None:
-        self.align()
-        if self.aligned:
-            self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
-            plt.show(block=True)
+        while not self.aligned:
+            self.align()
+        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
+        plt.show(block=True)
 
 
 class overplot_pol(align_maps):
@@ -738,10 +743,125 @@ class overplot_pol(align_maps):
         self.fig2.canvas.draw()
 
     def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
-        self.align()
-        if self.aligned:
-            self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
-            plt.show(block=True)
+        while not self.aligned():
+            self.align()
+        self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
+        plt.show(block=True)
+
+
+class align_pol(object):
+    def __init__(self, maps, **kwargs):
+        maps = np.array(maps)
+        self.ref_map, self.other_maps = maps[0], maps[1:]
+
+        self.wcs = WCS(self.ref_map[0].header)
+        self.wcs_other = np.array([WCS(map[0].header) for map in self.other_maps])
+
+        self.aligned = np.zeros(self.other_maps.shape[0], dtype=bool)
+
+        self.kwargs = kwargs
+    
+    def single_plot(self, curr_map, wcs, v_lim=None, ax_lim=None, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+        #Get data
+        stkI = curr_map[np.argmax([curr_map[i].header['datatype']=='I_stokes' for i in range(len(curr_map))])]
+        stkQ = curr_map[np.argmax([curr_map[i].header['datatype']=='Q_stokes' for i in range(len(curr_map))])]
+        stkU = curr_map[np.argmax([curr_map[i].header['datatype']=='U_stokes' for i in range(len(curr_map))])]
+        stk_cov = curr_map[np.argmax([curr_map[i].header['datatype']=='IQU_cov_matrix' for i in range(len(curr_map))])]
+        pol = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_deg_debiased' for i in range(len(curr_map))])]
+        pol_err = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_deg_err' for i in range(len(curr_map))])]
+        pang = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_ang' for i in range(len(curr_map))])]
+        try:
+            data_mask = curr_map[np.argmax([curr_map[i].header['datatype']=='Data_mask' for i in range(len(curr_map))])].data.astype(bool)
+        except KeyError:
+            data_mask = np.ones(stkI.shape).astype(bool)
+
+        pivot_wav = curr_map[0].header['photplam']
+        convert_flux = curr_map[0].header['photflam']
+
+        #Compute SNR and apply cuts
+        pol.data[pol.data == 0.] = np.nan
+        pol_err.data[pol_err.data == 0.] = np.nan
+        SNRp = pol.data/pol_err.data
+        SNRp[np.isnan(SNRp)] = 0.
+        pol.data[SNRp < SNRp_cut] = np.nan
+
+        maskI = stk_cov.data[0,0] > 0
+        SNRi = np.zeros(stkI.data.shape)
+        SNRi[maskI] = stkI.data[maskI]/np.sqrt(stk_cov.data[0,0][maskI])
+        pol.data[SNRi < SNRi_cut] = np.nan
+
+        mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
+
+        #Plot the map
+        plt.rcParams.update({'font.size': 10})
+        plt.rcdefaults()
+        fig = plt.figure(figsize=(10,10))
+        ax = fig.add_subplot(111, projection=wcs)
+        ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", facecolor='k')
+        fig.subplots_adjust(hspace=0, wspace=0, right=0.9)
+        cbar_ax = fig.add_axes([0.95, 0.12, 0.01, 0.75])
+
+        if not ax_lim is None:
+            lim = np.concatenate([wcs.world_to_pixel(ax_lim[i]) for i in range(len(ax_lim))])
+            x_lim, y_lim = lim[0::2], lim[1::2]
+            ax.set(xlim=x_lim,ylim=y_lim)
+
+        if v_lim is None:
+            vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        else:
+            vmin, vmax = v_lim*convert_flux
+        
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
+
+        im = ax.imshow(stkI.data*convert_flux, aspect='equal', **kwargs)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+
+        px_size = wcs.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+        ax.add_artist(px_sc)
+
+        north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=curr_map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
+        ax.add_artist(north_dir)
+        
+        step_vec = 1
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
+        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+        ax.add_artist(pol_sc)
+
+        if not savename is None:
+            fig.savefig(savename+".png",bbox_inches='tight',dpi=300)
+
+        plt.show(block=True)
+        return fig, ax
+
+    def align(self):
+        for i, curr_map in enumerate(self.other_maps):
+            curr_align = align_maps(self.ref_map, curr_map, **self.kwargs)
+            self.wcs, self.wcs_other[i] = curr_align.align()
+            self.aligned[i] = curr_align.aligned
+    
+    def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+        while not self.aligned.all():
+            self.align()
+
+        vmin = np.min([np.min(curr_map[0].data[curr_map[0].data > 0.]) for curr_map in self.other_maps])
+        vmax = np.max([np.max(curr_map[0].data[curr_map[0].data > 0.]) for curr_map in self.other_maps])
+        vmin, vmax = np.min([vmin, np.min(self.ref_map[0].data[self.ref_map[0].data > 0.])]), np.max([vmax, np.max(self.ref_map[0].data[self.ref_map[0].data > 0.])])
+        v_lim = np.array([vmin, vmax])
+
+        fig, ax = self.single_plot(self.ref_map, self.wcs, v_lim = v_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
+        x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
+        ax_lim = np.array([self.wcs.pixel_to_world(x_lim[i], y_lim[i]) for i in range(len(x_lim))])
+        
+        for i, curr_map in enumerate(self.other_maps):
+            self.single_plot(curr_map, self.wcs_other[i], v_lim=v_lim, ax_lim=ax_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename+'_'+str(i+1), **kwargs)
 
 
 class crop_map(object):

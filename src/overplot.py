@@ -1,20 +1,21 @@
 #!/usr/bin/python3
+from os import system as command
 from astropy.io import fits
 import numpy as np
 from copy import deepcopy
-from lib.plots import overplot_radio, overplot_pol
+from lib.plots import overplot_radio, overplot_pol, align_pol
 from matplotlib.colors import LogNorm
 
-Stokes_UV = fits.open("../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020.fits")
-Stokes_18GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
-Stokes_24GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.24GHz.fits")
-Stokes_103GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_103GHz.fits")
-Stokes_229GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_229GHz.fits")
-Stokes_357GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_357GHz.fits")
-Stokes_S2 = fits.open("../data/IC5063_x3nl030/POLARIZATION_COMPARISON/S2_rot_crop.fits")
-Stokes_IR = fits.open("../data/IC5063_x3nl030/IR/u2e65g01t_c0f_rot.fits")
+#Stokes_UV = fits.open("../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020.fits")
+#Stokes_18GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
+#Stokes_24GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.24GHz.fits")
+#Stokes_103GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_103GHz.fits")
+#Stokes_229GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_229GHz.fits")
+#Stokes_357GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_357GHz.fits")
+#Stokes_S2 = fits.open("../data/IC5063_x3nl030/POLARIZATION_COMPARISON/S2_rot_crop.fits")
+#Stokes_IR = fits.open("../data/IC5063_x3nl030/IR/u2e65g01t_c0f_rot.fits")
 
-levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
+#levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
 
 ##levels18GHz = np.array([0.6, 1.5, 3, 6, 12, 24, 48, 96])/100.*Stokes_18GHz[0].data.max()
 #levels18GHz = levelsMorganti*0.28*1e-3
@@ -41,5 +42,18 @@ levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
 #F = overplot_pol(Stokes_UV, Stokes_S2)
 #F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/S2_overplot_forced.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
 
-G = overplot_pol(Stokes_UV, Stokes_IR, norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
-G.plot(SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+#G = overplot_pol(Stokes_UV, Stokes_IR, norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+#G.plot(SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+
+data_folder = "../data/M87/POS1/"
+plots_folder = "../plots/M87/POS1/"
+basename = "M87_005_log_core"
+M87_95 = fits.open(data_folder+"M87_POS1_1995_FOC_combine_FWHM005.fits")
+M87_96 = fits.open(data_folder+"M87_POS1_1996_FOC_combine_FWHM005.fits")
+M87_97 = fits.open(data_folder+"M87_POS1_1997_FOC_combine_FWHM005.fits")
+M87_98 = fits.open(data_folder+"M87_POS1_1998_FOC_combine_FWHM005.fits")
+M87_99 = fits.open(data_folder+"M87_POS1_1999_FOC_combine_FWHM005.fits")
+
+H = align_pol(np.array([M87_95,M87_96,M87_97,M87_98,M87_99]), norm=LogNorm())
+H.plot(SNRp_cut=3.0, SNRi_cut=30.0, savename=plots_folder+'animated_loop/'+basename, norm=LogNorm())
+command("convert -delay 20 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif && rm {0:s}animated_loop/{1:s}*.png".format(plots_folder, basename))
