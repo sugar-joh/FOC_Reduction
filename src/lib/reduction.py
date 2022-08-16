@@ -1503,7 +1503,6 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
         new_wcs = WCS(header).deepcopy()
 
         new_wcs.wcs.pc = np.dot(mrot, new_wcs.wcs.pc)
-        print(new_wcs.wcs.pc)
         new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center[::-1]) + new_center[::-1]
         new_wcs.wcs.set()
         for key, val in new_wcs.to_header().items():

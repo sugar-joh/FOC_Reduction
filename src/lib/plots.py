@@ -526,6 +526,11 @@ class align_maps(object):
         self.axreset = self.fig.add_axes([0.60, 0.01, 0.1, 0.04])
         self.breset = Button(self.axreset, 'Leave as is')
         self.breset.label.set_fontsize(8)
+        self.enter = self.fig.canvas.mpl_connect('key_press_event', self.on_key)
+
+    def on_key(self, event):
+        if event.key.lower() == "enter":
+            self.on_close_align(event)
 
     def get_aligned_wcs(self):
         return self.wcs_map, self.wcs_other
@@ -556,10 +561,16 @@ class align_maps(object):
 
         self.aligned = True
 
-    def apply_align(self, event):
-        self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())
+    def apply_align(self, event=None):
+        if np.array(self.cr_map.get_data()).shape == (2,1):
+            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())[:,0]
+        else:
+            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())
+        if np.array(self.cr_other.get_data()).shape == (2,1):
+            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())[:,0]
+        else:
+            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
         self.wcs_map.wcs.crval = np.array(self.wcs_map.pixel_to_world_values(*self.wcs_map.wcs.crpix))
-        self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
         self.wcs_other.wcs.crval = self.wcs_map.wcs.crval
         self.fig.canvas.draw_idle()
 
@@ -569,8 +580,9 @@ class align_maps(object):
         self.aligned = True
 
     def on_close_align(self, event):
-        self.aligned = True
-        #print(self.get_aligned_wcs())
+        if not self.aligned:
+            self.aligned = True
+            self.apply_align()
 
     def align(self):
         self.fig.canvas.draw()
@@ -808,8 +820,6 @@ class align_pol(object):
         if not ax_lim is None:
             lim = np.concatenate([wcs.world_to_pixel(ax_lim[i]) for i in range(len(ax_lim))])
             x_lim, y_lim = lim[0::2], lim[1::2]
-            print(x_lim[0], y_lim[0], wcs.pixel_to_world(x_lim[0], y_lim[0]))
-            print(x_lim[1], y_lim[1], wcs.pixel_to_world(x_lim[1], y_lim[1]))
             ax.set(xlim=x_lim,ylim=y_lim)
 
         if v_lim is None:
@@ -820,6 +830,8 @@ class align_pol(object):
         for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
             try:
                 test = kwargs[key]
+                if str(type(test)) == "<class 'matplotlib.colors.LogNorm'>":
+                    kwargs[key] = LogNorm(vmin, vmax)
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
@@ -856,17 +868,16 @@ class align_pol(object):
     def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
         while not self.aligned.all():
             self.align()
-
-        vmin = np.min([np.min(curr_map[0].data[curr_map[0].data > 0.]) for curr_map in self.other_maps])
-        vmax = np.max([np.max(curr_map[0].data[curr_map[0].data > 0.]) for curr_map in self.other_maps])
-        vmin, vmax = np.min([vmin, np.min(self.ref_map[0].data[self.ref_map[0].data > 0.])]), np.max([vmax, np.max(self.ref_map[0].data[self.ref_map[0].data > 0.])])
+        eps = 1e-35
+        vmin = np.min([np.min(curr_map[0].data[curr_map[0].data > SNRi_cut*np.max([eps*np.ones(curr_map[0].data.shape),np.sqrt(curr_map[3].data[0,0])],axis=0)]) for curr_map in self.other_maps])/2.5
+        vmax = np.max([np.max(curr_map[0].data[curr_map[0].data > SNRi_cut*np.max([eps*np.ones(curr_map[0].data.shape),np.sqrt(curr_map[3].data[0,0])],axis=0)]) for curr_map in self.other_maps])
+        vmin = np.min([vmin, np.min(self.ref_map[0].data[self.ref_map[0].data > SNRi_cut*np.max([eps*np.ones(self.ref_map[0].data.shape),np.sqrt(self.ref_map[3].data[0,0])],axis=0)])])/2.5
+        vmax = np.max([vmax, np.max(self.ref_map[0].data[self.ref_map[0].data > SNRi_cut*np.max([eps*np.ones(self.ref_map[0].data.shape),np.sqrt(self.ref_map[3].data[0,0])],axis=0)])])
         v_lim = np.array([vmin, vmax])
 
         fig, ax = self.single_plot(self.ref_map, self.wcs, v_lim = v_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename+'_0', **kwargs)
         x_lim, y_lim = ax.get_xlim(), ax.get_ylim()
         ax_lim = np.array([self.wcs.pixel_to_world(x_lim[i], y_lim[i]) for i in range(len(x_lim))])
-        print(x_lim[0], y_lim[0], ax_lim[0])
-        print(x_lim[1], y_lim[1], ax_lim[1])
         
         for i, curr_map in enumerate(self.other_maps):
             self.single_plot(curr_map, self.wcs_other[i], v_lim=v_lim, ax_lim=ax_lim, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename+'_'+str(i+1), **kwargs)

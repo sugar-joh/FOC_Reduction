@@ -90,22 +90,22 @@ from astropy.wcs import WCS
 #globals()['plots_folder'] = "../plots/3C273_x0u20/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
-#globals()['data_folder'] = "../data/M87/POS1/"
+globals()['data_folder'] = "../data/M87/POS1/"
 #globals()['infiles'] = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
 #globals()['infiles'] = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
 #globals()['infiles'] = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
 #globals()['infiles'] = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
-#globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
-#globals()['plots_folder'] = "../plots/M87/POS1/"
+globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
+globals()['plots_folder'] = "../plots/M87/POS1/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
-globals()['data_folder'] = "../data/M87/POS3/"
-globals()['infiles'] = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
+#globals()['data_folder'] = "../data/M87/POS3/"
+#globals()['infiles'] = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
 #globals()['infiles'] = ['x3be030at_c0f.fits','x3be030bt_c0f.fits','x3be030ct_c0f.fits','x3be0309t_c0f.fits'] #1996
 #globals()['infiles'] = ['x43r030em_c0f.fits','x43r030gm_c0f.fits','x43r030im_c0f.fits','x43r030lm_c0f.fits'] #1997
 #globals()['infiles'] = ['x43r130er_c0f.fits','x43r130fr_c0f.fits','x43r130ir_c0f.fits','x43r130lr_c0f.fits'] #1998
 #globals()['infiles'] = ['x43r230er_c0f.fits','x43r230fr_c0f.fits','x43r230ir_c0f.fits','x43r230lr_c0f.fits'] #1999
-globals()['plots_folder'] = "../plots/M87/POS3/"
+#globals()['plots_folder'] = "../plots/M87/POS3/"
 
 
 def main():
@@ -136,7 +136,7 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.07           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
@@ -145,8 +145,8 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = 'M87_POS3_1995_FOC'         #target/intrument name
-    figtype = '_combine_FWHM005'    #additionnal informations
+    figname = 'M87_POS1_1999_FOC'         #target/intrument name
+    figtype = '_combine_FWHM010'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
