@@ -1703,12 +1703,14 @@ class pol_map(object):
         ax.add_artist(self.north_dir)
 
     def display(self, fig=None, ax=None):
+        norm = None
         if self.display_selection is None:
             self.display_selection = "total_flux"
 
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = 0., np.max(self.data[self.data > 0.])
+            vmin, vmax = np.min(self.data[self.cut])/10., np.max(self.data[self.data > 0.])
+            norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
             self.data = self.I*self.convert_flux*self.P
@@ -1738,12 +1740,18 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'im'):
                 self.im.remove()
-            self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
+            if not norm is None:
+                self.im = ax.imshow(self.data, norm=norm, aspect='equal', cmap='inferno')
+            else:
+                self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
             self.cbar = plt.colorbar(self.im, cax=self.cbar_ax, label=label)
             fig.canvas.draw_idle()
             return self.im
         else:
-            im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
+            if not norm is None:
+                im = ax.imshow(self.data, norm=norm, aspect='equal', cmap='inferno')
+            else:
+                im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
             ax.set_xlim(0,self.data.shape[1])
             ax.set_ylim(0,self.data.shape[0])
             plt.colorbar(im, pad=0.025, aspect=80, label=label)

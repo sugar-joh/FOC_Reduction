@@ -18,12 +18,13 @@ from astropy.wcs import WCS
 
 ##### User inputs
 ## Input and output locations
-#globals()['data_folder'] = "../data/NGC1068_x274020/"
-#globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
-#   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
-#   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-##psf_file = 'NGC1068_f253m00.fits'
-#globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+globals()['data_folder'] = "../data/NGC1068_x274020/"
+#globals()['infiles'] = ['xn1c400.fits','xn2c400.fits','xn3c400.fits']
+globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
+   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
+   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
+#psf_file = 'NGC1068_f253m00.fits'
+globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #globals()['data_folder'] = "../data/IC5063_x3nl030/"
 #globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
@@ -90,13 +91,13 @@ from astropy.wcs import WCS
 #globals()['plots_folder'] = "../plots/3C273_x0u20/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
-globals()['data_folder'] = "../data/M87/POS1/"
+#globals()['data_folder'] = "../data/M87/POS1/"
 #globals()['infiles'] = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
 #globals()['infiles'] = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
 #globals()['infiles'] = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
 #globals()['infiles'] = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
-globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
-globals()['plots_folder'] = "../plots/M87/POS1/"
+#globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
+#globals()['plots_folder'] = "../plots/M87/POS1/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
 #globals()['data_folder'] = "../data/M87/POS3/"
@@ -128,28 +129,28 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.05
-        px_scale = 'arcsec'         #pixel, arcsec or full
+        pxsize = 10
+        px_scale = 'pixel'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True
+    final_display = False
     # Polarization map output
-    figname = 'M87_POS1_1999_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010'    #additionnal informations
+    figname = 'NGC1068_K_FOC'         #target/intrument name
+    figtype = '_bin10px'    #additionnal informations
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    step_vec = 0    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
+    step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
     ##### Pipeline start

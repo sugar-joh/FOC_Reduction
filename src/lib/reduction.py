@@ -1475,23 +1475,22 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     new_U_stokes = np.zeros(shape)
     new_Stokes_cov = np.zeros((*Stokes_cov.shape[:-2],*shape))
 
-    for i in range(shape[0]):
-        for j in range(shape[1]):
-            new_I_stokes[i,j], new_Q_stokes[i,j], new_U_stokes[i,j] = np.dot(mrot, np.array([I_stokes[i,j], Q_stokes[i,j], U_stokes[i,j]])).T
-            new_Stokes_cov[:,:,i,j] = np.dot(mrot, np.dot(Stokes_cov[:,:,i,j], mrot.T))
-
     #Rotate original images using scipy.ndimage.rotate
-    new_I_stokes = sc_rotate(new_I_stokes, ang, order=1, reshape=False, cval=0.)
-    new_Q_stokes = sc_rotate(new_Q_stokes, ang, order=1, reshape=False, cval=0.)
-    new_U_stokes = sc_rotate(new_U_stokes, ang, order=1, reshape=False, cval=0.)
+    new_I_stokes = sc_rotate(I_stokes, ang, order=1, reshape=False, cval=0.)
+    new_Q_stokes = sc_rotate(Q_stokes, ang, order=1, reshape=False, cval=0.)
+    new_U_stokes = sc_rotate(U_stokes, ang, order=1, reshape=False, cval=0.)
     new_data_mask = sc_rotate(data_mask.astype(float)*10., ang, order=1, reshape=False, cval=0.)
     new_data_mask[new_data_mask < 2] = 0.
     new_data_mask = new_data_mask.astype(bool)
     for i in range(3):
         for j in range(3):
-            new_Stokes_cov[i,j] = sc_rotate(new_Stokes_cov[i,j], ang, order=1,
-                    reshape=False, cval=0.)
+            new_Stokes_cov[i,j] = sc_rotate(Stokes_cov[i,j], ang, order=1, reshape=False, cval=0.)
         new_Stokes_cov[i,i] = np.abs(new_Stokes_cov[i,i])
+
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            new_I_stokes[i,j], new_Q_stokes[i,j], new_U_stokes[i,j] = np.dot(mrot, np.array([new_I_stokes[i,j], new_Q_stokes[i,j], new_U_stokes[i,j]])).T
+            new_Stokes_cov[:,:,i,j] = np.dot(mrot, np.dot(new_Stokes_cov[:,:,i,j], mrot.T))
 
     #Update headers to new angle
     new_headers = []
