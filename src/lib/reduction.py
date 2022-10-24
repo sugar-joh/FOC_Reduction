@@ -318,6 +318,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
         curr_wcs = deepcopy(WCS(crop_headers[i]))
         curr_wcs.wcs.crpix = curr_wcs.wcs.crpix - np.array([v_array[2], v_array[0]])
         crop_headers[i].update(curr_wcs.to_header())
+        crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
     if not data_mask is None:
         crop_mask = data_mask[v_array[0]:v_array[1],v_array[2]:v_array[3]]
         return crop_array, crop_error_array, crop_mask, crop_headers
@@ -508,6 +509,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         background[i] = sub_image.sum()
         if (data_array[i] < 0.).any():
             print(data_array[i])
+        if i==0:
+            np.savetxt("output/s_bg.txt",error_bkg[i])
+            np.savetxt("output/s_wav.txt",err_wav)
+            np.savetxt("output/s_psf.txt",err_psf)
+            np.savetxt("output/s_flat.txt",err_flat)
 
     if display:
         plt.rcParams.update({'font.size': 10})
@@ -770,7 +776,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     if error_array is None:
         _, error_array, headers, background = get_error(data_array, headers, return_background=True)
     else:
-        _, _, headers, background = get_error(data_array, headers, return_background=True)
+        _, _, headers, background = get_error(data_array, headers, error_array=error_array, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
@@ -836,6 +842,9 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         error_shift = np.abs(rescaled_image[i] - shifted_image)/2.
         #sum quadratically the errors
         rescaled_error[i] = np.sqrt(rescaled_error[i]**2 + error_shift**2)
+            
+        if i==1:
+            np.savetxt("output/s_shift.txt",error_shift)
 
         shifts.append(shift)
         errors.append(error)
@@ -1075,23 +1084,23 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             err120 = np.sqrt(np.sum(err120_array**2,axis=0))
             polerr_array = np.array([err0, err60, err120])
 
-            # Update headers
-            for header in headers:
-                if header['filtnam1']=='POL0':
-                    list_head = headers0
-                elif header['filtnam1']=='POL60':
-                    list_head = headers60
-                else:
-                    list_head = headers120
-                header['exptime'] = np.sum([head['exptime'] for head in list_head])/len(list_head)
-            headers_array = [headers0[0], headers60[0], headers120[0]]
-
             if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
                         data_mask, headers_array, FWHM=FWHM, scale=scale)
                 pol0, pol60, pol120 = pol_array
                 err0, err60, err120 = polerr_array
+
+        # Update headers
+        for header in headers:
+            if header['filtnam1']=='POL0':
+                list_head = headers0
+            elif header['filtnam1']=='POL60':
+                list_head = headers60
+            elif header['filtnam1']=='POL120':
+                list_head = headers120
+            header['exptime'] = np.sum([head['exptime'] for head in list_head])#/len(list_head)
+        pol_headers = [headers0[0], headers60[0], headers120[0]]
 
         # Get image shape
         shape = pol0.shape
@@ -1109,7 +1118,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
         polarizer_cov[1,1] = err60**2
         polarizer_cov[2,2] = err120**2
 
-    return polarizer_array, polarizer_cov
+    return polarizer_array, polarizer_cov, pol_headers
 
 
 def compute_Stokes(data_array, error_array, data_mask, headers,
@@ -1172,7 +1181,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
     # Routine for the FOC instrument
     if instr == 'FOC':
         # Get image from each polarizer and covariance matrix
-        pol_array, pol_cov = polarizer_avg(data_array, error_array, data_mask,
+        pol_array, pol_cov, pol_headers = polarizer_avg(data_array, error_array, data_mask,
                 headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
         pol0, pol60, pol120 = pol_array
 
@@ -1246,6 +1255,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
+        np.savetxt("output/sI_dir.txt", np.sqrt(s_I2_axis))
+        np.savetxt("output/sQ_dir.txt", np.sqrt(s_Q2_axis))
+        np.savetxt("output/sU_dir.txt", np.sqrt(s_U2_axis))
 
         # Add quadratically the uncertainty to the Stokes covariance matrix
         Stokes_cov[0,0] += s_I2_axis

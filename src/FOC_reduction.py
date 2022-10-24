@@ -148,7 +148,7 @@ def main():
     # Polarization map output
     figname = 'NGC1068_K_FOC'         #target/intrument name
     figtype = '_bin10px'    #additionnal informations
-    SNRp_cut = 3.    #P measurments with SNR>3
+    SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
@@ -164,7 +164,6 @@ def main():
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations, algo=algo)
-
     # Rotate data to have North up
     if rotate_data:
         data_mask = np.ones(data_array.shape[1:]).astype(bool)
