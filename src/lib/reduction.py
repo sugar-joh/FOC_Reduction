@@ -509,11 +509,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         background[i] = sub_image.sum()
         if (data_array[i] < 0.).any():
             print(data_array[i])
-        if i==0:
-            np.savetxt("output/s_bg.txt",error_bkg[i])
-            np.savetxt("output/s_wav.txt",err_wav)
-            np.savetxt("output/s_psf.txt",err_psf)
-            np.savetxt("output/s_flat.txt",err_flat)
+        #if i==0:
+            #np.savetext("output/s_bg.txt",error_bkg[i])
+            #np.savetext("output/s_wav.txt",err_wav)
+            #np.savetext("output/s_psf.txt",err_psf)
+            #np.savetext("output/s_flat.txt",err_flat)
 
     if display:
         plt.rcParams.update({'font.size': 10})
@@ -843,8 +843,8 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         #sum quadratically the errors
         rescaled_error[i] = np.sqrt(rescaled_error[i]**2 + error_shift**2)
             
-        if i==1:
-            np.savetxt("output/s_shift.txt",error_shift)
+        #if i==1:
+            #np.savetext("output/s_shift.txt",error_shift)
 
         shifts.append(shift)
         errors.append(error)
@@ -1204,12 +1204,14 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
             transmit3 = np.min([trans3[header['filtnam3'].lower()] for header in headers])
             transmit4 = np.min([trans4[header['filtnam4'].lower()] for header in headers])
         transmit *= transmit2*transmit3*transmit4
-
         pol_eff = np.array([pol_efficiency['pol0'], pol_efficiency['pol60'], pol_efficiency['pol120']])
+
+        #Calculating correction factor
+        corr = np.array([1.0*h['photflam']/h['exptime'] for h in pol_headers])*pol_headers[0]['exptime']/pol_headers[0]['photflam']
 
         # Orientation and error for each polarizer
         fmax = np.finfo(np.float64).max
-        pol_flux = np.array([pol0, pol60, pol120])
+        pol_flux = np.array([corr[0]*pol0, corr[1]*pol60, corr[2]*pol120])
 
         coeff_stokes = np.zeros((3,3))
         # Coefficients linking each polarizer flux to each Stokes parameter
@@ -1255,9 +1257,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
-        np.savetxt("output/sI_dir.txt", np.sqrt(s_I2_axis))
-        np.savetxt("output/sQ_dir.txt", np.sqrt(s_Q2_axis))
-        np.savetxt("output/sU_dir.txt", np.sqrt(s_U2_axis))
+        #np.savetext("output/sI_dir.txt", np.sqrt(s_I2_axis))
+        #np.savetext("output/sQ_dir.txt", np.sqrt(s_Q2_axis))
+        #np.savetext("output/sU_dir.txt", np.sqrt(s_U2_axis))
 
         # Add quadratically the uncertainty to the Stokes covariance matrix
         Stokes_cov[0,0] += s_I2_axis

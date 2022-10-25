@@ -49,7 +49,9 @@ for d in [data_S, data_K]:
     d['SNRi'] = np.zeros(d['I'].shape)
     d['SNRi'][d['sI']>0.] = d['I'][d['sI']>0.]/d['sI'][d['sI']>0.]
     d['mask'] = np.logical_and(d['SNRi']>30,d['SNRp']>5)
+data_S['mask'], data_K['mask'] = np.logical_and(data_S['mask'],data_K['mask']), np.logical_and(data_S['mask'],data_K['mask'])
 
+for d in [data_S, data_K]:
     d['X'], d['Y'] = np.meshgrid(np.arange(d['I'].shape[1]), np.arange(d['I'].shape[0]))
     d['xy_U'], d['xy_V'] = np.where(d['mask'],d['P']*np.cos(np.pi/2.+d['PA']*np.pi/180.), np.nan), np.where(d['mask'],d['P']*np.sin(np.pi/2.+d['PA']*np.pi/180.), np.nan)
 
@@ -60,7 +62,6 @@ quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='x
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
 ax.set_title(r"$SNR_P \geq 5 \; & \; SNR_I \geq 30$")
 fig.legend()
-plt.show()
 
 #compute integrated polarization parameters on a specific cut
 for d in [data_S, data_K]:
@@ -79,8 +80,12 @@ print('From my pipeline :\n', "P = {0:.2f} ± {1:.2f} %\n".format(data_S['P_dil'
 print("From Kishimoto's pipeline :\n", "P = {0:.2f} ± {1:.2f} %\n".format(data_K['P_dil']*100.,data_K['sP_dil']*100.), "PA = {0:.2f} ± {1:.2f} °".format(data_K['PA_dil'],data_K['sPA_dil']))
 
 #compare different types of error
-print("My pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_S['sI'][data_S['mask']]/data_S['I'][data_S['mask']]),np.mean(np.abs(data_S['sQ'][data_S['mask']]/data_S['Q'][data_S['mask']])),np.mean(np.abs(data_S['sU'][data_S['mask']]/data_S['U'][data_S['mask']])),np.mean(data_S['sP'][data_S['mask']]/data_S['P'][data_S['mask']])))
-print("Kishimoto's pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_K['sI'][data_K['mask']]/data_K['I'][data_K['mask']]),np.mean(np.abs(data_K['sQ'][data_K['mask']]/data_K['Q'][data_K['mask']])),np.mean(np.abs(data_K['sU'][data_K['mask']]/data_K['U'][data_K['mask']])),np.mean(data_K['sP'][data_K['mask']]/data_K['P'][data_K['mask']])))
+xx, yy = np.indices(data_S['mask'].shape)
+mask_ind = np.array([[y,x] for y,x in zip(yy[data_S['mask']],xx[data_S['mask']])])
+index = mask_ind[np.random.randint(len(mask_ind))]
+print("My pipeline : sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_S['sI'][index[0],index[1]]/data_S['I'][index[0],index[1]]),np.mean(data_S['sQ'][index[0],index[1]]/data_S['Q'][index[0],index[1]]),np.mean(data_S['sU'][index[0],index[1]]/data_S['U'][index[0],index[1]]),np.mean(data_S['sP'][index[0],index[1]]/data_S['P'][index[0],index[1]])))
+print("Kishimoto's pipeline : sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_K['sI'][index[0],index[1]]/data_K['I'][index[0],index[1]]),np.mean(data_K['sQ'][index[0],index[1]]/data_K['Q'][index[0],index[1]]),np.mean(data_K['sU'][index[0],index[1]]/data_K['U'][index[0],index[1]]),np.mean(data_K['sP'][index[0],index[1]]/data_K['P'][index[0],index[1]])))
+print("For random pixel in cut at {}".format(index))
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
     data_K[d] = np.loadtxt(path_join(root_dir_K,d+'.txt'))
     with fits.open(path_join(root_dir_data_S,'NGC1068_K_FOC_bin10px.fits')) as f:
@@ -94,3 +99,5 @@ for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,
 #from Kishimoto's pipeline : IQU_dir, IQU_shift, IQU_stat, IQU_trans
 #from my pipeline : raw_bg, raw_flat, raw_psf, raw_shift, raw_wav, IQU_dir
 # but errors from my pipeline are propagated all along, how to compare then ?
+
+plt.show()
