@@ -51,12 +51,12 @@ from astropy.io import fits
 
 def princ_angle(ang):
     """
-    Return the principal angle in the 0-180° quadrant.
+    Return the principal angle in the -180° to 180° quadrant.
     """
-    while ang < 0.:
-        ang += 180.
+    while ang <= -180.:
+        ang += 360.
     while ang > 180.:
-        ang -= 180.
+        ang -= 360.
     return ang
 
 
@@ -1808,8 +1808,8 @@ class pol_map(object):
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
 
-            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
-            PA_reg_err = (90./(np.pi*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)
+            PA_reg = np.degrees((1./2.)*np.arctan2(U_reg,Q_reg))
+            PA_reg_err = princ_angle(np.degrees((1./(2.*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)))
 
         if hasattr(self, 'cont'):
             for coll in self.cont.collections:

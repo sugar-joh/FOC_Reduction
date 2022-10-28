@@ -13,6 +13,7 @@ import numpy as np
 from astropy.io import fits
 from astropy import wcs
 from lib.convex_hull import image_hull, clean_ROI
+from lib.plots import princ_angle
 import matplotlib.pyplot as plt
 
 
@@ -66,6 +67,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             new_wcs.wcs.cdelt = new_cdelt
             for key, val in new_wcs.to_header().items():
                 header[key] = val
+        header['orientat'] = princ_angle(float(header['orientat']))
 
     if compute_flux:
         for i in range(len(infiles)):

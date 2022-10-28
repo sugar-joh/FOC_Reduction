@@ -488,11 +488,13 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         rectangle.append([minima[1], minima[0], sub_shape[1], sub_shape[0], 0., 'r'])
         # Compute error : root mean square of the background
         sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
-        #error =  np.std(sub_image)    # Previously computed using standard deviation over the background
+        #bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
         bkg = np.sqrt(np.sum((sub_image-sub_image.mean())**2)/sub_image.size)
         error_bkg[i] *= bkg
-
+        
+        #Substract background
         data_array[i] = np.abs(data_array[i] - sub_image.mean())
+        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
         #wavelength dependence of the polariser filters
         #estimated to less than 1%
@@ -1087,7 +1089,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
-                        data_mask, headers_array, FWHM=FWHM, scale=scale)
+                        data_mask, headers, FWHM=FWHM, scale=scale)
                 pol0, pol60, pol120 = pol_array
                 err0, err60, err120 = polerr_array
 
@@ -1294,8 +1296,8 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
-        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+        PA_diluted = np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted_err = princ_angle(np.degrees((1./(2.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarization degree')
@@ -1470,7 +1472,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
         for i,head in enumerate(headers):
             ang[i] = -head['orientat']
         ang = ang.mean()
-    alpha = ang*np.pi/180.
+    alpha = np.radians(ang)
     mrot = np.array([[1., 0., 0.],
                     [0., np.cos(2.*alpha), np.sin(2.*alpha)],
                     [0, -np.sin(2.*alpha), np.cos(2.*alpha)]])
@@ -1553,8 +1555,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
-    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+    PA_diluted = np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted_err = princ_angle(np.degrees((1./(1.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
 
     for header in new_headers:
         header['P_int'] = (P_diluted, 'Integrated polarization degree')
