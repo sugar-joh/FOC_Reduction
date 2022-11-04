@@ -491,10 +491,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         #bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
         bkg = np.sqrt(np.sum((sub_image-sub_image.mean())**2)/sub_image.size)
         error_bkg[i] *= bkg
-        
-        #Substract background
-        data_array[i] = np.abs(data_array[i] - sub_image.mean())
-        
+       
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
         #wavelength dependence of the polariser filters
         #estimated to less than 1%
@@ -507,15 +504,18 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         err_flat = data_array[i]*0.03
 
         error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
-
+        
+        #Substract background
+        data_array[i] = np.abs(data_array[i] - sub_image.mean())
+ 
         background[i] = sub_image.sum()
         if (data_array[i] < 0.).any():
             print(data_array[i])
         #if i==0:
-            #np.savetext("output/s_bg.txt",error_bkg[i])
-            #np.savetext("output/s_wav.txt",err_wav)
-            #np.savetext("output/s_psf.txt",err_psf)
-            #np.savetext("output/s_flat.txt",err_flat)
+            #np.savetxt("output/s_bg.txt",error_bkg[i])
+            #np.savetxt("output/s_wav.txt",err_wav)
+            #np.savetxt("output/s_psf.txt",err_psf)
+            #np.savetxt("output/s_flat.txt",err_flat)
 
     if display:
         plt.rcParams.update({'font.size': 10})
@@ -846,7 +846,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         rescaled_error[i] = np.sqrt(rescaled_error[i]**2 + error_shift**2)
             
         #if i==1:
-            #np.savetext("output/s_shift.txt",error_shift)
+            #np.savetxt("output/s_shift.txt",error_shift)
 
         shifts.append(shift)
         errors.append(error)
@@ -1259,9 +1259,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         s_I2_axis = np.sum([dI_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_Q2_axis = np.sum([dQ_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
         s_U2_axis = np.sum([dU_dtheta[i]**2 * sigma_theta[i]**2 for i in range(len(sigma_theta))],axis=0)
-        #np.savetext("output/sI_dir.txt", np.sqrt(s_I2_axis))
-        #np.savetext("output/sQ_dir.txt", np.sqrt(s_Q2_axis))
-        #np.savetext("output/sU_dir.txt", np.sqrt(s_U2_axis))
+        #np.savetxt("output/sI_dir.txt", np.sqrt(s_I2_axis))
+        #np.savetxt("output/sQ_dir.txt", np.sqrt(s_Q2_axis))
+        #np.savetxt("output/sU_dir.txt", np.sqrt(s_U2_axis))
 
         # Add quadratically the uncertainty to the Stokes covariance matrix
         Stokes_cov[0,0] += s_I2_axis
@@ -1296,7 +1296,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted = princ_angle(np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted)))
         PA_diluted_err = princ_angle(np.degrees((1./(2.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
 
         for header in headers:
@@ -1555,7 +1555,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted = princ_angle(np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted)))
     PA_diluted_err = princ_angle(np.degrees((1./(1.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
 
     for header in new_headers:

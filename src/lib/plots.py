@@ -51,11 +51,11 @@ from astropy.io import fits
 
 def princ_angle(ang):
     """
-    Return the principal angle in the -180° to 180° quadrant.
+    Return the principal angle in the 0° to 360° quadrant.
     """
-    while ang <= -180.:
+    while ang <= 0.:
         ang += 360.
-    while ang > 180.:
+    while ang > 360.:
         ang -= 360.
     return ang
 
@@ -1349,11 +1349,13 @@ class pol_map(object):
         def update_snri(val):
             self.SNRi = val
             self.pol_vector()
+            self.pol_int()
             self.fig.canvas.draw_idle()
 
         def update_snrp(val):
             self.SNRp = val
             self.pol_vector()
+            self.pol_int()
             self.fig.canvas.draw_idle()
 
         def reset_snr(event):
@@ -1786,6 +1788,30 @@ class pol_map(object):
             P_reg_err = self.Stokes[0].header['P_int_err']
             PA_reg = self.Stokes[0].header['PA_int']
             PA_reg_err = self.Stokes[0].header['PA_int_err']
+
+            s_I = np.sqrt(self.IQU_cov[0,0])
+            s_Q = np.sqrt(self.IQU_cov[1,1])
+            s_U = np.sqrt(self.IQU_cov[2,2])
+            s_IQ = self.IQU_cov[0,1]
+            s_IU = self.IQU_cov[0,2]
+            s_QU = self.IQU_cov[1,2]
+
+            I_cut = self.I[self.cut].sum()
+            Q_cut = self.Q[self.cut].sum()
+            U_cut = self.U[self.cut].sum()
+            I_cut_err = np.sqrt(np.sum(s_I[self.cut]**2))
+            Q_cut_err = np.sqrt(np.sum(s_Q[self.cut]**2))
+            U_cut_err = np.sqrt(np.sum(s_U[self.cut]**2))
+            IQ_cut_err = np.sqrt(np.sum(s_IQ[self.cut]**2))
+            IU_cut_err = np.sqrt(np.sum(s_IU[self.cut]**2))
+            QU_cut_err = np.sqrt(np.sum(s_QU[self.cut]**2))
+
+            P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
+            P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
+
+            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
+            PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
+
         else:
             n_pix = self.I[self.region].size
             s_I = np.sqrt(self.IQU_cov[0,0])
@@ -1808,8 +1834,25 @@ class pol_map(object):
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
 
-            PA_reg = np.degrees((1./2.)*np.arctan2(U_reg,Q_reg))
+            PA_reg = princ_angle(np.degrees((1./2.)*np.arctan2(U_reg,Q_reg)))
             PA_reg_err = princ_angle(np.degrees((1./(2.*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)))
+
+            new_cut = np.logical_and(self.region, self.cut)
+            I_cut = self.I[new_cut].sum()
+            Q_cut = self.Q[new_cut].sum()
+            U_cut = self.U[new_cut].sum()
+            I_cut_err = np.sqrt(np.sum(s_I[new_cut]**2))
+            Q_cut_err = np.sqrt(np.sum(s_Q[new_cut]**2))
+            U_cut_err = np.sqrt(np.sum(s_U[new_cut]**2))
+            IQ_cut_err = np.sqrt(np.sum(s_IQ[new_cut]**2))
+            IU_cut_err = np.sqrt(np.sum(s_IU[new_cut]**2))
+            QU_cut_err = np.sqrt(np.sum(s_QU[new_cut]**2))
+
+            P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
+            P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
+
+            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
+            PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
 
         if hasattr(self, 'cont'):
             for coll in self.cont.collections:
@@ -1824,13 +1867,13 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'an_int'):
                 self.an_int.remove()
-            self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,P_reg_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,PA_reg_err), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction')
+            self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.85), xycoords='axes fraction')
             if not self.region is None:
                 self.cont = ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
             return self.an_int
         else:
-            ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,P_reg_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,PA_reg_err), color='white', fontsize=12, xy=(0.01, 0.94), xycoords='axes fraction')
+            ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction')
             if not self.region is None:
                 ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()

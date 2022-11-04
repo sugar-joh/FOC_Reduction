@@ -68,9 +68,9 @@ for d in [data_S, data_K]:
     d['I_dil'] = np.sum(d['I'][d['mask']])
     d['sI_dil'] = np.sqrt(np.sum(d['sI'][d['mask']]**2))
     d['Q_dil'] = np.sum(d['Q'][d['mask']])
-    d['sQ_dil'] = np.sqrt(np.sum(d['sQ'][d['mask']])**2)
+    d['sQ_dil'] = np.sqrt(np.sum(d['sQ'][d['mask']]**2))
     d['U_dil'] = np.sum(d['U'][d['mask']])
-    d['sU_dil'] = np.sqrt(np.sum(d['sU'][d['mask']])**2)
+    d['sU_dil'] = np.sqrt(np.sum(d['sU'][d['mask']]**2))
 
     d['P_dil'] = np.sqrt(d['Q_dil']**2+d['U_dil']**2)/d['I_dil']
     d['sP_dil'] = np.sqrt((d['Q_dil']**2*d['sQ_dil']**2+d['U_dil']**2*d['sU_dil']**2)/(d['Q_dil']**2+d['U_dil']**2)+((d['Q_dil']/d['I_dil'])**2+(d['U_dil']/d['I_dil'])**2)*d['sI_dil']**2)/d['I_dil']
