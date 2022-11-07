@@ -44,6 +44,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
+from matplotlib.colors import LogNorm
 from datetime import datetime
 from scipy.ndimage import rotate as sc_rotate, shift as sc_shift
 from scipy.signal import convolve2d
@@ -71,13 +72,20 @@ globals()['sigma_theta'] = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.
 
 def princ_angle(ang):
     """
-    Return the principal angle in the 0-180° quadrant.
+    Return the principal angle in the 0° to 360° quadrant.
     """
-    while ang < 0.:
-        ang += 180.
-    while ang > 180.:
-        ang -= 180.
-    return ang
+    if type(ang) != np.ndarray:
+        A = np.array([ang])
+    else:
+        A = np.array(ang)
+    while np.any(A < 0.):
+        A[A<0.] =  A[A<0.]+360.
+    while np.any(A >= 360.):
+        A[A>=360.] = A[A>=360.]-360.
+    if type(ang) == type(A):
+        return A
+    else:
+        return A[0]
 
 
 def get_row_compressor(old_dimension, new_dimension, operation='sum'):
@@ -267,16 +275,32 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
 
     new_shape = np.array([v_array[1]-v_array[0],v_array[3]-v_array[2]])
     rectangle = [v_array[2], v_array[0], new_shape[1], new_shape[0], 0., 'b']
+    crop_headers = deepcopy(headers)
+    crop_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
+    crop_error_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
+    for i,image in enumerate(data_array):
+        #Put the image data in the cropped array
+        crop_array[i] = image[v_array[0]:v_array[1],v_array[2]:v_array[3]]
+        crop_error_array[i] = error_array[i][v_array[0]:v_array[1],v_array[2]:v_array[3]]
+        #Update CRPIX value in the associated header
+        curr_wcs = deepcopy(WCS(crop_headers[i]))
+        curr_wcs.wcs.crpix = curr_wcs.wcs.crpix - np.array([v_array[2], v_array[0]])
+        crop_headers[i].update(curr_wcs.to_header())
+        crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
+
     if display:
         plt.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(figsize=(10,10))
-        data = data_array[0]
+        data = deepcopy(data_array[0])
+        data[data <= data[data>0.].min()] = data[data > 0.].min()
+        crop = crop_array[0]
         instr = headers[0]['instrume']
         rootname = headers[0]['rootname']
         exptime = headers[0]['exptime']
         filt = headers[0]['filtnam1']
         #plots
-        im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower', cmap='gray')
+        #im = ax.imshow(data, vmin=data.min(), vmax=data.max(), origin='lower', cmap='gray')
+        im = ax.imshow(data, norm=LogNorm(crop[crop>0.].mean()/5.,crop.max()), origin='lower', cmap='gray')
         x, y, width, height, angle, color = rectangle
         ax.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
         #position of centroid
@@ -307,18 +331,6 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
                     savename=savename+'_crop_region',plots_folder=plots_folder)
         plt.show()
 
-    crop_headers = deepcopy(headers)
-    crop_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
-    crop_error_array = np.zeros((data_array.shape[0],new_shape[0],new_shape[1]))
-    for i,image in enumerate(data_array):
-        #Put the image data in the cropped array
-        crop_array[i] = image[v_array[0]:v_array[1],v_array[2]:v_array[3]]
-        crop_error_array[i] = error_array[i][v_array[0]:v_array[1],v_array[2]:v_array[3]]
-        #Update CRPIX value in the associated header
-        curr_wcs = deepcopy(WCS(crop_headers[i]))
-        curr_wcs.wcs.crpix = curr_wcs.wcs.crpix - np.array([v_array[2], v_array[0]])
-        crop_headers[i].update(curr_wcs.to_header())
-        crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
     if not data_mask is None:
         crop_mask = data_mask[v_array[0]:v_array[1],v_array[2]:v_array[3]]
         return crop_array, crop_error_array, crop_mask, crop_headers
@@ -518,7 +530,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
             #np.savetxt("output/s_flat.txt",err_flat)
 
     if display:
-        plt.rcParams.update({'font.size': 10})
+        plt.rcParams.update({'font.size': 15})
         convert_flux = headers[0]['photflam']
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
@@ -546,6 +558,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         #ax.set_title("Background flux and error computed for each image")
         plt.legend()
 
+        plt.rcParams.update({'font.size': 15})
         fig2, ax2 = plt.subplots(figsize=(10,10))
         data0 = data[0]*convert_flux
         instr = headers[0]['instrume']
@@ -553,7 +566,8 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         exptime = headers[0]['exptime']
         filt = headers[0]['filtnam1']
         #plots
-        im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
+        #im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
+        im = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
         x, y, width, height, angle, color = rectangle[0]
         ax2.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
         ax2.annotate(instr+":"+rootname, color='white', fontsize=10,
@@ -1296,8 +1310,8 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = princ_angle(np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted)))
-        PA_diluted_err = princ_angle(np.degrees((1./(2.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
+        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarization degree')
@@ -1356,7 +1370,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     P = np.zeros(I_stokes.shape)
     P[mask] = I_pol[mask]/I_stokes[mask]
     PA = np.zeros(I_stokes.shape)
-    PA[mask] = (90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask])
+    PA[mask] = princ_angle((90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask]))
 
     if (P>1).any():
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
@@ -1555,8 +1569,8 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = princ_angle(np.degrees((1./2.)*np.arctan2(U_diluted,Q_diluted)))
-    PA_diluted_err = princ_angle(np.degrees((1./(1.*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)))
+    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:
         header['P_int'] = (P_diluted, 'Integrated polarization degree')

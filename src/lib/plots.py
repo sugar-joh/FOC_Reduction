@@ -53,11 +53,18 @@ def princ_angle(ang):
     """
     Return the principal angle in the 0° to 360° quadrant.
     """
-    while ang <= 0.:
-        ang += 360.
-    while ang > 360.:
-        ang -= 360.
-    return ang
+    if type(ang) != np.ndarray:
+        A = np.array([ang])
+    else:
+        A = np.array(ang)
+    while np.any(A < 0.):
+        A[A<0.] = A[A<0.]+360.
+    while np.any(A >= 360.):
+        A[A>=360.] = A[A>=360.]-360.
+    if type(ang) == type(A):
+        return A
+    else:
+        return A[0]
 
 
 def sci_not(v,err,rnd=1):
@@ -123,7 +130,8 @@ def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
         exptime = headers[i]['exptime']
         filt = headers[i]['filtnam1']
         #plots
-        im = ax.imshow(data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
+        #im = ax.imshow(data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
+        im = ax.imshow(data, norm=LogNorm(data[data>0.].min()/10.,data.max()), origin='lower', cmap='gray')
         if not(rectangle is None):
             x, y, width, height, angle, color = rectangle[i]
             ax.add_patch(Rectangle((x, y), width, height, angle=angle,
@@ -272,11 +280,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     SNRp = pol.data/pol_err.data
     SNRp[np.isnan(SNRp)] = 0.
     pol.data[SNRp < SNRp_cut] = np.nan
+    pang.data[SNRp < SNRp_cut] = np.nan
 
     maskI = stk_cov.data[0,0] > 0
     SNRi = np.zeros(stkI.data.shape)
     SNRi[maskI] = stkI.data[maskI]/np.sqrt(stk_cov.data[0,0][maskI])
     pol.data[SNRi < SNRi_cut] = np.nan
+    pang.data[SNRi < SNRi_cut] = np.nan
 
     mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
 
@@ -323,6 +333,12 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         vmin, vmax = 0., 100.
         im = ax.imshow(pol.data*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P$ [%]")
+    elif display.lower() in ['pa','pang','pol_ang']:
+        # Display polarization degree map
+        display='pa'
+        vmin, vmax = 0., 360.
+        im = ax.imshow(pang.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\theta_P$ [°]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
         # Display polarization degree error map
         display='s_p'
@@ -379,7 +395,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
     north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
 
-    if display.lower() in ['i','s_i','snri','pf','p','s_p','snrp']:
+    if display.lower() in ['i','s_i','snri','pf','p','pa','s_p','snrp']:
         if step_vec == 0:
             pol.data[np.isfinite(pol.data)] = 1./2.
             step_vec = 1
@@ -1326,7 +1342,7 @@ class pol_map(object):
         self.fig.subplots_adjust(hspace=0, wspace=0, right=0.88)
         self.ax = self.fig.add_subplot(111,projection=self.wcs)
         self.ax_cosmetics()
-        self.cbar_ax = self.fig.add_axes([0.925, 0.12, 0.01, 0.75])
+        self.cbar_ax = self.fig.add_axes([0.925, 0.13, 0.01, 0.74])
 
         #Display selected data (Default to total flux)
         self.display()
@@ -1592,14 +1608,16 @@ class pol_map(object):
         text_dump.on_submit(submit_dump)
 
         #Set axes for display buttons
-        ax_tf = self.fig.add_axes([0.925, 0.085, 0.05, 0.02])
-        ax_pf = self.fig.add_axes([0.925, 0.065, 0.05, 0.02])
-        ax_p = self.fig.add_axes([0.925, 0.045, 0.05, 0.02])
+        ax_tf = self.fig.add_axes([0.925, 0.105, 0.05, 0.02])
+        ax_pf = self.fig.add_axes([0.925, 0.085, 0.05, 0.02])
+        ax_p = self.fig.add_axes([0.925, 0.065, 0.05, 0.02])
+        ax_pa = self.fig.add_axes([0.925, 0.045, 0.05, 0.02])
         ax_snri = self.fig.add_axes([0.925, 0.025, 0.05, 0.02])
         ax_snrp = self.fig.add_axes([0.925, 0.005, 0.05, 0.02])
         b_tf = Button(ax_tf,r"$F_{\lambda}$")
         b_pf = Button(ax_pf,r"$F_{\lambda} \cdot P$")
         b_p = Button(ax_p,r"$P$")
+        b_pa = Button(ax_pa,r"$\theta_{P}$")
         b_snri = Button(ax_snri,r"$I / \sigma_{I}$")
         b_snrp = Button(ax_snrp,r"$P / \sigma_{P}$")
 
@@ -1620,6 +1638,12 @@ class pol_map(object):
             self.display()
             self.pol_int()
         b_p.on_clicked(d_p)
+
+        def d_pa(event):
+            self.display_selection = 'pol_ang'
+            self.display()
+            self.pol_int()
+        b_pa.on_clicked(d_pa)
 
         def d_snri(event):
             self.display_selection = 'snri'
@@ -1708,7 +1732,6 @@ class pol_map(object):
         norm = None
         if self.display_selection is None:
             self.display_selection = "total_flux"
-
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
             vmin, vmax = np.min(self.data[self.cut])/10., np.max(self.data[self.data > 0.])
@@ -1722,6 +1745,10 @@ class pol_map(object):
             self.data = self.P*100.
             vmin, vmax = 0., np.max(self.data[self.data > 0.])
             label = r"$P$ [%]"
+        elif self.display_selection.lower() in ['pol_ang']:
+            self.data = self.PA
+            vmin, vmax = 0, 360.
+            label = r"$\theta_{P}$ [°]"
         elif self.display_selection.lower() in ['snri']:
             s_I = np.sqrt(self.IQU_cov[0,0])
             SNRi = np.zeros(self.I.shape)
@@ -1834,8 +1861,8 @@ class pol_map(object):
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
 
-            PA_reg = princ_angle(np.degrees((1./2.)*np.arctan2(U_reg,Q_reg)))
-            PA_reg_err = princ_angle(np.degrees((1./(2.*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)))
+            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
+            PA_reg_err = (90./(np.pi*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)
 
             new_cut = np.logical_and(self.region, self.cut)
             I_cut = self.I[new_cut].sum()
@@ -1851,8 +1878,8 @@ class pol_map(object):
             P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
-            PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
+            PA_cut = princ_angle((90./np.pi)*np.arctan2(U_cut,Q_cut))
+            PA_cut_err = (90./(np.pi*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)
 
         if hasattr(self, 'cont'):
             for coll in self.cont.collections:

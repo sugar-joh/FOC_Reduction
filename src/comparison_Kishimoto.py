@@ -5,6 +5,7 @@ from matplotlib.colors import LogNorm
 from os.path import join as path_join
 from os import walk as path_walk
 from astropy.io import fits
+from astropy.wcs import WCS
 from re import compile as regcompile, IGNORECASE
 from scipy.ndimage import shift
 import numpy as np
@@ -26,6 +27,8 @@ for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,
             data_S[d] = f[i].data
     if i==0:
         header = f[i].header
+wcs = WCS(header)
+convert_flux = header['photflam']
 
 #zeropad data to get same size of array
 shape = data_S['I'].shape
@@ -55,13 +58,30 @@ for d in [data_S, data_K]:
     d['X'], d['Y'] = np.meshgrid(np.arange(d['I'].shape[1]), np.arange(d['I'].shape[0]))
     d['xy_U'], d['xy_V'] = np.where(d['mask'],d['P']*np.cos(np.pi/2.+d['PA']*np.pi/180.), np.nan), np.where(d['mask'],d['P']*np.sin(np.pi/2.+d['PA']*np.pi/180.), np.nan)
 
-#display both polarization maps to check consistency
-fig, ax = plt.subplots()
-im0 = ax.imshow(data_S['I'],norm=LogNorm(data_S['I'][data_S['I']>0].min(),data_S['I'][data_S['I']>0].max()),origin='lower',cmap='gray',label=r"$I_{STOKES}$ through my pipeline")
-quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='b',alpha=0.75, label="PA through my pipeline")
+#display both polarization maps to check consistencfig = plt.figure()
+plt.rcParams.update({'font.size': 20})
+fig = plt.figure()
+ax = fig.add_subplot(111, projection=wcs)
+fig.subplots_adjust(right=0.85)
+cbar_ax = fig.add_axes([0.88, 0.12, 0.01, 0.75])
+
+im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0].min()*convert_flux,data_S['I'][data_S['I']>0].max()*convert_flux),origin='lower',cmap='gray',label=r"$I_{STOKES}$ through this pipeline")
+quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='b',alpha=0.75, label="PA through this pipeline")
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
+
 ax.set_title(r"$SNR_P \geq 5 \; & \; SNR_I \geq 30$")
-fig.legend()
+#ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
+ax.coords[0].set_axislabel('Right Ascension (J2000)')
+ax.coords[0].set_axislabel_position('b')
+ax.coords[0].set_ticklabel_position('b')
+ax.coords[1].set_axislabel('Declination (J2000)')
+ax.coords[1].set_axislabel_position('l')
+ax.coords[1].set_ticklabel_position('l')
+#ax.axis('equal')
+
+cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+plt.rcParams.update({'font.size': 15})
+ax.legend(loc='upper right')
 
 #compute integrated polarization parameters on a specific cut
 for d in [data_S, data_K]:
@@ -76,11 +96,11 @@ for d in [data_S, data_K]:
     d['sP_dil'] = np.sqrt((d['Q_dil']**2*d['sQ_dil']**2+d['U_dil']**2*d['sU_dil']**2)/(d['Q_dil']**2+d['U_dil']**2)+((d['Q_dil']/d['I_dil'])**2+(d['U_dil']/d['I_dil'])**2)*d['sI_dil']**2)/d['I_dil']
     d['PA_dil'] = princ_angle((90./np.pi)*np.arctan2(d['U_dil'],d['Q_dil']))
     d['sPA_dil'] = princ_angle((90./(np.pi*(d['Q_dil']**2+d['U_dil']**2)))*np.sqrt(d['Q_dil']**2*d['sU_dil']**2+d['U_dil']**2*d['sU_dil']**2))
-print('From my pipeline :\n', "P = {0:.2f} ± {1:.2f} %\n".format(data_S['P_dil']*100.,data_S['sP_dil']*100.), "PA = {0:.2f} ± {1:.2f} °".format(data_S['PA_dil'],data_S['sPA_dil']))
+print('From this pipeline :\n', "P = {0:.2f} ± {1:.2f} %\n".format(data_S['P_dil']*100.,data_S['sP_dil']*100.), "PA = {0:.2f} ± {1:.2f} °".format(data_S['PA_dil'],data_S['sPA_dil']))
 print("From Kishimoto's pipeline :\n", "P = {0:.2f} ± {1:.2f} %\n".format(data_K['P_dil']*100.,data_K['sP_dil']*100.), "PA = {0:.2f} ± {1:.2f} °".format(data_K['PA_dil'],data_K['sPA_dil']))
 
 #compare different types of error
-print("My pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_S['sI'][data_S['mask']]/data_S['I'][data_S['mask']]),np.mean(data_S['sQ'][data_S['mask']]/data_S['Q'][data_S['mask']]),np.mean(data_S['sU'][data_S['mask']]/data_S['U'][data_S['mask']]),np.mean(data_S['sP'][data_S['mask']]/data_S['P'][data_S['mask']])))
+print("This pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_S['sI'][data_S['mask']]/data_S['I'][data_S['mask']]),np.mean(data_S['sQ'][data_S['mask']]/data_S['Q'][data_S['mask']]),np.mean(data_S['sU'][data_S['mask']]/data_S['U'][data_S['mask']]),np.mean(data_S['sP'][data_S['mask']]/data_S['P'][data_S['mask']])))
 print("Kishimoto's pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_K['sI'][data_S['mask']]/data_K['I'][data_S['mask']]),np.mean(data_K['sQ'][data_S['mask']]/data_K['Q'][data_S['mask']]),np.mean(data_K['sU'][data_S['mask']]/data_K['U'][data_S['mask']]),np.mean(data_K['sP'][data_S['mask']]/data_K['P'][data_S['mask']])))
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
     data_K[d] = np.loadtxt(path_join(root_dir_K,d+'.txt'))

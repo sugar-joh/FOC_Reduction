@@ -18,12 +18,12 @@ from astropy.wcs import WCS
 
 ##### User inputs
 ## Input and output locations
-#globals()['data_folder'] = "../data/NGC1068_x274020/"
-#globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
-#   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
-#   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-##psf_file = 'NGC1068_f253m00.fits'
-#globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+globals()['data_folder'] = "../data/NGC1068_x274020/"
+globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
+   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
+   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
+#psf_file = 'NGC1068_f253m00.fits'
+globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #globals()['data_folder'] = "../data/IC5063_x3nl030/"
 #globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
@@ -35,14 +35,14 @@ from astropy.wcs import WCS
 #   'x14w0104t_c0f.fits','x14w0105p_c0f.fits','x14w0106t_c0f.fits']
 #globals()['plots_folder'] = "../plots/NGC1068_x14w010/"
 
-globals()['data_folder'] = "../data/3C405_x136060/"
-globals()['infiles'] = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
-globals()['plots_folder'] = "../plots/3C405_x136060/"
+#globals()['data_folder'] = "../data/3C405_x136060/"
+#globals()['infiles'] = ['x1360601t_c0f.fits','x1360602t_c0f.fits','x1360603t_c0f.fits']
+#globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #globals()['data_folder'] = "../data/CygnusA_x43w0/"
-#globals()['infiles'] = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
-#   'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
-#   'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
+##globals()['infiles'] = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
+##   'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
+##   'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
 #globals()['infiles'] = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
 #   'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits']
 #globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
@@ -72,7 +72,7 @@ globals()['plots_folder'] = "../plots/3C405_x136060/"
 #globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
 
 #globals()['data_folder'] = "../data/MKN3_x3md010/"
-#globals()['infiles'] = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
+##globals()['infiles'] = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
 #globals()['infiles'] = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
 #globals()['plots_folder'] = "../plots/MKN3_x3md010/"
 
@@ -128,7 +128,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.05
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -136,7 +136,7 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
@@ -145,8 +145,8 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = '3C405_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_combine_FWHM010'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -227,6 +227,7 @@ def main():
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I", plots_folder=plots_folder, display='Intensity')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_PA", plots_folder=plots_folder, display='Pol_ang')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')

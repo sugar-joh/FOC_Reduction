@@ -47,26 +47,26 @@ from matplotlib.colors import LogNorm
 
 data_folder1 = "../data/M87/POS1/"
 plots_folder1 = "../plots/M87/POS1/"
-basename1 = "M87_015_log_core"
-M87_1_95 = fits.open(data_folder1+"M87_POS1_1995_FOC_combine_FWHM010.fits")
-M87_1_96 = fits.open(data_folder1+"M87_POS1_1996_FOC_combine_FWHM010.fits")
-M87_1_97 = fits.open(data_folder1+"M87_POS1_1997_FOC_combine_FWHM010.fits")
-M87_1_98 = fits.open(data_folder1+"M87_POS1_1998_FOC_combine_FWHM010.fits")
-M87_1_99 = fits.open(data_folder1+"M87_POS1_1999_FOC_combine_FWHM010.fits")
+basename1 = "M87_020_log_core"
+M87_1_95 = fits.open(data_folder1+"M87_POS1_1995_FOC_combine_FWHM020.fits")
+M87_1_96 = fits.open(data_folder1+"M87_POS1_1996_FOC_combine_FWHM020.fits")
+M87_1_97 = fits.open(data_folder1+"M87_POS1_1997_FOC_combine_FWHM020.fits")
+M87_1_98 = fits.open(data_folder1+"M87_POS1_1998_FOC_combine_FWHM020.fits")
+M87_1_99 = fits.open(data_folder1+"M87_POS1_1999_FOC_combine_FWHM020.fits")
 
 H = align_pol(np.array([M87_1_95,M87_1_96,M87_1_97,M87_1_98,M87_1_99]), norm=LogNorm())
-H.plot(SNRp_cut=3.0, SNRi_cut=30.0, savename=plots_folder1+'animated_loop/'+basename1, norm=LogNorm())
+H.plot(SNRp_cut=5.0, SNRi_cut=50.0, savename=plots_folder1+'animated_loop/'+basename1, norm=LogNorm())
 command("convert -delay 50 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif".format(plots_folder1, basename1))
 
-#data_folder3 = "../data/M87/POS3/"
-#plots_folder3 = "../plots/M87/POS3/"
-#basename3 = "M87_005_log_star"
-#M87_3_95 = fits.open(data_folder3+"M87_POS3_1995_FOC_combine_FWHM005.fits")
-#M87_3_96 = fits.open(data_folder3+"M87_POS3_1996_FOC_combine_FWHM005.fits")
-#M87_3_97 = fits.open(data_folder3+"M87_POS3_1997_FOC_combine_FWHM005.fits")
-#M87_3_98 = fits.open(data_folder3+"M87_POS3_1998_FOC_combine_FWHM005.fits")
-#M87_3_99 = fits.open(data_folder3+"M87_POS3_1999_FOC_combine_FWHM005.fits")
-#
-#I = align_pol(np.array([M87_3_95,M87_3_96,M87_3_97,M87_3_98,M87_3_99]), norm=LogNorm())
-#I.plot(SNRp_cut=3.0, SNRi_cut=30.0, savename=plots_folder3+'animated_loop/'+basename3, norm=LogNorm())
-#command("convert -delay 20 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif".format(plots_folder3, basename3))
+data_folder3 = "../data/M87/POS3/"
+plots_folder3 = "../plots/M87/POS3/"
+basename3 = "M87_020_log_star"
+M87_3_95 = fits.open(data_folder3+"M87_POS3_1995_FOC_combine_FWHM020.fits")
+M87_3_96 = fits.open(data_folder3+"M87_POS3_1996_FOC_combine_FWHM020.fits")
+M87_3_97 = fits.open(data_folder3+"M87_POS3_1997_FOC_combine_FWHM020.fits")
+M87_3_98 = fits.open(data_folder3+"M87_POS3_1998_FOC_combine_FWHM020.fits")
+M87_3_99 = fits.open(data_folder3+"M87_POS3_1999_FOC_combine_FWHM020.fits")
+
+I = align_pol(np.array([M87_3_95,M87_3_96,M87_3_97,M87_3_98,M87_3_99]), norm=LogNorm())
+I.plot(SNRp_cut=5.0, SNRi_cut=50.0, savename=plots_folder3+'animated_loop/'+basename3, norm=LogNorm())
+command("convert -delay 20 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif".format(plots_folder3, basename3))
