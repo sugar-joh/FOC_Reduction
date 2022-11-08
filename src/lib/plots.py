@@ -449,21 +449,21 @@ class align_maps(object):
         self.map = map1
         self.other_map = other_map
 
-        self.wcs_map = WCS(self.map[0]).deepcopy()
-        if self.wcs_map.naxis == 4:
-            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
-            self.map[0].data = self.map[0].data[0,0]
-        elif self.wcs_map.naxis == 3:
-            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
-            self.map[0].data = self.map[0].data[1]
+        self.wcs_map = deepcopy(WCS(self.map[0])).celestial
+#        if self.wcs_map.naxis == 4:
+#            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
+#            self.map[0].data = self.map[0].data[0,0]
+#        elif self.wcs_map.naxis == 3:
+#            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
+#            self.map[0].data = self.map[0].data[1]
 
-        self.wcs_other = WCS(self.other_map[0]).deepcopy()
-        if self.wcs_other.naxis == 4:
-            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
-            self.other_map[0].data = self.other_map[0].data[0,0]
-        elif self.wcs_other.naxis == 3:
-            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
-            self.other_map[0].data = self.other_map[0].data[1]
+        self.wcs_other = deepcopy(WCS(self.other_map[0])).celestial
+#        if self.wcs_other.naxis == 4:
+#            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
+#            self.other_map[0].data = self.other_map[0].data[0,0]
+#        elif self.wcs_other.naxis == 3:
+#            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
+#            self.other_map[0].data = self.other_map[0].data[1]
 
         try:
             convert_flux = self.map[0].header['photflam']
@@ -773,7 +773,7 @@ class overplot_pol(align_maps):
         self.fig2.canvas.draw()
 
     def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
-        while not self.aligned():
+        while not self.aligned:
             self.align()
         self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
         plt.show(block=True)
@@ -1739,7 +1739,8 @@ class pol_map(object):
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
             self.data = self.I*self.convert_flux*self.P
-            vmin, vmax = 0., np.max(self.data[self.data > 0.])
+            vmin, vmax = np.min(self.I[self.cut]*self.convert_flux)/10., np.max(self.I[self.data > 0.]*self.convert_flux)
+            norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_deg']:
             self.data = self.P*100.
@@ -1894,12 +1895,14 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'an_int'):
                 self.an_int.remove()
+            #self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction')
             self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.85), xycoords='axes fraction')
             if not self.region is None:
                 self.cont = ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
             return self.an_int
         else:
+            #ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.94), xycoords='axes fraction')
             ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction')
             if not self.region is None:
                 ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)

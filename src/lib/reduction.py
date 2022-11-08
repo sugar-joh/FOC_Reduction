@@ -246,10 +246,10 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
     Returns:
     cropped_array : numpy.ndarray
         Array containing the observationnal data homogeneously cropped.
-    headers : header list
-        Updated headers associated with the images in data_array.
     cropped_error : numpy.ndarray
         Array containing the error on the observationnal data homogeneously cropped.
+    headers : header list
+        Updated headers associated with the images in data_array.
     """
     if error_array is None:
         error_array = np.zeros(data_array.shape)
@@ -284,7 +284,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
         crop_error_array[i] = error_array[i][v_array[0]:v_array[1],v_array[2]:v_array[3]]
         #Update CRPIX value in the associated header
         curr_wcs = deepcopy(WCS(crop_headers[i]))
-        curr_wcs.wcs.crpix = curr_wcs.wcs.crpix - np.array([v_array[2], v_array[0]])
+        curr_wcs.wcs.crpix[:2] = curr_wcs.wcs.crpix[:2] - np.array([v_array[2], v_array[0]])
         crop_headers[i].update(curr_wcs.to_header())
         crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
 
@@ -1606,11 +1606,11 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
         Updated array containing the rotated images.
     new_error_array : numpy.ndarray
         Updated array containing the rotated errors.
+    new_data_mask : numpy.ndarray
+        Updated 2D boolean array delimiting the data to work on.
     new_headers : header list
         Updated list of headers corresponding to the reduced images accounting
         for the new orientation angle.
-    new_data_mask : numpy.ndarray
-        Updated 2D boolean array delimiting the data to work on.
     """
     #Rotate I_stokes, Q_stokes, U_stokes using rotation matrix
     alpha = ang*np.pi/180.
@@ -1649,8 +1649,8 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
 
         new_wcs = WCS(header).deepcopy()
 
-        new_wcs.wcs.pc = np.dot(mrot, new_wcs.wcs.pc)
-        new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center[::-1]) + new_center[::-1]
+        new_wcs.wcs.pc[:2,:2] = np.dot(mrot, new_wcs.wcs.pc[:2,:2])
+        new_wcs.wcs.crpix[:2] = np.dot(mrot, new_wcs.wcs.crpix[:2] - old_center[::-1]) + new_center[::-1]
         new_wcs.wcs.set()
         for key, val in new_wcs.to_header().items():
             new_header[key] = val
