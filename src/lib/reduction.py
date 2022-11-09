@@ -1310,7 +1310,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted)+180.)
         PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
@@ -1370,7 +1370,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     P = np.zeros(I_stokes.shape)
     P[mask] = I_pol[mask]/I_stokes[mask]
     PA = np.zeros(I_stokes.shape)
-    PA[mask] = princ_angle((90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask]))
+    PA[mask] = princ_angle((90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask])+180.)
 
     if (P>1).any():
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
@@ -1569,7 +1569,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted)+180.)
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:

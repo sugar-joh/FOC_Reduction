@@ -450,20 +450,16 @@ class align_maps(object):
         self.other_map = other_map
 
         self.wcs_map = deepcopy(WCS(self.map[0])).celestial
-#        if self.wcs_map.naxis == 4:
-#            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
-#            self.map[0].data = self.map[0].data[0,0]
-#        elif self.wcs_map.naxis == 3:
-#            self.wcs_map = WCS(self.map[0],naxis=[1,2]).deepcopy()
-#            self.map[0].data = self.map[0].data[1]
+        if len(self.map[0].data.shape) == 4:
+            self.map[0].data = self.map[0].data[0,0]
+        elif len(self.map[0].data.shape) == 3:
+            self.map[0].data = self.map[0].data[1]
 
         self.wcs_other = deepcopy(WCS(self.other_map[0])).celestial
-#        if self.wcs_other.naxis == 4:
-#            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
-#            self.other_map[0].data = self.other_map[0].data[0,0]
-#        elif self.wcs_other.naxis == 3:
-#            self.wcs_other = WCS(self.other_map[0],naxis=[1,2]).deepcopy()
-#            self.other_map[0].data = self.other_map[0].data[1]
+        if len(self.other_map[0].data.shape) == 4:
+            self.other_map[0].data = self.other_map[0].data[0,0]
+        elif len(self.other_map[0].data.shape) == 3:
+            self.other_map[0].data = self.other_map[0].data[1]
 
         try:
             convert_flux = self.map[0].header['photflam']
@@ -1837,7 +1833,7 @@ class pol_map(object):
             P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
+            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut))+180.)
             PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
 
         else:
@@ -1862,7 +1858,7 @@ class pol_map(object):
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
 
-            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
+            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg)+180.)
             PA_reg_err = (90./(np.pi*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)
 
             new_cut = np.logical_and(self.region, self.cut)
@@ -1879,7 +1875,7 @@ class pol_map(object):
             P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = princ_angle((90./np.pi)*np.arctan2(U_cut,Q_cut))
+            PA_cut = princ_angle((90./np.pi)*np.arctan2(U_cut,Q_cut)+180.)
             PA_cut_err = (90./(np.pi*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)
 
         if hasattr(self, 'cont'):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from lib.reduction import align_data, princ_angle
+from lib.reduction import align_data, crop_array, princ_angle
 from lib.deconvolve import zeropad
 from matplotlib.colors import LogNorm
 from os.path import join as path_join
@@ -46,7 +46,7 @@ for d in [data_S, data_K]:
         d[i][np.isnan(d[i])] = 0.
     d['P'] = np.where(d['I']>0.,np.sqrt(d['Q']**2+d['U']**2)/d['I'],0.)
     d['sP'] = np.where(d['I']>0.,np.sqrt((d['Q']**2*d['sQ']**2+d['U']**2*d['sU']**2)/(d['Q']**2+d['U']**2)+((d['Q']/d['I'])**2+(d['U']/d['I'])**2)*d['sI']**2)/d['I'],0.)
-    d['PA'] = (90./np.pi)*np.arctan2(d['U'],d['Q'])
+    d['PA'] = princ_angle((90./np.pi)*np.arctan2(d['U'],d['Q'])+180.)
     d['SNRp'] = np.zeros(d['P'].shape)
     d['SNRp'][d['sP']>0.] = d['P'][d['sP']>0.]/d['sP'][d['sP']>0.]
     d['SNRi'] = np.zeros(d['I'].shape)
@@ -65,7 +65,11 @@ ax = fig.add_subplot(111, projection=wcs)
 fig.subplots_adjust(right=0.85)
 cbar_ax = fig.add_axes([0.88, 0.12, 0.01, 0.75])
 
-im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0].min()*convert_flux,data_S['I'][data_S['I']>0].max()*convert_flux),origin='lower',cmap='gray',label=r"$I_{STOKES}$ through this pipeline")
+#im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0].min()*convert_flux,data_S['I'][data_S['I']>0].max()*convert_flux),origin='lower',cmap='gray',label=r"$I_{STOKES}$ through this pipeline")
+#im0 = ax.imshow(data_K['P']*100.,vmin=0.,vmax=100.,origin='lower',cmap='inferno',label=r"$P$ through Kishimoto's pipeline")
+im0 = ax.imshow(data_S['P']*100.,vmin=0.,vmax=100.,origin='lower',cmap='inferno',label=r"$P$ through this pipeline")
+#im0 = ax.imshow(data_K['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through Kishimoto's pipeline")
+#im0 = ax.imshow(data_S['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through this pipeline")
 quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='b',alpha=0.75, label="PA through this pipeline")
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
 
@@ -79,7 +83,9 @@ ax.coords[1].set_axislabel_position('l')
 ax.coords[1].set_ticklabel_position('l')
 #ax.axis('equal')
 
-cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+#cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$P$ [%]")
+#cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$\theta_P$ [°]")
 plt.rcParams.update({'font.size': 15})
 ax.legend(loc='upper right')
 
