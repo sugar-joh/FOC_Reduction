@@ -1138,7 +1138,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
 
 
 def compute_Stokes(data_array, error_array, data_mask, headers,
-        FWHM=None, scale='pixel', smoothing='gaussian_after'):
+        FWHM=None, scale='pixel', smoothing='gaussian_after', transmitcorr=False):
     """
     Compute the Stokes parameters I, Q and U for a given data_set
     ----------
@@ -1170,6 +1170,11 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         -'gaussian_after' convolve output Stokes I/Q/U with a gaussian of
           standard deviation stdev = FWHM/(2*sqrt(2*log(2))).
         Defaults to 'gaussian_after'. Won't be used if FWHM is None.
+    transmitcorr : bool, optional
+        Weither the images should be transmittance corrected for each filter
+        along the line of sight. Latest calibrated data products (.c0f) does
+        not require such correction.
+        Defaults to False.
     ----------
     Returns:
     I_stokes : numpy.ndarray
@@ -1219,7 +1224,8 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
             transmit2 = np.min([trans2[header['filtnam2'].lower()] for header in headers])
             transmit3 = np.min([trans3[header['filtnam3'].lower()] for header in headers])
             transmit4 = np.min([trans4[header['filtnam4'].lower()] for header in headers])
-        transmit *= transmit2*transmit3*transmit4
+        if transmitcorr:
+            transmit *= transmit2*transmit3*transmit4
         pol_eff = np.array([pol_efficiency['pol0'], pol_efficiency['pol60'], pol_efficiency['pol120']])
 
         #Calculating correction factor

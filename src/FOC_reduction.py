@@ -128,25 +128,25 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
-        px_scale = 'arcsec'         #pixel, arcsec or full
+        pxsize = 10
+        px_scale = 'pixel'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True
+    final_display = False
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
+    figtype = '_bin10px'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -197,7 +197,7 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=False)
 
     ## Step 3:
     # Rotate images to have North up
