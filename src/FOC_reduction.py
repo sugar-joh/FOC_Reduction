@@ -40,11 +40,11 @@ globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 #globals()['plots_folder'] = "../plots/3C405_x136060/"
 
 #globals()['data_folder'] = "../data/CygnusA_x43w0/"
-##globals()['infiles'] = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
-##   'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
-##   'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits']
-#globals()['infiles'] = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
-#   'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits']
+#globals()['infiles'] = ['x43w0101r_c0f.fits', 'x43w0102r_c0f.fits', 'x43w0103r_c0f.fits',
+#   'x43w0104r_c0f.fits', 'x43w0105r_c0f.fits', 'x43w0106r_c0f.fits',
+#   'x43w0107r_c0f.fits', 'x43w0108r_c0f.fits', 'x43w0109r_c0f.fits'] #F342W
+##globals()['infiles'] = ['x43w0201r_c0f.fits', 'x43w0202r_c0f.fits', 'x43w0203r_c0f.fits',
+##   'x43w0204r_c0f.fits', 'x43w0205r_c0f.fits', 'x43w0206r_c0f.fits'] #F275W
 #globals()['plots_folder'] = "../plots/CygnusA_x43w0/"
 
 #globals()['data_folder'] = "../data/3C109_x3mc010/"
@@ -72,8 +72,8 @@ globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 #globals()['plots_folder'] = "../plots/MKN3_x3nl010/"
 
 #globals()['data_folder'] = "../data/MKN3_x3md010/"
-##globals()['infiles'] = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits']
-#globals()['infiles'] = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits']
+#globals()['infiles'] = ['x3md0101r_c0f.fits', 'x3md0102r_c0f.fits', 'x3md0103r_c0f.fits'] #F275W
+##globals()['infiles'] = ['x3md0104r_c0f.fits', 'x3md0105r_c0f.fits', 'x3md0106r_c0f.fits'] #F342W
 #globals()['plots_folder'] = "../plots/MKN3_x3md010/"
 
 #globals()['data_folder'] = "../data/MKN78_x3nl020/"
@@ -91,19 +91,19 @@ globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
 #globals()['data_folder'] = "../data/M87/POS1/"
-#globals()['infiles'] = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
-#globals()['infiles'] = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
-#globals()['infiles'] = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
-#globals()['infiles'] = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
+##globals()['infiles'] = ['x2py010ct_c0f.fits','x2py010dt_c0f.fits','x2py010et_c0f.fits','x2py010ft_c0f.fits'] #1995
+##globals()['infiles'] = ['x3be010ct_c0f.fits','x3be010dt_c0f.fits','x3be010et_c0f.fits','x3be010ft_c0f.fits'] #1996
+##globals()['infiles'] = ['x43r010km_c0f.fits','x43r010mm_c0f.fits','x43r010om_c0f.fits','x43r010rm_c0f.fits'] #1997
+##globals()['infiles'] = ['x43r110kr_c0f.fits','x43r110mr_c0f.fits','x43r110or_c0f.fits','x43r110rr_c0f.fits'] #1998
 #globals()['infiles'] = ['x43r210kr_c0f.fits','x43r210mr_c0f.fits','x43r210or_c0f.fits','x43r210rr_c0f.fits'] #1999
 #globals()['plots_folder'] = "../plots/M87/POS1/"
 
 #BEWARE: 5 observations separated by 1 year each (1995, 1996, 1997, 1998, 1999)
 #globals()['data_folder'] = "../data/M87/POS3/"
-#globals()['infiles'] = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
-#globals()['infiles'] = ['x3be030at_c0f.fits','x3be030bt_c0f.fits','x3be030ct_c0f.fits','x3be0309t_c0f.fits'] #1996
-#globals()['infiles'] = ['x43r030em_c0f.fits','x43r030gm_c0f.fits','x43r030im_c0f.fits','x43r030lm_c0f.fits'] #1997
-#globals()['infiles'] = ['x43r130er_c0f.fits','x43r130fr_c0f.fits','x43r130ir_c0f.fits','x43r130lr_c0f.fits'] #1998
+##globals()['infiles'] = ['x2py030at_c0f.fits','x2py030bt_c0f.fits','x2py030ct_c0f.fits','x2py0309t_c0f.fits'] #1995
+##globals()['infiles'] = ['x3be030at_c0f.fits','x3be030bt_c0f.fits','x3be030ct_c0f.fits','x3be0309t_c0f.fits'] #1996
+##globals()['infiles'] = ['x43r030em_c0f.fits','x43r030gm_c0f.fits','x43r030im_c0f.fits','x43r030lm_c0f.fits'] #1997
+##globals()['infiles'] = ['x43r130er_c0f.fits','x43r130fr_c0f.fits','x43r130ir_c0f.fits','x43r130lr_c0f.fits'] #1998
 #globals()['infiles'] = ['x43r230er_c0f.fits','x43r230fr_c0f.fits','x43r230ir_c0f.fits','x43r230lr_c0f.fits'] #1999
 #globals()['plots_folder'] = "../plots/M87/POS3/"
 
@@ -123,20 +123,20 @@ def main():
     # Initial crop
     display_crop = False
     # Error estimation
-    error_sub_shape = (10,10)
+    error_sub_shape = (80,80)
     display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 10
-        px_scale = 'pixel'         #pixel, arcsec or full
+        pxsize = 0.05
+        px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
@@ -146,7 +146,7 @@ def main():
     final_display = False
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_bin10px'    #additionnal informations
+    figtype = '_combine_FWHM010'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -163,15 +163,13 @@ def main():
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations, algo=algo)
-    # Rotate data to have North up
-    if rotate_data:
-        data_mask = np.ones(data_array.shape[1:]).astype(bool)
-        alpha = headers[0]['orientat']
-        mrot = np.array([[np.cos(-alpha), -np.sin(-alpha)], [np.sin(-alpha), np.cos(-alpha)]])
-        data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -alpha)
+    # Estimate error from data background, estimated from sub-image of desired sub_shape.
+    if px_scale.lower() not in ['full','integrate']:
+        #data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+        data_array, error_array, headers, background = proj_red.get_error2(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
-    data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, upsample_factor=10, ref_center=align_center, return_shifts=False)
+    data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
 
     # Rebin data to desired pixel size.
     if rebin:
@@ -179,9 +177,11 @@ def main():
             data_array, error_array, headers = proj_red.get_error(data_array, headers, error_array, data_mask, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
         data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
 
-    # Estimate error from data background, estimated from sub-image of desired sub_shape.
-    if px_scale.lower() not in ['full','integrate']:
-        data_array, error_array, headers = proj_red.get_error(data_array, headers, error_array, data_mask, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
+    # Rotate data to have North up
+    if rotate_data:
+        data_mask = np.ones(data_array.shape[1:]).astype(bool)
+        alpha = headers[0]['orientat']
+        data_array, error_array, data_mask, headers = proj_red.rotate_data(data_array, error_array, data_mask, headers, -alpha)
 
     #Plot array for checking output
     if display_data and px_scale.lower() not in ['full','integrate']:

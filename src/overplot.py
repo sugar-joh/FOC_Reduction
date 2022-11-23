@@ -20,30 +20,30 @@ levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
 #levels18GHz = np.array([0.6, 1.5, 3, 6, 12, 24, 48, 96])/100.*Stokes_18GHz[0].data.max()
 levels18GHz = levelsMorganti*0.28*1e-3
 A = overplot_radio(Stokes_UV, Stokes_18GHz)
-A.plot(levels=levels18GHz, SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/18GHz_overplot_forced.png')
+A.plot(levels=levels18GHz, SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/18GHz_overplot.png')
 
 #levels24GHz = np.array([1.,1.5, 3, 6, 12, 24, 48, 96])/100.*Stokes_24GHz[0].data.max()
 levels24GHz = levelsMorganti*0.46*1e-3
 B = overplot_radio(Stokes_UV, Stokes_24GHz)
-B.plot(levels=levels24GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/24GHz_overplot_forced.png')
+B.plot(levels=levels24GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/24GHz_overplot.png')
 
 levels103GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_103GHz[0].data[Stokes_103GHz[0].data > 0.]))
 C = overplot_radio(Stokes_UV, Stokes_103GHz)
-C.plot(levels=levels103GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/103GHz_overplot_forced.png')
+C.plot(levels=levels103GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/103GHz_overplot.png')
 
 levels229GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_229GHz[0].data[Stokes_229GHz[0].data > 0.]))
 D = overplot_radio(Stokes_UV, Stokes_229GHz)
-D.plot(levels=levels229GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/229GHz_overplot_forced.png')
+D.plot(levels=levels229GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/229GHz_overplot.png')
 
 levels357GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_357GHz[0].data[Stokes_357GHz[0].data > 0.]))
 E = overplot_radio(Stokes_UV, Stokes_357GHz)
-E.plot(levels=levels357GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/357GHz_overplot_forced.png')
+E.plot(levels=levels357GHz, SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/357GHz_overplot.png')
 
 #F = overplot_pol(Stokes_UV, Stokes_S2)
-#F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/S2_overplot_forced.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
+#F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/S2_overplot.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
 
 G = overplot_pol(Stokes_UV, Stokes_IR, cmap='inferno')
-G.plot(SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+G.plot(SNRp_cut=3.0, SNRi_cut=60.0, savename='../plots/IC5063_x3nl030/IR_overplot.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
 
 #data_folder1 = "../data/M87/POS1/"
 #plots_folder1 = "../plots/M87/POS1/"

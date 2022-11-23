@@ -407,6 +407,200 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     return deconv_array
 
 
+def get_error2(data_array, headers, error_array=None, data_mask=None,
+            display=False, savename=None, plots_folder="",
+            return_background=False):
+    """
+    ----------
+    Inputs:
+    data_array : numpy.ndarray
+        Array containing the data to study (2D float arrays).
+    headers : header list
+        Headers associated with the images in data_array.
+    error_array : numpy.ndarray, optional
+        Array of images (2D floats, aligned and of the same shape) containing
+        the error in each pixel of the observation images in data_array.
+        If None, will be initialized to zeros.
+        Defaults to None.
+    data_mask : numpy.ndarray, optional
+        2D boolean array delimiting the data to work on.
+        If None, will be initialized with a full true mask.
+        Defaults to None.
+    display : boolean, optional
+        If True, data_array will be displayed with a rectangle around the
+        sub-image selected for background computation.
+        Defaults to False.
+    savename : str, optional
+        Name of the figure the map should be saved to. If None, the map won't
+        be saved (only displayed). Only used if display is True.
+        Defaults to None.
+    plots_folder : str, optional
+        Relative (or absolute) filepath to the folder in wich the map will
+        be saved. Not used if savename is None.
+        Defaults to current folder.
+    return_background : boolean, optional
+        If True, the pixel background value for each image in data_array is
+        returned.
+        Defaults to False.
+    ----------
+    Returns:
+    data_array : numpy.ndarray
+        Array containing the data to study minus the background.
+    headers : header list
+        Updated headers associated with the images in data_array.
+    error_array : numpy.ndarray
+        Array containing the background values associated to the images in
+        data_array.
+    background : numpy.ndarray
+        Array containing the pixel background value for each image in
+        data_array.
+        Only returned if return_background is True.
+    """
+    # Crop out any null edges
+    if error_array is None:
+        error_array = np.zeros(data_array.shape)
+    n_data_array, n_error_array = deepcopy(data_array), deepcopy(error_array)
+    if not data_mask is None:
+        data, mask = n_data_array, deepcopy(data_mask)
+    else:
+        data, _, _ = crop_array(n_data_array, headers, step=5, null_val=0., inside=False)
+        data_mask = np.ones(data_array[0].shape, dtype=bool)
+        mask = np.ones(data[0].shape, dtype=bool)
+
+    error_bkg = np.ones(n_data_array.shape)
+    std_bkg = np.zeros((data.shape[0]))
+    background = np.zeros((data.shape[0]))
+    
+    if display:
+        fig_h, ax_h = plt.subplots(figsize=(10,6), constrained_layout=True)
+        date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
+            for i in range(len(headers))])
+        date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
+            for d in date_time])
+    for i, image in enumerate(data):
+        #Compute the Count-rate histogram for the image
+        n_mask = np.logical_and(mask,image>0.)
+        
+        #n_bins = np.fix(np.sqrt(image[n_mask].size)).astype(int) # Square-root
+        #n_bins = np.ceil(np.log2(image[n_mask].size)).astype(int)+1 # Sturges
+        #n_bins = 2*np.fix(np.power(image[n_mask].size,1/3)).astype(int) # Rice
+        #n_bins = np.fix((image[n_mask].max()-image[n_mask].min())/(3.5*image[n_mask].std()/np.power(image[n_mask].size,1/3))).astype(int) # Scott
+        n_bins = np.fix((image[n_mask].max()-image[n_mask].min())/(2*np.subtract(*np.percentile(image[n_mask], [75, 25]))/np.power(image[n_mask].size,1/3))).astype(int) # Freedman-Diaconis
+        
+        hist, bin_edges = np.histogram(np.log(image[n_mask]),bins=n_bins)
+        bin_centers = np.exp((bin_edges[:-1]+bin_edges[1:])/2)
+        #Take the background as the count-rate with the maximum number of pixels
+        hist_max = bin_centers[np.argmax(hist)]
+        bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
+        #bkg = np.sum(image[n_mask]*1/np.abs(image[n_mask]-hist_max))/np.sum(1/np.abs(image[n_mask]-hist_max))
+        #bkg = np.percentile(image[image<hist_max],25.)
+        #bkg = 0.95*hist_max
+        if display:
+            ax_h.plot(bin_centers,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' ('+str(date_time[i])+") with n_bins = {0:d}".format(n_bins))
+            ax_h.plot([bkg,bkg],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
+        error_bkg[i] *= bkg
+       
+        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
+        #wavelength dependence of the polariser filters
+        #estimated to less than 1%
+        err_wav = data_array[i]*0.01
+        #difference in PSFs through each polarizers
+        #estimated to less than 3%
+        err_psf = data_array[i]*0.03
+        #flatfielding uncertainties
+        #estimated to less than 3%
+        err_flat = data_array[i]*0.03
+
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        
+        #Substract background
+        n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
+        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg#n_data_array[i][np.logical_and(data_mask,n_data_array[i] > 0.)].min()
+ 
+        std_bkg[i] = image[image<2*bkg].std()
+        background[i] = bkg
+
+        if (data_array[i] < 0.).any():
+            print(data_array[i])
+        #if i==0:
+            #np.savetxt("output/s_bg.txt",error_bkg[i])
+            #np.savetxt("output/s_wav.txt",err_wav)
+            #np.savetxt("output/s_psf.txt",err_psf)
+            #np.savetxt("output/s_flat.txt",err_flat)
+    if display:   
+        ax_h.set_xscale('log')
+        ax_h.set_xlim([background.mean()*1e-2,background.mean()*1e2])
+        ax_h.set_xlabel(r"Count rate [$s^{-1}$]")
+        #ax_h.set_yscale('log')
+        ax_h.set_ylabel(r"Number of pixels in bin")
+        ax_h.set_title("Histogram for each observation")
+        plt.legend()
+
+        plt.rcParams.update({'font.size': 15})
+        convert_flux = np.array([head['photflam'] for head in headers])
+        filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
+        dict_filt = {"POL0":'r', "POL60":'g', "POL120":'b'}
+        c_filt = np.array([dict_filt[f] for f in filt])
+        
+        fig,ax = plt.subplots(figsize=(10,6), constrained_layout=True)
+        for f in np.unique(filt):
+            mask = [fil==f for fil in filt]
+            ax.scatter(date_time[mask], background[mask]*convert_flux[mask],
+                    color=dict_filt[f],label="{0:s}".format(f))
+        ax.errorbar(date_time, background*convert_flux,
+                yerr=std_bkg*convert_flux, fmt='+k',
+                markersize=0, ecolor=c_filt)
+        # Date handling
+        locator = mdates.AutoDateLocator()
+        formatter = mdates.ConciseDateFormatter(locator)
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
+        ax.set_xlabel("Observation date and time")
+        ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        #ax.set_title("Background flux and error computed for each image")
+        plt.legend()
+
+        plt.rcParams.update({'font.size': 15})
+        fig2, ax2 = plt.subplots(figsize=(10,10))
+        data0 = data[0]*convert_flux[0]
+        bkg_data0 = data0 <= background[0]*convert_flux[0]
+        instr = headers[0]['instrume']
+        rootname = headers[0]['rootname']
+        exptime = headers[0]['exptime']
+        filt = headers[0]['filtnam1']
+        #plots
+        #im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
+        im = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
+        bkg_im = ax2.imshow(bkg_data0, origin='lower', cmap='Reds', alpha=0.7)
+        ax2.annotate(instr+":"+rootname, color='white', fontsize=10,
+                xy=(0.02, 0.95), xycoords='axes fraction')
+        ax2.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02),
+                xycoords='axes fraction')
+        ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
+                xycoords='axes fraction')
+        ax2.set(#title="Location of background computation.",
+                xlabel='pixel offset',
+                ylabel='pixel offset')
+
+        fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
+        cbar_ax = fig2.add_axes([0.9, 0.12, 0.02, 0.75])
+        fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+
+        if not(savename is None):
+            fig.savefig(plots_folder+savename+"_background_flux.png",
+                    bbox_inches='tight')
+            fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png',
+                    bbox_inches='tight')
+            fig_h.savefig(plots_folder+savename+'_histograms.png', bbox_inches='tight')
+
+        plt.show()
+
+    if return_background:
+        return n_data_array, n_error_array, headers, background #np.array([n_error_array[i][0,0] for i in range(n_error_array.shape[0])])
+    else:
+        return n_data_array, n_error_array, headers
+
+
 def get_error(data_array, headers, error_array=None, data_mask=None,
             sub_shape=None, display=False, savename=None, plots_folder="",
             return_background=False):
@@ -465,10 +659,12 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
     # Crop out any null edges
     if error_array is None:
         error_array = np.zeros(data_array.shape)
+    n_data_array, n_error_array = deepcopy(data_array), deepcopy(error_array)
     if not data_mask is None:
-        data, error, mask = data_array, error_array, data_mask
+        data, error, mask = n_data_array, n_error_array, deepcopy(data_mask)
     else:
-        data, error, _ = crop_array(data_array, headers, error_array, step=5, null_val=0., inside=False)
+        data, _, _ = crop_array(n_data_array, headers, n_error_array, step=5, null_val=0., inside=False)
+        data_mask = np.ones(n_data_array[0].shape, dtype=bool)
         mask = np.ones(data[0].shape, dtype=bool)
     if sub_shape is None:
         sub_shape = (np.array(data_array.shape[1:])/10).astype(int)
@@ -481,8 +677,9 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
     diff = (sub_shape-1).astype(int)
     temp = np.zeros((shape[0],shape[1]-diff[0],shape[2]-diff[1]))
     error_bkg = np.ones(data_array.shape)
-    rectangle = []
+    std_bkg = np.zeros((data.shape[0]))
     background = np.zeros((shape[0]))
+    rectangle = []
 
     for i,image in enumerate(data):
         # Find the sub-image of smallest integrated flux (suppose no source)
@@ -518,9 +715,12 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        data_array[i] = np.abs(data_array[i] - sub_image.mean())
+        n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
+        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.)] = n_data_array[i][np.logical_and(data_mask,n_data_array[i] > 0.)].min()
  
-        background[i] = sub_image.sum()
+        std_bkg[i] = image[image<2*bkg].std()
+        background[i] = bkg
+
         if (data_array[i] < 0.).any():
             print(data_array[i])
         #if i==0:
@@ -531,7 +731,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
 
     if display:
         plt.rcParams.update({'font.size': 15})
-        convert_flux = headers[0]['photflam']
+        convert_flux = np.array([head['photflam'] for head in headers])
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
         date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
@@ -543,10 +743,10 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         fig,ax = plt.subplots(figsize=(10,6), constrained_layout=True)
         for f in np.unique(filt):
             mask = [fil==f for fil in filt]
-            ax.scatter(date_time[mask], background[mask]*convert_flux,
+            ax.scatter(date_time[mask], background[mask]*convert_flux[mask],
                     color=dict_filt[f],label="{0:s}".format(f))
         ax.errorbar(date_time, background*convert_flux,
-                yerr=error_array[:,0,0]*convert_flux, fmt='+k',
+                yerr=std_bkg*convert_flux, fmt='+k',
                 markersize=0, ecolor=c_filt)
         # Date handling
         locator = mdates.AutoDateLocator()
@@ -560,7 +760,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
 
         plt.rcParams.update({'font.size': 15})
         fig2, ax2 = plt.subplots(figsize=(10,10))
-        data0 = data[0]*convert_flux
+        data0 = data[0]*convert_flux[0]
         instr = headers[0]['instrume']
         rootname = headers[0]['rootname']
         exptime = headers[0]['exptime']
@@ -589,16 +789,12 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
                     bbox_inches='tight')
             fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png',
                     bbox_inches='tight')
-            vmin = np.min(np.log10(data[data > 0.]))
-            vmax = np.max(np.log10(data[data > 0.]))
             plot_obs(data, headers, vmin=data.min(), vmax=data.max(),
                     rectangle=rectangle,
                     savename=savename+"_background_location",
                     plots_folder=plots_folder)
         else:
-            vmin = np.min(np.log10(data[data > 0.]))
-            vmax = np.max(np.log10(data[data > 0.]))
-            plot_obs(np.log10(data), headers, vmin=vmin, vmax=vmax,
+            plot_obs(data, headers, vmin=vmin, vmax=vmax,
                     rectangle=rectangle)
 
         plt.show()
@@ -696,13 +892,17 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             mask = sum_image > 0.
             new_error = np.zeros(rms_image.shape)
             if operation.lower() in ["mean", "average", "avg"]:
-                new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
-                    new_shape=new_shape, operation='average')[mask]/sum_image[mask])
+                new_error = np.sqrt(bin_ndarray(error**2,
+                    new_shape=new_shape, operation='average'))
+                #new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
+                #    new_shape=new_shape, operation='average')[mask]/sum_image[mask])
                 #new_error[mask] = np.sqrt(bin_ndarray(error**2,
                 #    new_shape=new_shape, operation='average')[mask])
             else:
-                new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
-                    new_shape=new_shape, operation='sum')[mask]/sum_image[mask])
+                new_error = np.sqrt(bin_ndarray(error**2,
+                    new_shape=new_shape, operation='sum'))
+                #new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
+                #    new_shape=new_shape, operation='sum')[mask]/sum_image[mask])
                 #new_error[mask] = np.sqrt(bin_ndarray(error**2,
                 #    new_shape=new_shape, operation='sum')[mask])
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
@@ -724,8 +924,8 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
         return rebinned_data, rebinned_error, rebinned_headers, Dxy, data_mask
 
 
-def align_data(data_array, headers, error_array=None, upsample_factor=1.,
-        ref_data=None, ref_center=None, return_shifts=False):
+def align_data(data_array, headers, error_array=None, background=None,
+        upsample_factor=1., ref_data=None, ref_center=None, return_shifts=False):
     """
     Align images in data_array using cross correlation, and rescale them to
     wider images able to contain any rotation of the reference image.
@@ -789,10 +989,8 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     if not same:
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
-    if error_array is None:
-        _, error_array, headers, background = get_error(data_array, headers, return_background=True)
-    else:
-        _, _, headers, background = get_error(data_array, headers, error_array=error_array, return_background=True)
+    if (error_array is None) or (background is None):
+        _, error_array, headers, background = get_error2(data_array, headers, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
@@ -801,8 +999,8 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     full_headers.append(headers[0])
     err_array = np.concatenate((error_array,[np.zeros(ref_data.shape)]),axis=0)
 
-    full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5,
-            inside=False)
+    full_array, err_array, full_headers = crop_array(full_array, full_headers,
+            err_array, step=5, inside=False, null_val=0.)
 
     data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
@@ -833,7 +1031,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
     shifts, errors = [], []
     for i,image in enumerate(data_array):
         # Initialize rescaled images to background values
-        rescaled_error[i] *= background[i]
+        rescaled_error[i] *= 0.01*background[i]
         # Get shifts and error by cross-correlation to ref_data
         shift, error, phase_diff = phase_cross_correlation(ref_data/ref_data.max(), image/image.max(),
                 upsample_factor=upsample_factor)
@@ -876,7 +1074,7 @@ def align_data(data_array, headers, error_array=None, upsample_factor=1.,
         headers[i].update(headers_wcs[i].to_header())
 
     data_mask = rescaled_mask.all(axis=0)
-    data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask)
+    data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
 
     if return_shifts:
         return data_array, error_array, headers, data_mask, shifts, errors
@@ -1316,7 +1514,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted)+180.)
+        PA_diluted = 360.-princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
         PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
@@ -1376,7 +1574,7 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     P = np.zeros(I_stokes.shape)
     P[mask] = I_pol[mask]/I_stokes[mask]
     PA = np.zeros(I_stokes.shape)
-    PA[mask] = princ_angle((90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask])+180.)
+    PA[mask] = (90./np.pi)*np.arctan2(U_stokes[mask],Q_stokes[mask])
 
     if (P>1).any():
         print("WARNING : found {0:d} pixels for which P > 1".format(P[P>1.].size))
@@ -1575,7 +1773,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted)+180.)
+    PA_diluted = 360.-princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:

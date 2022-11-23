@@ -44,8 +44,8 @@ for d in data_K:
 for d in [data_S, data_K]:
     for i in d:
         d[i][np.isnan(d[i])] = 0.
-    d['P'] = np.where(d['I']>0.,np.sqrt(d['Q']**2+d['U']**2)/d['I'],0.)
-    d['sP'] = np.where(d['I']>0.,np.sqrt((d['Q']**2*d['sQ']**2+d['U']**2*d['sU']**2)/(d['Q']**2+d['U']**2)+((d['Q']/d['I'])**2+(d['U']/d['I'])**2)*d['sI']**2)/d['I'],0.)
+    d['P'] = np.where(np.logical_and(np.isfinite(d['I']),d['I']>0.),np.sqrt(d['Q']**2+d['U']**2)/d['I'],0.)
+    d['sP'] = np.where(np.logical_and(np.isfinite(d['I']),d['I']>0.),np.sqrt((d['Q']**2*d['sQ']**2+d['U']**2*d['sU']**2)/(d['Q']**2+d['U']**2)+((d['Q']/d['I'])**2+(d['U']/d['I'])**2)*d['sI']**2)/d['I'],0.)
     d['PA'] = princ_angle((90./np.pi)*np.arctan2(d['U'],d['Q'])+180.)
     d['SNRp'] = np.zeros(d['P'].shape)
     d['SNRp'][d['sP']>0.] = d['P'][d['sP']>0.]/d['sP'][d['sP']>0.]
