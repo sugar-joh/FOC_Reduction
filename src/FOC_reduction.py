@@ -123,8 +123,8 @@ def main():
     # Initial crop
     display_crop = False
     # Error estimation
-    error_sub_shape = (80,80)
-    display_error = False
+    error_sub_shape = (15,15)
+    display_error = True
     # Data binning
     rebin = True
     if rebin:
@@ -143,7 +143,7 @@ def main():
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = False
+    final_display = True
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_combine_FWHM010'    #additionnal informations
@@ -163,10 +163,12 @@ def main():
     # Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
         data_array = proj_red.deconvolve_array(data_array, headers, psf=psf, FWHM=psf_FWHM, scale=psf_scale, shape=psf_shape, iterations=iterations, algo=algo)
+
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
+    background = None
     if px_scale.lower() not in ['full','integrate']:
-        #data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
-        data_array, error_array, headers, background = proj_red.get_error2(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+        data_array, error_array, headers, background = proj_red.get_error_hist(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+#        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)

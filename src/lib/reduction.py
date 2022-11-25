@@ -407,7 +407,7 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     return deconv_array
 
 
-def get_error2(data_array, headers, error_array=None, data_mask=None,
+def get_error_hist(data_array, headers, error_array=None, data_mask=None,
             display=False, savename=None, plots_folder="",
             return_background=False):
     """
@@ -472,12 +472,15 @@ def get_error2(data_array, headers, error_array=None, data_mask=None,
     background = np.zeros((data.shape[0]))
     
     if display:
+        plt.rcParams.update({'font.size': 15})
+        filt_obs = {"POL0":0, "POL60":0, "POL120":0}
         fig_h, ax_h = plt.subplots(figsize=(10,6), constrained_layout=True)
         date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
             for i in range(len(headers))])
         date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
             for d in date_time])
     for i, image in enumerate(data):
+        filt_obs[headers[i]['filtnam1']] += 1
         #Compute the Count-rate histogram for the image
         n_mask = np.logical_and(mask,image>0.)
         
@@ -496,8 +499,9 @@ def get_error2(data_array, headers, error_array=None, data_mask=None,
         #bkg = np.percentile(image[image<hist_max],25.)
         #bkg = 0.95*hist_max
         if display:
-            ax_h.plot(bin_centers,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' ('+str(date_time[i])+") with n_bins = {0:d}".format(n_bins))
+            ax_h.plot(bin_centers,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
             ax_h.plot([bkg,bkg],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
+            print(headers[i]['filtnam1']+' ('+str(date_time[i])+') : n_bins =',n_bins,'; bkg = {0:.2e}'.format(bkg))
         error_bkg[i] *= bkg
        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
@@ -515,9 +519,9 @@ def get_error2(data_array, headers, error_array=None, data_mask=None,
         
         #Substract background
         n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
-        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg#n_data_array[i][np.logical_and(data_mask,n_data_array[i] > 0.)].min()
+        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  
-        std_bkg[i] = image[image<2*bkg].std()
+        std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
         background[i] = bkg
 
         if (data_array[i] < 0.).any():
@@ -536,7 +540,6 @@ def get_error2(data_array, headers, error_array=None, data_mask=None,
         ax_h.set_title("Histogram for each observation")
         plt.legend()
 
-        plt.rcParams.update({'font.size': 15})
         convert_flux = np.array([head['photflam'] for head in headers])
         filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
         dict_filt = {"POL0":'r', "POL60":'g', "POL120":'b'}
@@ -596,7 +599,7 @@ def get_error2(data_array, headers, error_array=None, data_mask=None,
         plt.show()
 
     if return_background:
-        return n_data_array, n_error_array, headers, background #np.array([n_error_array[i][0,0] for i in range(n_error_array.shape[0])])
+        return n_data_array, n_error_array, headers, background
     else:
         return n_data_array, n_error_array, headers
 
@@ -698,7 +701,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         # Compute error : root mean square of the background
         sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
         #bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
-        bkg = np.sqrt(np.sum((sub_image-sub_image.mean())**2)/sub_image.size)
+        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_bkg[i] *= bkg
        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
@@ -712,13 +715,13 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         #estimated to less than 3%
         err_flat = data_array[i]*0.03
 
-        error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        n_error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
         n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
-        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.)] = n_data_array[i][np.logical_and(data_mask,n_data_array[i] > 0.)].min()
+        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  
-        std_bkg[i] = image[image<2*bkg].std()
+        std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
         background[i] = bkg
 
         if (data_array[i] < 0.).any():
@@ -800,9 +803,9 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         plt.show()
 
     if return_background:
-        return data_array, error_array, headers, np.array([error_array[i][0,0] for i in range(error_array.shape[0])])
+        return n_data_array, n_error_array, headers, background
     else:
-        return data_array, error_array, headers
+        return n_data_array, n_error_array, headers
 
 
 def rebin_array(data_array, error_array, headers, pxsize, scale,
@@ -990,7 +993,7 @@ def align_data(data_array, headers, error_array=None, background=None,
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
     if (error_array is None) or (background is None):
-        _, error_array, headers, background = get_error2(data_array, headers, return_background=True)
+        _, error_array, headers, background = get_error(data_array, headers, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
@@ -1519,9 +1522,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarization degree')
-            header['P_int_err'] = (P_diluted_err, 'Integrated polarization degree error')
+            header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
             header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
-            header['PA_int_err'] = (PA_diluted_err, 'Integrated polarization angle error')
+            header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
 
     return I_stokes, Q_stokes, U_stokes, Stokes_cov
 
@@ -1778,9 +1781,9 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
 
     for header in new_headers:
         header['P_int'] = (P_diluted, 'Integrated polarization degree')
-        header['P_int_err'] = (P_diluted_err, 'Integrated polarization degree error')
+        header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
         header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
-        header['PA_int_err'] = (PA_diluted_err, 'Integrated polarization angle error')
+        header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
 
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers

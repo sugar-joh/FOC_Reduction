@@ -20,7 +20,7 @@ data_K = {}
 data_S = {}
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
     data_K[d] = np.loadtxt(path_join(root_dir_K,d+'.txt'))
-    with fits.open(path_join(root_dir_data_S,'NGC1068_K_FOC_bin10px.fits')) as f:
+    with fits.open(path_join(root_dir_data_S,'NGC1068_old_FOC_bin10px.fits')) as f:
         if not type(i) is int:
             data_S[d] = np.sqrt(f[i[0]].data[i[1],i[2]])
         else:
