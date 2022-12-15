@@ -124,11 +124,11 @@ def main():
     display_crop = False
     # Error estimation
     error_sub_shape = (15,15)
-    display_error = True
+    display_error = False
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.05
+        pxsize = 0.10
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -136,17 +136,17 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True
+    final_display = False
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010'    #additionnal informations
+    figtype = '_combine_FWHM020'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted

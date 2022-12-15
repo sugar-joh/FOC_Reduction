@@ -20,7 +20,7 @@ data_K = {}
 data_S = {}
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
     data_K[d] = np.loadtxt(path_join(root_dir_K,d+'.txt'))
-    with fits.open(path_join(root_dir_data_S,'NGC1068_old_FOC_bin10px.fits')) as f:
+    with fits.open(path_join(root_dir_data_S,'NGC1068_FOC_bin10px.fits')) as f:
         if not type(i) is int:
             data_S[d] = np.sqrt(f[i[0]].data[i[1],i[2]])
         else:
@@ -110,7 +110,7 @@ print("This pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P
 print("Kishimoto's pipeline : average sI/I={0:.2f} ; sQ/Q={1:.2f} ; sU/U={2:.2f} ; sP/P={3:.2f}".format(np.mean(data_K['sI'][data_S['mask']]/data_K['I'][data_S['mask']]),np.mean(data_K['sQ'][data_S['mask']]/data_K['Q'][data_S['mask']]),np.mean(data_K['sU'][data_S['mask']]/data_K['U'][data_S['mask']]),np.mean(data_K['sP'][data_S['mask']]/data_K['P'][data_S['mask']])))
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
     data_K[d] = np.loadtxt(path_join(root_dir_K,d+'.txt'))
-    with fits.open(path_join(root_dir_data_S,'NGC1068_K_FOC_bin10px.fits')) as f:
+    with fits.open(path_join(root_dir_data_S,'NGC1068_FOC_bin10px.fits')) as f:
         if not type(i) is int:
             data_S[d] = np.sqrt(f[i[0]].data[i[1],i[2]])
         else:

@@ -80,8 +80,8 @@ def princ_angle(ang):
         A = np.array(ang)
     while np.any(A < 0.):
         A[A<0.] =  A[A<0.]+360.
-    while np.any(A >= 360.):
-        A[A>=360.] = A[A>=360.]-360.
+    while np.any(A >= 180.):
+        A[A>=180.] = A[A>=180.]-180.
     if type(ang) == type(A):
         return A
     else:
@@ -480,7 +480,6 @@ def get_error_hist(data_array, headers, error_array=None, data_mask=None,
         date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
             for d in date_time])
     for i, image in enumerate(data):
-        filt_obs[headers[i]['filtnam1']] += 1
         #Compute the Count-rate histogram for the image
         n_mask = np.logical_and(mask,image>0.)
         
@@ -499,9 +498,10 @@ def get_error_hist(data_array, headers, error_array=None, data_mask=None,
         #bkg = np.percentile(image[image<hist_max],25.)
         #bkg = 0.95*hist_max
         if display:
+            filt_obs[headers[i]['filtnam1']] += 1
             ax_h.plot(bin_centers,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
             ax_h.plot([bkg,bkg],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
-            print(headers[i]['filtnam1']+' ('+str(date_time[i])+') : n_bins =',n_bins,'; bkg = {0:.2e}'.format(bkg))
+            #print(headers[i]['filtnam1']+' ('+str(date_time[i])+') : n_bins =',n_bins,'; bkg = {0:.2e}'.format(bkg))
         error_bkg[i] *= bkg
        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
@@ -993,7 +993,7 @@ def align_data(data_array, headers, error_array=None, background=None,
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
     if (error_array is None) or (background is None):
-        _, error_array, headers, background = get_error(data_array, headers, return_background=True)
+        _, error_array, headers, background = get_error_hist(data_array, headers, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
@@ -1517,7 +1517,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-        PA_diluted = 360.-princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
         PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
@@ -1776,7 +1776,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers,
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
     P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
-    PA_diluted = 360.-princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+    PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
     PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:

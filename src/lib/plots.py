@@ -59,8 +59,8 @@ def princ_angle(ang):
         A = np.array(ang)
     while np.any(A < 0.):
         A[A<0.] = A[A<0.]+360.
-    while np.any(A >= 360.):
-        A[A>=360.] = A[A>=360.]-360.
+    while np.any(A >= 180.):
+        A[A>=180.] = A[A>=180.]-180.
     if type(ang) == type(A):
         return A
     else:
@@ -336,7 +336,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['pa','pang','pol_ang']:
         # Display polarization degree map
         display='pa'
-        vmin, vmax = 0., 360.
+        vmin, vmax = 0., 180.
         im = ax.imshow(princ_angle(pang.data), vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\theta_P$ [°]")
     elif display.lower() in ['s_p','pol_err','pol_deg_err']:
@@ -674,6 +674,9 @@ class overplot_radio(align_maps):
         north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
+        self.cr_map, = self.ax.plot(*self.wcs_map.wcs.crpix, 'r+')
+        crpix_other = self.wcs_map.world_to_pixel(self.wcs_other.pixel_to_world(*self.wcs_other.wcs.crpix))
+        self.cr_other, = self.ax.plot(*crpix_other, 'g+')
 
         if not(savename is None):
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
@@ -728,7 +731,7 @@ class overplot_pol(align_maps):
 
         #Display Stokes I as contours
         levels_stkI = np.rint(np.linspace(10,99,10))/100.*np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        cont_stkI = self.ax.contour(stkI.data*convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.)
+        cont_stkI = self.ax.contour(stkI.data*convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.5)
         #self.ax.clabel(cont_stkI, inline=True, fontsize=8)
 
         self.ax.autoscale(False)
@@ -752,6 +755,8 @@ class overplot_pol(align_maps):
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
+
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
@@ -760,8 +765,9 @@ class overplot_pol(align_maps):
         north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
         self.ax.add_artist(north_dir)
 
-
-        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
+        self.cr_map, = self.ax.plot(*self.wcs_map.wcs.crpix, 'r+')
+        crpix_other = self.wcs_map.world_to_pixel(self.wcs_other.pixel_to_world(*self.wcs_other.wcs.crpix))
+        self.cr_other, = self.ax.plot(*crpix_other, 'g+')
 
         if not(savename is None):
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
@@ -1744,7 +1750,7 @@ class pol_map(object):
             label = r"$P$ [%]"
         elif self.display_selection.lower() in ['pol_ang']:
             self.data = princ_angle(self.PA)
-            vmin, vmax = 0, 360.
+            vmin, vmax = 0, 180.
             label = r"$\theta_{P}$ [°]"
         elif self.display_selection.lower() in ['snri']:
             s_I = np.sqrt(self.IQU_cov[0,0])
@@ -1833,7 +1839,7 @@ class pol_map(object):
             P_cut = np.sqrt(Q_cut**2+U_cut**2)/I_cut
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) + ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = 360.-princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
+            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut,Q_cut)))
             PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
 
         else:
@@ -1858,7 +1864,7 @@ class pol_map(object):
             P_reg = np.sqrt(Q_reg**2+U_reg**2)/I_reg
             P_reg_err = np.sqrt((Q_reg**2*Q_reg_err**2 + U_reg**2*U_reg_err**2 + 2.*Q_reg*U_reg*QU_reg_err)/(Q_reg**2 + U_reg**2) + ((Q_reg/I_reg)**2 + (U_reg/I_reg)**2)*I_reg_err**2 - 2.*(Q_reg/I_reg)*IQ_reg_err - 2.*(U_reg/I_reg)*IU_reg_err)/I_reg
 
-            PA_reg = 360.-princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
+            PA_reg = princ_angle((90./np.pi)*np.arctan2(U_reg,Q_reg))
             PA_reg_err = (90./(np.pi*(Q_reg**2+U_reg**2)))*np.sqrt(U_reg**2*Q_reg_err**2 + Q_reg**2*U_reg_err**2 - 2.*Q_reg*U_reg*QU_reg_err)
 
             new_cut = np.logical_and(self.region, self.cut)
