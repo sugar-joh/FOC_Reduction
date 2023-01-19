@@ -72,7 +72,8 @@ globals()['sigma_theta'] = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.
 
 def princ_angle(ang):
     """
-    Return the principal angle in the 0° to 360° quadrant.
+    Return the principal angle in the 0° to 180° quadrant.
+    as PA is always defined at p/m 180°.
     """
     if type(ang) != np.ndarray:
         A = np.array([ang])

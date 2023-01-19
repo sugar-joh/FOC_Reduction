@@ -18,12 +18,12 @@ from astropy.wcs import WCS
 
 ##### User inputs
 ## Input and output locations
-globals()['data_folder'] = "../data/NGC1068_x274020/"
-globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
-   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
-   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-#psf_file = 'NGC1068_f253m00.fits'
-globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+#globals()['data_folder'] = "../data/NGC1068_x274020/"
+#globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
+#   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
+#   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
+##psf_file = 'NGC1068_f253m00.fits'
+#globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #globals()['data_folder'] = "../data/IC5063_x3nl030/"
 #globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
@@ -80,6 +80,13 @@ globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 #globals()['infiles'] = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
 #globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
 
+globals()['data_folder'] = "../data/MRK231_x4qr010/"
+globals()['infiles'] = ['x4qr010ar_c0f.fits', 'x4qr010br_c0f.fits', 'x4qr010dr_c0f.fits',
+   'x4qr010er_c0f.fits', 'x4qr010gr_c0f.fits', 'x4qr010hr_c0f.fits',
+   'x4qr010jr_c0f.fits', 'x4qr010kr_c0f.fits', 'x4qr0104r_c0f.fits',
+   'x4qr0105r_c0f.fits', 'x4qr0107r_c0f.fits', 'x4qr0108r_c0f.fits']
+globals()['plots_folder'] = "../plots/MRK231_x4qr010/"
+
 #globals()['data_folder'] = "../data/3C273_x0u20/"
 #globals()['infiles'] = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits',
 #   'x0u20104t_c0f.fits','x0u20105t_c0f.fits','x0u20106t_c0f.fits',
@@ -128,7 +135,7 @@ def main():
     # Data binning
     rebin = True
     if rebin:
-        pxsize = 0.10
+        pxsize = 0.05
         px_scale = 'arcsec'         #pixel, arcsec or full
         rebin_operation = 'sum'     #sum or average
     # Alignement
@@ -136,17 +143,17 @@ def main():
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True            #rotation to North convention can give erroneous results
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = False
+    final_display = True
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_combine_FWHM020'    #additionnal informations
+    figname = 'MRK231_FOC'         #target/intrument name
+    figtype = '_combine_FWHM010'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
