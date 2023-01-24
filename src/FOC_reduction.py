@@ -18,12 +18,12 @@ from astropy.wcs import WCS
 
 ##### User inputs
 ## Input and output locations
-#globals()['data_folder'] = "../data/NGC1068_x274020/"
-#globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
-#   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
-#   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
-##psf_file = 'NGC1068_f253m00.fits'
-#globals()['plots_folder'] = "../plots/NGC1068_x274020/"
+globals()['data_folder'] = "../data/NGC1068_x274020/"
+globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f.fits',
+   'x274020dt_c0f.fits','x274020et_c0f.fits','x274020ft_c0f.fits',
+   'x274020gt_c0f.fits','x274020ht_c0f.fits','x274020it_c0f.fits']
+#psf_file = 'NGC1068_f253m00.fits'
+globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
 #globals()['data_folder'] = "../data/IC5063_x3nl030/"
 #globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
@@ -80,12 +80,12 @@ from astropy.wcs import WCS
 #globals()['infiles'] = ['x3nl0201r_c0f.fits','x3nl0202r_c0f.fits','x3nl0203r_c0f.fits']
 #globals()['plots_folder'] = "../plots/MKN78_x3nl020/"
 
-globals()['data_folder'] = "../data/MRK231_x4qr010/"
-globals()['infiles'] = ['x4qr010ar_c0f.fits', 'x4qr010br_c0f.fits', 'x4qr010dr_c0f.fits',
-   'x4qr010er_c0f.fits', 'x4qr010gr_c0f.fits', 'x4qr010hr_c0f.fits',
-   'x4qr010jr_c0f.fits', 'x4qr010kr_c0f.fits', 'x4qr0104r_c0f.fits',
-   'x4qr0105r_c0f.fits', 'x4qr0107r_c0f.fits', 'x4qr0108r_c0f.fits']
-globals()['plots_folder'] = "../plots/MRK231_x4qr010/"
+#globals()['data_folder'] = "../data/MRK231_x4qr010/"
+#globals()['infiles'] = ['x4qr010ar_c0f.fits', 'x4qr010br_c0f.fits', 'x4qr010dr_c0f.fits',
+#   'x4qr010er_c0f.fits', 'x4qr010gr_c0f.fits', 'x4qr010hr_c0f.fits',
+#   'x4qr010jr_c0f.fits', 'x4qr010kr_c0f.fits', 'x4qr0104r_c0f.fits',
+#   'x4qr0105r_c0f.fits', 'x4qr0107r_c0f.fits', 'x4qr0108r_c0f.fits']
+#globals()['plots_folder'] = "../plots/MRK231_x4qr010/"
 
 #globals()['data_folder'] = "../data/3C273_x0u20/"
 #globals()['infiles'] = ['x0u20101t_c0f.fits','x0u20102t_c0f.fits','x0u20103t_c0f.fits',
@@ -130,30 +130,29 @@ def main():
     # Initial crop
     display_crop = False
     # Error estimation
-    error_sub_shape = (15,15)
+    error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
     display_error = False
     # Data binning
     rebin = True
-    if rebin:
-        pxsize = 0.05
-        px_scale = 'arcsec'         #pixel, arcsec or full
-        rebin_operation = 'sum'     #sum or average
+    pxsize = 0.10
+    px_scale = 'arcsec'         #pixel, arcsec or full
+    rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
-    rotate_stokes = True            #rotation to North convention can give erroneous results
+    rotate_stokes = True
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True
+    final_display = False
     # Polarization map output
-    figname = 'MRK231_FOC'         #target/intrument name
-    figtype = '_combine_FWHM010'    #additionnal informations
+    figname = 'NGC1068_FOC'         #target/intrument name
+    figtype = '_c_FWHM020'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -174,8 +173,7 @@ def main():
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
     if px_scale.lower() not in ['full','integrate']:
-        data_array, error_array, headers, background = proj_red.get_error_hist(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
-#        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)

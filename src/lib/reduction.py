@@ -11,7 +11,7 @@ prototypes :
     - deconvolve_array(data_array, headers, psf, FWHM, scale, shape, iterations, algo) -> deconvolved_data_array
         Homogeneously deconvolve a data array using a chosen deconvolution algorithm.
 
-    - get_error(data_array, headers, error_array, data_mask, sub_shape, display, savename, plots_folder, return_background) -> data_array, error_array, headers (, background)
+    - get_error(data_array, headers, error_array, data_mask, sub_type, display, savename, plots_folder, return_background) -> data_array, error_array, headers (, background)
         Compute the error (noise) on each image of the input array.
 
     - rebin_array(data_array, error_array, headers, pxsize, scale, operation, data_mask) -> rebinned_data, rebinned_error, rebinned_headers, Dxy (, data_mask)
@@ -45,7 +45,6 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
 from matplotlib.colors import LogNorm
-from datetime import datetime
 from scipy.ndimage import rotate as sc_rotate, shift as sc_shift
 from scipy.signal import convolve2d
 from astropy.wcs import WCS
@@ -54,6 +53,7 @@ log.setLevel('ERROR')
 import warnings
 from lib.deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
 from lib.convex_hull import image_hull, clean_ROI
+from lib.background import bkg_hist, bkg_mini
 from lib.plots import plot_obs
 from lib.cross_correlation import phase_cross_correlation
 
@@ -408,205 +408,8 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     return deconv_array
 
 
-def get_error_hist(data_array, headers, error_array=None, data_mask=None,
-            display=False, savename=None, plots_folder="",
-            return_background=False):
-    """
-    ----------
-    Inputs:
-    data_array : numpy.ndarray
-        Array containing the data to study (2D float arrays).
-    headers : header list
-        Headers associated with the images in data_array.
-    error_array : numpy.ndarray, optional
-        Array of images (2D floats, aligned and of the same shape) containing
-        the error in each pixel of the observation images in data_array.
-        If None, will be initialized to zeros.
-        Defaults to None.
-    data_mask : numpy.ndarray, optional
-        2D boolean array delimiting the data to work on.
-        If None, will be initialized with a full true mask.
-        Defaults to None.
-    display : boolean, optional
-        If True, data_array will be displayed with a rectangle around the
-        sub-image selected for background computation.
-        Defaults to False.
-    savename : str, optional
-        Name of the figure the map should be saved to. If None, the map won't
-        be saved (only displayed). Only used if display is True.
-        Defaults to None.
-    plots_folder : str, optional
-        Relative (or absolute) filepath to the folder in wich the map will
-        be saved. Not used if savename is None.
-        Defaults to current folder.
-    return_background : boolean, optional
-        If True, the pixel background value for each image in data_array is
-        returned.
-        Defaults to False.
-    ----------
-    Returns:
-    data_array : numpy.ndarray
-        Array containing the data to study minus the background.
-    headers : header list
-        Updated headers associated with the images in data_array.
-    error_array : numpy.ndarray
-        Array containing the background values associated to the images in
-        data_array.
-    background : numpy.ndarray
-        Array containing the pixel background value for each image in
-        data_array.
-        Only returned if return_background is True.
-    """
-    # Crop out any null edges
-    if error_array is None:
-        error_array = np.zeros(data_array.shape)
-    n_data_array, n_error_array = deepcopy(data_array), deepcopy(error_array)
-    if not data_mask is None:
-        data, mask = n_data_array, deepcopy(data_mask)
-    else:
-        data, _, _ = crop_array(n_data_array, headers, step=5, null_val=0., inside=False)
-        data_mask = np.ones(data_array[0].shape, dtype=bool)
-        mask = np.ones(data[0].shape, dtype=bool)
-
-    error_bkg = np.ones(n_data_array.shape)
-    std_bkg = np.zeros((data.shape[0]))
-    background = np.zeros((data.shape[0]))
-    
-    if display:
-        plt.rcParams.update({'font.size': 15})
-        filt_obs = {"POL0":0, "POL60":0, "POL120":0}
-        fig_h, ax_h = plt.subplots(figsize=(10,6), constrained_layout=True)
-        date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
-            for i in range(len(headers))])
-        date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
-            for d in date_time])
-    for i, image in enumerate(data):
-        #Compute the Count-rate histogram for the image
-        n_mask = np.logical_and(mask,image>0.)
-        
-        #n_bins = np.fix(np.sqrt(image[n_mask].size)).astype(int) # Square-root
-        #n_bins = np.ceil(np.log2(image[n_mask].size)).astype(int)+1 # Sturges
-        #n_bins = 2*np.fix(np.power(image[n_mask].size,1/3)).astype(int) # Rice
-        #n_bins = np.fix((image[n_mask].max()-image[n_mask].min())/(3.5*image[n_mask].std()/np.power(image[n_mask].size,1/3))).astype(int) # Scott
-        n_bins = np.fix((image[n_mask].max()-image[n_mask].min())/(2*np.subtract(*np.percentile(image[n_mask], [75, 25]))/np.power(image[n_mask].size,1/3))).astype(int) # Freedman-Diaconis
-        
-        hist, bin_edges = np.histogram(np.log(image[n_mask]),bins=n_bins)
-        bin_centers = np.exp((bin_edges[:-1]+bin_edges[1:])/2)
-        #Take the background as the count-rate with the maximum number of pixels
-        hist_max = bin_centers[np.argmax(hist)]
-        bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
-        #bkg = np.sum(image[n_mask]*1/np.abs(image[n_mask]-hist_max))/np.sum(1/np.abs(image[n_mask]-hist_max))
-        #bkg = np.percentile(image[image<hist_max],25.)
-        #bkg = 0.95*hist_max
-        if display:
-            filt_obs[headers[i]['filtnam1']] += 1
-            ax_h.plot(bin_centers,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
-            ax_h.plot([bkg,bkg],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
-            #print(headers[i]['filtnam1']+' ('+str(date_time[i])+') : n_bins =',n_bins,'; bkg = {0:.2e}'.format(bkg))
-        error_bkg[i] *= bkg
-       
-        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
-        #wavelength dependence of the polariser filters
-        #estimated to less than 1%
-        err_wav = data_array[i]*0.01
-        #difference in PSFs through each polarizers
-        #estimated to less than 3%
-        err_psf = data_array[i]*0.03
-        #flatfielding uncertainties
-        #estimated to less than 3%
-        err_flat = data_array[i]*0.03
-
-        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
-        
-        #Substract background
-        n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
-        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
- 
-        std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
-        background[i] = bkg
-
-        if (data_array[i] < 0.).any():
-            print(data_array[i])
-        #if i==0:
-            #np.savetxt("output/s_bg.txt",error_bkg[i])
-            #np.savetxt("output/s_wav.txt",err_wav)
-            #np.savetxt("output/s_psf.txt",err_psf)
-            #np.savetxt("output/s_flat.txt",err_flat)
-    if display:   
-        ax_h.set_xscale('log')
-        ax_h.set_xlim([background.mean()*1e-2,background.mean()*1e2])
-        ax_h.set_xlabel(r"Count rate [$s^{-1}$]")
-        #ax_h.set_yscale('log')
-        ax_h.set_ylabel(r"Number of pixels in bin")
-        ax_h.set_title("Histogram for each observation")
-        plt.legend()
-
-        convert_flux = np.array([head['photflam'] for head in headers])
-        filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
-        dict_filt = {"POL0":'r', "POL60":'g', "POL120":'b'}
-        c_filt = np.array([dict_filt[f] for f in filt])
-        
-        fig,ax = plt.subplots(figsize=(10,6), constrained_layout=True)
-        for f in np.unique(filt):
-            mask = [fil==f for fil in filt]
-            ax.scatter(date_time[mask], background[mask]*convert_flux[mask],
-                    color=dict_filt[f],label="{0:s}".format(f))
-        ax.errorbar(date_time, background*convert_flux,
-                yerr=std_bkg*convert_flux, fmt='+k',
-                markersize=0, ecolor=c_filt)
-        # Date handling
-        locator = mdates.AutoDateLocator()
-        formatter = mdates.ConciseDateFormatter(locator)
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
-        ax.set_xlabel("Observation date and time")
-        ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        #ax.set_title("Background flux and error computed for each image")
-        plt.legend()
-
-        plt.rcParams.update({'font.size': 15})
-        fig2, ax2 = plt.subplots(figsize=(10,10))
-        data0 = data[0]*convert_flux[0]
-        bkg_data0 = data0 <= background[0]*convert_flux[0]
-        instr = headers[0]['instrume']
-        rootname = headers[0]['rootname']
-        exptime = headers[0]['exptime']
-        filt = headers[0]['filtnam1']
-        #plots
-        #im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
-        im = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
-        bkg_im = ax2.imshow(bkg_data0, origin='lower', cmap='Reds', alpha=0.7)
-        ax2.annotate(instr+":"+rootname, color='white', fontsize=10,
-                xy=(0.02, 0.95), xycoords='axes fraction')
-        ax2.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02),
-                xycoords='axes fraction')
-        ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
-                xycoords='axes fraction')
-        ax2.set(#title="Location of background computation.",
-                xlabel='pixel offset',
-                ylabel='pixel offset')
-
-        fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
-        cbar_ax = fig2.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-
-        if not(savename is None):
-            fig.savefig(plots_folder+savename+"_background_flux.png",
-                    bbox_inches='tight')
-            fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png',
-                    bbox_inches='tight')
-            fig_h.savefig(plots_folder+savename+'_histograms.png', bbox_inches='tight')
-
-        plt.show()
-
-    if return_background:
-        return n_data_array, n_error_array, headers, background
-    else:
-        return n_data_array, n_error_array, headers
-
-
 def get_error(data_array, headers, error_array=None, data_mask=None,
-            sub_shape=None, display=False, savename=None, plots_folder="",
+            sub_type=None, display=False, savename=None, plots_folder="",
             return_background=False):
     """
     Look for sub-image of shape sub_shape that have the smallest integrated
@@ -627,9 +430,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         2D boolean array delimiting the data to work on.
         If None, will be initialized with a full true mask.
         Defaults to None.
-    sub_shape : tuple, optional
-        Shape of the sub-image to look for. Must be odd.
-        Defaults to 10% of input array.
+    sub_type : str or int or tuple, optional
+        If str, statistic rule to be used for the number of bins in counts/s.
+        If int, number of bins for the counts/s histogram.
+        If tuple, shape of the sub-image to look for. Must be odd.
+        Defaults to "Freedman-Diaconis".
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
@@ -667,141 +472,16 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
     if not data_mask is None:
         data, error, mask = n_data_array, n_error_array, deepcopy(data_mask)
     else:
-        data, _, _ = crop_array(n_data_array, headers, n_error_array, step=5, null_val=0., inside=False)
-        data_mask = np.ones(n_data_array[0].shape, dtype=bool)
+        data, error, _ = crop_array(n_data_array, headers, n_error_array, step=5, null_val=0., inside=False)
         mask = np.ones(data[0].shape, dtype=bool)
-    if sub_shape is None:
-        sub_shape = (np.array(data_array.shape[1:])/10).astype(int)
-    sub_shape = np.array(sub_shape)
-    # Make sub_shape of odd values
-    if not(np.all(sub_shape%2)):
-        sub_shape += 1-sub_shape%2
-
-    shape = np.array(data.shape)
-    diff = (sub_shape-1).astype(int)
-    temp = np.zeros((shape[0],shape[1]-diff[0],shape[2]-diff[1]))
-    error_bkg = np.ones(data_array.shape)
-    std_bkg = np.zeros((data.shape[0]))
-    background = np.zeros((shape[0]))
-    rectangle = []
-
-    for i,image in enumerate(data):
-        # Find the sub-image of smallest integrated flux (suppose no source)
-        #sub-image dominated by background
-        fmax = np.finfo(np.double).max
-        img = deepcopy(image)
-        img[1-mask] = fmax/(diff[0]*diff[1])
-        for r in range(temp.shape[1]):
-            for c in range(temp.shape[2]):
-                temp[i][r,c] = np.where(mask[r,c], img[r:r+diff[0],c:c+diff[1]].sum(), fmax/(diff[0]*diff[1]))
-
-    minima = np.unravel_index(np.argmin(temp.sum(axis=0)),temp.shape[1:])
-
-    for i, image in enumerate(data):
-        rectangle.append([minima[1], minima[0], sub_shape[1], sub_shape[0], 0., 'r'])
-        # Compute error : root mean square of the background
-        sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
-        #bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
-        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)
-        error_bkg[i] *= bkg
-       
-        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
-        #wavelength dependence of the polariser filters
-        #estimated to less than 1%
-        err_wav = data_array[i]*0.01
-        #difference in PSFs through each polarizers
-        #estimated to less than 3%
-        err_psf = data_array[i]*0.03
-        #flatfielding uncertainties
-        #estimated to less than 3%
-        err_flat = data_array[i]*0.03
-
-        n_error_array[i] = np.sqrt(error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
-        
-        #Substract background
-        n_data_array[i][data_mask] = n_data_array[i][data_mask] - bkg
-        n_data_array[i][np.logical_and(data_mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
- 
-        std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
-        background[i] = bkg
-
-        if (data_array[i] < 0.).any():
-            print(data_array[i])
-        #if i==0:
-            #np.savetxt("output/s_bg.txt",error_bkg[i])
-            #np.savetxt("output/s_wav.txt",err_wav)
-            #np.savetxt("output/s_psf.txt",err_psf)
-            #np.savetxt("output/s_flat.txt",err_flat)
-
-    if display:
-        plt.rcParams.update({'font.size': 15})
-        convert_flux = np.array([head['photflam'] for head in headers])
-        date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
-            for i in range(len(headers))])
-        date_time = np.array([datetime.strptime(d,'%Y-%m-%d;%H:%M:%S')
-            for d in date_time])
-        filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
-        dict_filt = {"POL0":'r', "POL60":'g', "POL120":'b'}
-        c_filt = np.array([dict_filt[f] for f in filt])
-
-        fig,ax = plt.subplots(figsize=(10,6), constrained_layout=True)
-        for f in np.unique(filt):
-            mask = [fil==f for fil in filt]
-            ax.scatter(date_time[mask], background[mask]*convert_flux[mask],
-                    color=dict_filt[f],label="{0:s}".format(f))
-        ax.errorbar(date_time, background*convert_flux,
-                yerr=std_bkg*convert_flux, fmt='+k',
-                markersize=0, ecolor=c_filt)
-        # Date handling
-        locator = mdates.AutoDateLocator()
-        formatter = mdates.ConciseDateFormatter(locator)
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(formatter)
-        ax.set_xlabel("Observation date and time")
-        ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        #ax.set_title("Background flux and error computed for each image")
-        plt.legend()
-
-        plt.rcParams.update({'font.size': 15})
-        fig2, ax2 = plt.subplots(figsize=(10,10))
-        data0 = data[0]*convert_flux[0]
-        instr = headers[0]['instrume']
-        rootname = headers[0]['rootname']
-        exptime = headers[0]['exptime']
-        filt = headers[0]['filtnam1']
-        #plots
-        #im = ax2.imshow(data0, vmin=data0.min(), vmax=data0.max(), origin='lower', cmap='gray')
-        im = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
-        x, y, width, height, angle, color = rectangle[0]
-        ax2.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False))
-        ax2.annotate(instr+":"+rootname, color='white', fontsize=10,
-                xy=(0.02, 0.95), xycoords='axes fraction')
-        ax2.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02),
-                xycoords='axes fraction')
-        ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
-                xycoords='axes fraction')
-        ax2.set(#title="Location of background computation.",
-                xlabel='pixel offset',
-                ylabel='pixel offset')
-
-        fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
-        cbar_ax = fig2.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-
-        if not(savename is None):
-            fig.savefig(plots_folder+savename+"_background_flux.png",
-                    bbox_inches='tight')
-            fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png',
-                    bbox_inches='tight')
-            plot_obs(data, headers, vmin=data.min(), vmax=data.max(),
-                    rectangle=rectangle,
-                    savename=savename+"_background_location",
-                    plots_folder=plots_folder)
-        else:
-            plot_obs(data, headers, vmin=vmin, vmax=vmax,
-                    rectangle=rectangle)
-
-        plt.show()
+    background = np.zeros((data.shape[0]))
+    
+    if (sub_type is None) or (type(sub_type)==str):
+        n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, sub_type=sub_type, display=display, savename=savename, plots_folder=plots_folder)
+    elif type(sub_type)==tuple:
+        n_data_array, n_error_array, headers, background = bkg_mini(data, error, mask, headers, sub_shape=sub_type, display=display, savename=savename, plots_folder=plots_folder)
+    else:
+        print("Warning: Invalid subtype.")
 
     if return_background:
         return n_data_array, n_error_array, headers, background
@@ -879,7 +559,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             else:
                 raise ValueError("'{0:s}' invalid scale for binning.".format(scale))
 
-            if (Dxy <= 1.).any():
+            if (Dxy < 1.).any():
                 raise ValueError("Requested pixel size is below resolution.")
             new_shape = (image.shape//Dxy).astype(int)
 
@@ -1154,10 +834,10 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                 dist_rc = np.where(data_mask, np.sqrt((r-xx)**2+(c-yy)**2), fmax)
                 # Catch expected "OverflowWarning" as we overflow values that are not in the image
                 with warnings.catch_warnings(record=True) as w:
-                    g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2),]*data_array.shape[0])
+                    g_rc = np.array([np.exp(-0.5*(dist_rc/stdev)**2)/(2.*np.pi*stdev**2),]*data_array.shape[0])
                     # Apply weighted combination
-                    smoothed[r,c] = np.where(data_mask[r,c], np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc), 0.)
-                    error[r,c] = np.where(data_mask[r,c], np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc), 0.)
+                    smoothed[r,c] = np.where(data_mask[r,c], np.sum(data_array*weight*g_rc)/np.sum(weight*g_rc), data_array.mean(axis=0)[r,c])
+                    error[r,c] = np.where(data_mask[r,c], np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc), (np.sqrt(np.sum(error_array**2,axis=0)/error_array.shape[0]))[r,c])
 
         # Nan handling
         error[np.isnan(smoothed)] = 0.
@@ -1173,11 +853,12 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             weights = np.ones(error_array[i].shape)
             if smoothing.lower()[:6] in ['weight']:
                 weights = 1./error_array[i]**2
-                #weights /= weights.max()
+            weights[1-data_mask] = 0.
+            weights /= weights.sum()
             kernel = gaussian2d(x, y, stdev)
             kernel /= kernel.sum()
-            smoothed[i] = convolve2d(image*weights/image.sum(),kernel,'same')*image.sum()
-            error[i] = np.sqrt(convolve2d((error_array[i]/error_array[i].sum())**2*weights**2,kernel**2,'same'))*error_array[i].sum()
+            smoothed[i] = np.where(data_mask, convolve2d(image*weights,kernel,'same')/convolve2d(weights,kernel,'same'), image)
+            error[i] = np.where(data_mask, np.sqrt(convolve2d(error_array[i]**2*weights**2,kernel**2,'same'))/convolve2d(weights,kernel,'same'), error_array[i])
 
             # Nan handling
             error[i][np.isnan(smoothed[i])] = 0.
@@ -1254,6 +935,10 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             print("Warning : no image for POL120 of FOC found, averaged data\
                     will be NAN")
         # Put each polarizer images in separate arrays
+        headers0 = [header for header in headers if header['filtnam1']=='POL0']
+        headers60 = [header for header in headers if header['filtnam1']=='POL60']
+        headers120 = [header for header in headers if header['filtnam1']=='POL120']
+
         pol0_array = data_array[is_pol0]
         pol60_array = data_array[is_pol60]
         pol120_array = data_array[is_pol120]
@@ -1261,10 +946,6 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
         err0_array = error_array[is_pol0]
         err60_array = error_array[is_pol60]
         err120_array = error_array[is_pol120]
-
-        headers0 = [header for header in headers if header['filtnam1']=='POL0']
-        headers60 = [header for header in headers if header['filtnam1']=='POL60']
-        headers120 = [header for header in headers if header['filtnam1']=='POL120']
 
         if not(FWHM is None) and (smoothing.lower() in ['combine','combining']):
             # Smooth by combining each polarizer images
@@ -1282,33 +963,34 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
             pol120_t = np.sum([header['exptime'] for header in headers120])
 
             for i in range(pol0_array.shape[0]):
-                pol0_array[i] *= headers0[i]['exptime']/pol0_t
-                err0_array[i] *= headers0[i]['exptime']/pol0_t
+                pol0_array[i] *= headers0[i]['exptime']
+                err0_array[i] *= headers0[i]['exptime']
             for i in range(pol60_array.shape[0]):
-                pol60_array[i] *= headers60[i]['exptime']/pol60_t
-                err60_array[i] *= headers60[i]['exptime']/pol60_t
+                pol60_array[i] *= headers60[i]['exptime']
+                err60_array[i] *= headers60[i]['exptime']
             for i in range(pol120_array.shape[0]):
-                pol120_array[i] *= headers120[i]['exptime']/pol120_t
-                err120_array[i] *= headers120[i]['exptime']/pol120_t
+                pol120_array[i] *= headers120[i]['exptime']
+                err120_array[i] *= headers120[i]['exptime']
 
-            pol0 = pol0_array.sum(axis=0)
-            pol60 = pol60_array.sum(axis=0)
-            pol120 = pol120_array.sum(axis=0)
+            pol0 = pol0_array.sum(axis=0)/pol0_t
+            pol60 = pol60_array.sum(axis=0)/pol60_t
+            pol120 = pol120_array.sum(axis=0)/pol120_t
             pol_array = np.array([pol0, pol60, pol120])
+            pol_headers = [headers0[0], headers60[0], headers120[0]]
 
             # Propagate uncertainties quadratically
-            err0 = np.sqrt(np.sum(err0_array**2,axis=0))
-            err60 = np.sqrt(np.sum(err60_array**2,axis=0))
-            err120 = np.sqrt(np.sum(err120_array**2,axis=0))
+            err0 = np.sqrt(np.sum(err0_array**2,axis=0))/pol0_t
+            err60 = np.sqrt(np.sum(err60_array**2,axis=0))/pol60_t
+            err120 = np.sqrt(np.sum(err120_array**2,axis=0))/pol120_t
             polerr_array = np.array([err0, err60, err120])
 
-            if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss']):
+            if not(FWHM is None) and (smoothing.lower() in ['gaussian','gauss','weighted_gaussian','weight_gauss']):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array,
-                        data_mask, headers, FWHM=FWHM, scale=scale)
+                        data_mask, pol_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
                 pol0, pol60, pol120 = pol_array
                 err0, err60, err120 = polerr_array
-
+            
         # Update headers
         for header in headers:
             if header['filtnam1']=='POL0':
@@ -1340,7 +1022,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
 
 
 def compute_Stokes(data_array, error_array, data_mask, headers,
-        FWHM=None, scale='pixel', smoothing='gaussian_after', transmitcorr=False):
+        FWHM=None, scale='pixel', smoothing='combine', transmitcorr=False):
     """
     Compute the Stokes parameters I, Q and U for a given data_set
     ----------
@@ -1371,7 +1053,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
           deviation stdev = FWHM/(2*sqrt(2*log(2))).
         -'gaussian_after' convolve output Stokes I/Q/U with a gaussian of
           standard deviation stdev = FWHM/(2*sqrt(2*log(2))).
-        Defaults to 'gaussian_after'. Won't be used if FWHM is None.
+        Defaults to 'combine'. Won't be used if FWHM is None.
     transmitcorr : bool, optional
         Weither the images should be transmittance corrected for each filter
         along the line of sight. Latest calibrated data products (.c0f) does
@@ -1457,6 +1139,30 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
                 I_stokes[i,j], Q_stokes[i,j], U_stokes[i,j] = np.dot(coeff_stokes, pol_flux[:,i,j]).T
                 Stokes_cov[:,:,i,j] = np.dot(coeff_stokes, np.dot(pol_cov[:,:,i,j], coeff_stokes.T))
 
+        if not(FWHM is None) and (smoothing.lower() in ['weighted_gaussian_after','weight_gauss_after','gaussian_after','gauss_after']):
+            smoothing = smoothing.lower()[:-6]
+            Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
+            Stokes_error = np.array([np.sqrt(Stokes_cov[i,i]) for i in range(3)])
+            Stokes_headers = headers[0:3]
+
+            Stokes_array, Stokes_error = smooth_data(Stokes_array, Stokes_error, data_mask,
+                    headers=Stokes_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
+
+            I_stokes, Q_stokes, U_stokes = Stokes_array
+            Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = deepcopy(Stokes_error**2)
+
+            sStokes_array = np.array([I_stokes*Q_stokes, I_stokes*U_stokes, Q_stokes*U_stokes])
+            sStokes_error = np.array([Stokes_cov[0,1], Stokes_cov[0,2], Stokes_cov[1,2]])
+            uStokes_error = np.array([Stokes_cov[1,0], Stokes_cov[2,0], Stokes_cov[2,1]])
+
+            sStokes_array, sStokes_error = smooth_data(sStokes_array, sStokes_error, data_mask,
+                    headers=Stokes_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
+            uStokes_array, uStokes_error = smooth_data(sStokes_array, uStokes_error, data_mask,
+                    headers=Stokes_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
+
+            Stokes_cov[0,1], Stokes_cov[0,2], Stokes_cov[1,2] = deepcopy(sStokes_error)
+            Stokes_cov[1,0], Stokes_cov[2,0], Stokes_cov[2,1] = deepcopy(uStokes_error)
+
         mask = (Q_stokes**2 + U_stokes**2) > I_stokes**2
         if mask.any():
             print("WARNING : found {0:d} pixels for which I_pol > I_stokes".format(I_stokes[mask].size))
@@ -1489,18 +1195,6 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         Stokes_cov[0,0] += s_I2_axis
         Stokes_cov[1,1] += s_Q2_axis
         Stokes_cov[2,2] += s_U2_axis
-
-        if not(FWHM is None) and (smoothing.lower() in ['weighted_gaussian_after','weight_gauss_after','gaussian_after','gauss_after']):
-            smoothing = smoothing.lower()[:-6]
-            Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
-            Stokes_error = np.array([np.sqrt(Stokes_cov[i,i]) for i in range(3)])
-            Stokes_headers = headers[0:3]
-
-            Stokes_array, Stokes_error = smooth_data(Stokes_array, Stokes_error, data_mask,
-                    headers=Stokes_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
-
-            I_stokes, Q_stokes, U_stokes = Stokes_array
-            Stokes_cov[0,0], Stokes_cov[1,1], Stokes_cov[2,2] = Stokes_error**2
 
         #Compute integrated values for P, PA before any rotation
         mask = np.logical_and(data_mask.astype(bool), (I_stokes > 0.))

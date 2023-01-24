@@ -1736,7 +1736,11 @@ class pol_map(object):
             self.display_selection = "total_flux"
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = np.min(self.data[self.cut])/5., np.max(self.data[self.data > 0.])
+            try:
+                vmin, vmax = np.min(self.data[self.cut])/5., np.max(self.data[self.data > 0.])
+            except ValueError:
+                vmax = np.max(self.data[self.data > 0.])
+                vmin = vmax*1e-3
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
