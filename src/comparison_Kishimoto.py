@@ -11,7 +11,7 @@ from scipy.ndimage import shift
 import numpy as np
 import matplotlib.pyplot as plt
 
-root_dir = path_join('/home/t.barnouin/Thesis/HST')
+root_dir = path_join('/home/t.barnouin/Documents/Thesis/HST')
 root_dir_K = path_join(root_dir,'Kishimoto','output')
 root_dir_S = path_join(root_dir,'FOC_Reduction','output')
 root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068_x274020')
