@@ -70,7 +70,7 @@ im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0]
 #im0 = ax.imshow(data_S['P']*100.,vmin=0.,vmax=100.,origin='lower',cmap='inferno',label=r"$P$ through this pipeline")
 #im0 = ax.imshow(data_K['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through Kishimoto's pipeline")
 #im0 = ax.imshow(data_S['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through this pipeline")
-quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='b',alpha=0.75, label="PA through this pipeline")
+quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.2,color='b',alpha=0.75, label="PA through this pipeline")
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
 
 ax.set_title(r"$SNR_P \geq 5 \; & \; SNR_I \geq 30$")

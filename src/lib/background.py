@@ -2,7 +2,7 @@
 Library function for background estimation steps of the reduction pipeline.
 
 prototypes :
-    - display_bkg(data, background, std_bkg, headers, histograms, bin_centers, rectangle, savename, plots_folder)
+    - display_bkg(data, background, std_bkg, headers, histograms, binning, rectangle, savename, plots_folder)
         Display and save how the background noise is computed.
     - bkg_hist(data, error, mask, headers, sub_shape, display, savename, plots_folder) -> n_data_array, n_error_array, headers, background)
         Compute the error (noise) of the input array by computing the base mode of each image.
@@ -18,8 +18,20 @@ from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
 from datetime import datetime
 from lib.plots import plot_obs
+from scipy.optimize import curve_fit
 
-def display_bkg(data, background, std_bkg, headers, histograms=None, bin_centers=None, rectangle=None, savename=None, plots_folder="./"):
+def gauss(x, *p):
+    N, mu, sigma = p
+    return N*np.exp(-(x-mu)**2/(2.*sigma**2))
+
+def gausspol(x, *p):
+    N, mu, sigma, a, b, c, d = p
+    return N*np.exp(-(x-mu)**2/(2.*sigma**2)) + a*np.log(x) + b/x + c*x + d
+
+def bin_centers(edges):
+    return (edges[1:]+edges[:-1])/2.
+
+def display_bkg(data, background, std_bkg, headers, histograms=None, binning=None, coeff=None, rectangle=None, savename=None, plots_folder="./"):
     plt.rcParams.update({'font.size': 15})
     convert_flux = np.array([head['photflam'] for head in headers])
     date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
@@ -52,12 +64,15 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, bin_centers
     if not(histograms is None):
         filt_obs = {"POL0":0, "POL60":0, "POL120":0}
         fig_h, ax_h = plt.subplots(figsize=(10,6), constrained_layout=True)
-        for i, (hist, bins) in enumerate(zip(histograms, bin_centers)):
+        for i, (hist, bins) in enumerate(zip(histograms, binning)):
             filt_obs[headers[i]['filtnam1']] += 1
             ax_h.plot(bins,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
             ax_h.plot([background[i],background[i]],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
+            if not(coeff is None):
+                ax_h.plot(bins,gausspol(bins,*coeff[i]),'--',color="C{0:d}".format(i),alpha=0.8)
         ax_h.set_xscale('log')
-        ax_h.set_xlim([background.mean()*1e-2,background.mean()*1e2])
+        ax_h.set_ylim([0.,np.max([hist.max() for hist in histograms])])
+        ax_h.set_xlim([np.min(background)*1e-2,np.max(background)*1e2])
         ax_h.set_xlabel(r"Count rate [$s^{-1}$]")
         ax_h.set_ylabel(r"Number of pixels in bin")
         ax_h.set_title("Histogram for each observation")
@@ -97,8 +112,128 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, bin_centers
 
     plt.show()
 
+def sky_part(img):
+    rand_ind = np.unique((np.random.rand(np.floor(img.size/4).astype(int))*2*img.size).astype(int)%img.size)
+    rand_pix = img.flatten()[rand_ind]
+    # Intensity range
+    sky_med = np.median(rand_pix)
+    sig = np.min([img[img<sky_med].std(),img[img>sky_med].std()])
+    sky_range = [sky_med-2.*sig, sky_med+sig]
 
-def bkg_hist(data, error, mask, headers, sub_type=None, display=False, savename=None, plots_folder=""):
+    sky = img[np.logical_and(img>=sky_range[0],img<=sky_range[1])]
+    return sky, sky_range
+
+def bkg_estimate(img, bins=None, chi2=None, coeff=None):
+    if bins is None or chi2 is None or coeff is None:
+        bins, chi2, coeff = [8], [], []
+    else:
+        try:
+            bins.append(int(3./2.*bins[-1]))
+        except IndexError:
+            bins, chi2, coeff = [8], [], []
+    hist, bin_edges = np.histogram(img[img>0], bins=bins[-1])
+    binning = bin_centers(bin_edges)
+    peak = binning[np.argmax(hist)]
+    bins_fwhm = binning[hist>hist.max()/2.]
+    fwhm = bins_fwhm[-1]-bins_fwhm[0]
+    p0 = [hist.max(), peak, fwhm, 1e-3, 1e-3, 1e-3, 1e-3]
+    try:
+        popt, pcov = curve_fit(gausspol, binning, hist, p0=p0)
+    except RuntimeError:
+        popt = p0
+    chi2.append(np.sum((hist - gausspol(binning,*popt))**2)/hist.size)
+    coeff.append(popt)
+    return bins, chi2, coeff
+
+def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, savename=None, plots_folder=""):
+    """
+    ----------
+    Inputs:
+    data : numpy.ndarray
+        Array containing the data to study (2D float arrays).
+    error : numpy.ndarray
+        Array of images (2D floats, aligned and of the same shape) containing
+        the error in each pixel of the observation images in data_array.
+    mask : numpy.ndarray
+        2D boolean array delimiting the data to work on.
+    headers : header list
+        Headers associated with the images in data_array.
+    display : boolean, optional
+        If True, data_array will be displayed with a rectangle around the
+        sub-image selected for background computation.
+        Defaults to False.
+    savename : str, optional
+        Name of the figure the map should be saved to. If None, the map won't
+        be saved (only displayed). Only used if display is True.
+        Defaults to None.
+    plots_folder : str, optional
+        Relative (or absolute) filepath to the folder in wich the map will
+        be saved. Not used if savename is None.
+        Defaults to current folder.
+    ----------
+    Returns:
+    data_array : numpy.ndarray
+        Array containing the data to study minus the background.
+    headers : header list
+        Updated headers associated with the images in data_array.
+    error_array : numpy.ndarray
+        Array containing the background values associated to the images in
+        data_array.
+    background : numpy.ndarray
+        Array containing the pixel background value for each image in
+        data_array.
+    """
+    n_data_array, n_error_array = deepcopy(data), deepcopy(error)
+    error_bkg = np.ones(n_data_array.shape)
+    std_bkg = np.zeros((data.shape[0]))
+    background = np.zeros((data.shape[0]))
+    histograms, binning = [], []
+    
+    for i, image in enumerate(data):
+        #Compute the Count-rate histogram for the image
+        sky, sky_range = sky_part(image[image>0.])
+
+        bins, chi2, coeff = bkg_estimate(sky)
+        while bins[-1]<256:
+            bins, chi2, coeff = bkg_estimate(sky, bins, chi2, coeff)
+        hist, bin_edges = np.histogram(sky, bins=bins[-1])
+        histograms.append(hist)
+        binning.append(bin_centers(bin_edges))
+        chi2, coeff = np.array(chi2), np.array(coeff)
+        weights = 1/chi2**2
+        weights /= weights.sum()
+
+        bkg = np.sum(weights*coeff[:,1])
+       
+        error_bkg[i] *= bkg
+       
+        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
+        #wavelength dependence of the polariser filters
+        #estimated to less than 1%
+        err_wav = data[i]*0.01
+        #difference in PSFs through each polarizers
+        #estimated to less than 3%
+        err_psf = data[i]*0.03
+        #flatfielding uncertainties
+        #estimated to less than 3%
+        err_flat = data[i]*0.03
+
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        
+        #Substract background
+        if subtract_error:
+            n_data_array[i][mask] = n_data_array[i][mask] - bkg
+            n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+ 
+        std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
+        background[i] = bkg
+
+    if display:
+        display_bkg(data, background, std_bkg, headers, histograms=histograms, binning=binning, coeff=coeff, savename=savename, plots_folder=plots_folder)
+    return n_data_array, n_error_array, headers, background
+
+
+def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, display=False, savename=None, plots_folder=""):
     """
     ----------
     Inputs:
@@ -144,7 +279,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, display=False, savename=
     error_bkg = np.ones(n_data_array.shape)
     std_bkg = np.zeros((data.shape[0]))
     background = np.zeros((data.shape[0]))
-    histograms, bin_centers = [], []
+    histograms, binning, coeff = [], [], []
     
     for i, image in enumerate(data):
         #Compute the Count-rate histogram for the image
@@ -167,10 +302,20 @@ def bkg_hist(data, error, mask, headers, sub_type=None, display=False, savename=
         
         hist, bin_edges = np.histogram(np.log(image[n_mask]),bins=n_bins)
         histograms.append(hist)
-        bin_centers.append(np.exp((bin_edges[:-1]+bin_edges[1:])/2))
+        binning.append(np.exp(bin_centers(bin_edges)))
+        
         #Take the background as the count-rate with the maximum number of pixels
-        hist_max = bin_centers[-1][np.argmax(hist)]
-        bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
+        #hist_max = binning[-1][np.argmax(hist)]
+        #bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
+        
+        #Fit a gaussian to the log-intensity histogram
+        bins_fwhm = binning[-1][hist>hist.max()/2.]
+        fwhm = bins_fwhm[-1]-bins_fwhm[0]
+        p0 = [hist.max(), binning[-1][np.argmax(hist)], fwhm, 1e-3, 1e-3, 1e-3, 1e-3]
+        popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
+        coeff.append(popt)
+        bkg = popt[1]
+        
         error_bkg[i] *= bkg
        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
@@ -187,18 +332,19 @@ def bkg_hist(data, error, mask, headers, sub_type=None, display=False, savename=
         n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        n_data_array[i][mask] = n_data_array[i][mask] - bkg
-        n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+        if subtract_error:
+            n_data_array[i][mask] = n_data_array[i][mask] - bkg
+            n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  
         std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
         background[i] = bkg
 
     if display:
-        display_bkg(data, background, std_bkg, headers, histograms=histograms, bin_centers=bin_centers, savename=savename, plots_folder=plots_folder)
+        display_bkg(data, background, std_bkg, headers, histograms=histograms, binning=binning, coeff=coeff, savename=savename, plots_folder=plots_folder)
     return n_data_array, n_error_array, headers, background
 
 
-def bkg_mini(data, error, mask, headers, sub_shape=(15,15), display=False, savename=None, plots_folder=""):
+def bkg_mini(data, error, mask, headers, sub_shape=(15,15), subtract_error=True, display=False, savename=None, plots_folder=""):
     """
     Look for sub-image of shape sub_shape that have the smallest integrated
     flux (no source assumption) and define the background on the image by the
@@ -290,8 +436,9 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15,15), display=False, saven
         n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        n_data_array[i][mask] = n_data_array[i][mask] - bkg
-        n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+        if subtract_error:
+            n_data_array[i][mask] = n_data_array[i][mask] - bkg
+            n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  
         std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
         background[i] = bkg

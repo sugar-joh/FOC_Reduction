@@ -131,28 +131,29 @@ def main():
     display_crop = False
     # Error estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
+    subtract_error = False
     display_error = False
     # Data binning
     rebin = True
-    pxsize = 0.10
-    px_scale = 'arcsec'         #pixel, arcsec or full
+    pxsize = 10
+    px_scale = 'pixel'         #pixel, arcsec or full
     rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True
     rotate_data = False             #rotation to North convention can give erroneous results
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = False
+    final_display = True
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_c_FWHM020'    #additionnal informations
+    figtype = '_bin10px'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -173,7 +174,7 @@ def main():
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
     if px_scale.lower() not in ['full','integrate']:
-        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)

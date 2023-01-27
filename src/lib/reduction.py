@@ -53,7 +53,7 @@ log.setLevel('ERROR')
 import warnings
 from lib.deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
 from lib.convex_hull import image_hull, clean_ROI
-from lib.background import bkg_hist, bkg_mini
+from lib.background import bkg_fit, bkg_hist, bkg_mini
 from lib.plots import plot_obs
 from lib.cross_correlation import phase_cross_correlation
 
@@ -409,8 +409,8 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
 
 
 def get_error(data_array, headers, error_array=None, data_mask=None,
-            sub_type=None, display=False, savename=None, plots_folder="",
-            return_background=False):
+            sub_type=None, subtract_error=True, display=False, savename=None,
+            plots_folder="", return_background=False):
     """
     Look for sub-image of shape sub_shape that have the smallest integrated
     flux (no source assumption) and define the background on the image by the
@@ -431,10 +431,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         If None, will be initialized with a full true mask.
         Defaults to None.
     sub_type : str or int or tuple, optional
-        If str, statistic rule to be used for the number of bins in counts/s.
+        If 'auto', look for optimal binning and fit intensity histogram with au gaussian.
+        If str or None, statistic rule to be used for the number of bins in counts/s.
         If int, number of bins for the counts/s histogram.
         If tuple, shape of the sub-image to look for. Must be odd.
-        Defaults to "Freedman-Diaconis".
+        Defaults to None.
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
@@ -468,18 +469,26 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
     # Crop out any null edges
     if error_array is None:
         error_array = np.zeros(data_array.shape)
-    n_data_array, n_error_array = deepcopy(data_array), deepcopy(error_array)
+    data, error = deepcopy(data_array), deepcopy(error_array)
     if not data_mask is None:
-        data, error, mask = n_data_array, n_error_array, deepcopy(data_mask)
+        mask = deepcopy(data_mask)
     else:
-        data, error, _ = crop_array(n_data_array, headers, n_error_array, step=5, null_val=0., inside=False)
-        mask = np.ones(data[0].shape, dtype=bool)
+        data_c, error_c, _ = crop_array(data, headers, error, step=5, null_val=0., inside=False)
+        mask_c = np.ones(data_c[0].shape, dtype=bool)
+        for i,(data_ci, error_ci) in enumerate(zip(data_c, error_c)):
+            data[i], error[i] = zeropad(data_ci, data[i].shape), zeropad(error_ci, error[i].shape)
+        mask = zeropad(mask_c, data[0].shape).astype(bool)
     background = np.zeros((data.shape[0]))
     
-    if (sub_type is None) or (type(sub_type)==str):
-        n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, sub_type=sub_type, display=display, savename=savename, plots_folder=plots_folder)
+    if (sub_type is None):
+        n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+    elif type(sub_type)==str:
+        if sub_type.lower() in ['auto']:
+            n_data_array, n_error_array, headers, background = bkg_fit(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+        else:
+            n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     elif type(sub_type)==tuple:
-        n_data_array, n_error_array, headers, background = bkg_mini(data, error, mask, headers, sub_shape=sub_type, display=display, savename=savename, plots_folder=plots_folder)
+        n_data_array, n_error_array, headers, background = bkg_mini(data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     else:
         print("Warning: Invalid subtype.")
 
@@ -674,7 +683,7 @@ def align_data(data_array, headers, error_array=None, background=None,
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
     if (error_array is None) or (background is None):
-        _, error_array, headers, background = get_error_hist(data_array, headers, return_background=True)
+        _, error_array, headers, background = get_error(data_array, headers, sub_type=(10,10), return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
