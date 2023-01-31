@@ -169,6 +169,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     header['datatype'] = ('I_stokes', 'type of data stored in the HDU')
     I_stokes[(1-data_mask).astype(bool)] = 0.
     primary_hdu = fits.PrimaryHDU(data=I_stokes, header=header)
+    primary_hdu.name = 'I_stokes'
     hdul.append(primary_hdu)
 
     #Add Q, U, Stokes_cov, P, s_P, PA, s_PA to the HDUList
@@ -183,6 +184,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         if not name == 'IQU_cov_matrix':
             data[(1-data_mask).astype(bool)] = 0.
         hdu = fits.ImageHDU(data=data,header=hdu_header)
+        hdu.name = name
         hdul.append(hdu)
 
     #Save fits file to designated filepath

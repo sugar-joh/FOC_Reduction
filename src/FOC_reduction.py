@@ -131,19 +131,19 @@ def main():
     display_crop = False
     # Error estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
-    subtract_error = False
+    subtract_error = True
     display_error = False
     # Data binning
     rebin = True
-    pxsize = 10
-    px_scale = 'pixel'         #pixel, arcsec or full
+    pxsize = 0.10
+    px_scale = 'arcsec'         #pixel, arcsec or full
     rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_function = 'weighted_gaussian'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
     rotate_stokes = True
@@ -153,7 +153,7 @@ def main():
     final_display = True
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_bin10px'    #additionnal informations
+    figtype = '_wg_020'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -173,16 +173,13 @@ def main():
 
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
-    if px_scale.lower() not in ['full','integrate']:
-        data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
+    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename=figname+"_errors", plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
 
     # Rebin data to desired pixel size.
     if rebin:
-        if px_scale.lower() in ['full','integrate']:
-            data_array, error_array, headers = proj_red.get_error(data_array, headers, error_array, data_mask, sub_shape=error_sub_shape, display=display_error, savename=figname+"_errors", plots_folder=plots_folder)
         data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
 
     # Rotate data to have North up
@@ -229,6 +226,9 @@ def main():
         stokescrop.writeto(data_folder+figname+figtype+".fits")
         Stokes_test, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
 
+    print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'],*proj_plots.sci_not(Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'],np.sqrt(Stokes_test[3].data[0,0][data_mask].sum())*headers[0]['photflam'],2,out=int)))
+    print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100.,np.ceil(headers[0]['p_int_err']*1000.)/10.))
+    print("PA_int = {0:.1f} ± {1:.1f} °".format(headers[0]['pa_int'],np.ceil(headers[0]['pa_int_err']*10.)/10.))
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate'] and final_display:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder)

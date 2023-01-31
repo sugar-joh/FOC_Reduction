@@ -67,18 +67,23 @@ def princ_angle(ang):
         return A[0]
 
 
-def sci_not(v,err,rnd=1):
+def sci_not(v,err,rnd=1,out=str):
     """
     Return the scientifque error notation as a string.
     """
     power = - int(('%E' % v)[-3:])+1
-    output = r"({0}".format(round(v*10**power,rnd))
+    output = [r"({0}".format(round(v*10**power,rnd)),round(v*10**power,rnd)]
     if type(err) == list:
         for error in err:
-            output += r" $\pm$ {0}".format(round(error*10**power,rnd))
+            output[0] += r" $\pm$ {0}".format(round(error*10**power,rnd))
+            output.append(round(error*10**power,rnd))
     else:
-        output += r" $\pm$ {0}".format(round(err*10**power,rnd))
-    return output+r")e{0}".format(-power)
+        output[0] += r" $\pm$ {0}".format(round(err*10**power,rnd))
+        output.append(round(err*10**power,rnd))
+    if out==str:
+        return output[0]+r")e{0}".format(-power)
+    else:
+        return *output[1:],-power
 
 
 def plot_obs(data_array, headers, shape=None, vmin=0., vmax=6., rectangle=None,
@@ -309,7 +314,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if display.lower() in ['intensity']:
         # If no display selected, show intensity map
         display='i'
-        vmin, vmax = np.max(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -320,7 +325,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         # Display polarisation flux
         display='pf'
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
-        vmin, vmax = np.max(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux*pol.data, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -350,13 +355,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['s_i','i_err']:
         # Display intensity error map
         display='s_i'
-        vmin, vmax = 0., np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
+        vmin, vmax = np.min(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux), np.max(np.sqrt(stk_cov.data[0,0][stk_cov.data[0,0] > 0.])*convert_flux)
         im = ax.imshow(np.sqrt(stk_cov.data[0,0])*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     elif display.lower() in ['snr','snri']:
         # Display I_stokes signal-to-noise map
         display='snri'
-        vmin, vmax = 0., np.max(SNRi[SNRi > 0.])
+        vmin, vmax = 0., np.max(SNRi[np.isfinite(SNRi)])
         im = ax.imshow(SNRi, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$I_{Stokes}/\sigma_{I}$")
         levelsSNRi = np.linspace(SNRi_cut, vmax*0.99, 10)
@@ -366,7 +371,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     elif display.lower() in ['snrp']:
         # Display polarization degree signal-to-noise map
         display='snrp'
-        vmin, vmax = SNRp_cut, np.max(SNRp[SNRp > 0.])
+        vmin, vmax = 0., np.max(SNRp[np.isfinite(SNRp)])
         im = ax.imshow(SNRp, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$P/\sigma_{P}$")
         levelsSNRp = np.linspace(SNRp_cut, vmax*0.99, 10)
@@ -375,7 +380,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     else:
         # Defaults to intensity map
-        vmin, vmax = np.min(stkI.data[SNRi > SNRi_cut]*convert_flux)/5., np.max(stkI.data[SNRi > SNRi_cut]*convert_flux)
+        vmin, vmax = 3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         #im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         #cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
@@ -1545,6 +1550,7 @@ class pol_map(object):
         def submit_save(expression):
             ax_text_save.set(visible=False)
             if expression != '':
+                plt.rcParams.update({'font.size': 15})
                 save_fig = plt.figure(figsize=(15,15))
                 save_ax = save_fig.add_subplot(111, projection=self.wcs)
                 self.ax_cosmetics(ax=save_ax)
@@ -1560,6 +1566,7 @@ class pol_map(object):
             ax_snr_reset.set(visible=True)
             ax_save.set(visible=True)
             ax_dump.set(visible=True)
+            plt.rcParams.update({'font.size': 10})
             self.fig.canvas.draw_idle()
 
         text_save.on_submit(submit_save)
@@ -1736,17 +1743,17 @@ class pol_map(object):
             self.display_selection = "total_flux"
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = np.max(np.sqrt(self.IQU_cov[0,0][self.cut])*self.convert_flux), np.max(self.data[self.data > 0.])
+            vmin, vmax = .5*np.mean(np.sqrt(self.IQU_cov[0,0][self.IQU_cov[0,0] < 3.*self.I])*self.convert_flux), np.max(self.data[self.data > 0.])
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
             self.data = self.I*self.convert_flux*self.P
-            vmin, vmax = np.max(np.sqrt(self.IQU_cov[0,0][self.cut])*self.convert_flux), np.max(self.I[self.data > 0.]*self.convert_flux)
+            vmin, vmax = .5*np.mean(np.sqrt(self.IQU_cov[0,0][self.IQU_cov[0,0] < 3.*self.I])*self.convert_flux), np.max(self.I[self.data > 0.]*self.convert_flux)
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_deg']:
             self.data = self.P*100.
-            vmin, vmax = 0., 100. #np.max(self.data[self.data > 0.])
+            vmin, vmax = 0., np.max(self.data[self.P > self.s_P])
             label = r"$P$ [%]"
         elif self.display_selection.lower() in ['pol_ang']:
             self.data = princ_angle(self.PA)
