@@ -849,30 +849,29 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
                     error[r,c] = np.where(data_mask[r,c], np.sqrt(np.sum(weight*g_rc**2))/np.sum(weight*g_rc), (np.sqrt(np.sum(error_array**2,axis=0)/error_array.shape[0]))[r,c])
 
         # Nan handling
-        error[np.isnan(smoothed)] = 0.
-        smoothed[np.isnan(smoothed)] = 0.
-        error[np.isnan(error)] = 0.
+        error[np.logical_or(np.isnan(smoothed*error),1-data_mask)] = 0.
+        smoothed[np.logical_or(np.isnan(smoothed*error),1-data_mask)] = 0.
 
     elif smoothing.lower() in ['weight_gauss','weighted_gaussian','gauss','gaussian']:
         # Convolution with gaussian function
         smoothed = np.zeros(data_array.shape)
         error = np.zeros(error_array.shape)
-        for i,image in enumerate(data_array):
+        for i,(image,image_error) in enumerate(zip(data_array, error_array)):
             x, y = np.meshgrid(np.arange(-image.shape[1]/2,image.shape[1]/2),np.arange(-image.shape[0]/2,image.shape[0]/2))
-            weights = np.ones(error_array[i].shape)
+            weights = np.ones(image_error.shape)
             if smoothing.lower()[:6] in ['weight']:
-                weights = 1./error_array[i]**2
-            weights[1-data_mask] = 0.
+                weights = 1./image_error**2
+                weights[(1-np.isfinite(weights)).astype(bool)] = 0.
+            weights[(1-data_mask).astype(bool)] = 0.
             weights /= weights.sum()
             kernel = gaussian2d(x, y, stdev)
             kernel /= kernel.sum()
             smoothed[i] = np.where(data_mask, convolve2d(image*weights,kernel,'same')/convolve2d(weights,kernel,'same'), image)
-            error[i] = np.where(data_mask, np.sqrt(convolve2d(error_array[i]**2*weights**2,kernel**2,'same'))/convolve2d(weights,kernel,'same'), error_array[i])
+            error[i] = np.where(data_mask, np.sqrt(convolve2d(image_error**2*weights**2,kernel**2,'same'))/convolve2d(weights,kernel,'same'), image_error)
 
             # Nan handling
-            error[i][np.isnan(smoothed[i])] = 0.
-            smoothed[i][np.isnan(smoothed[i])] = 0.
-            error[i][np.isnan(error[i])] = 0.
+            error[i][np.logical_or(np.isnan(smoothed[i]*error[i]),1-data_mask)] = 0.
+            smoothed[i][np.logical_or(np.isnan(smoothed[i]*error[i]),1-data_mask)] = 0.
 
     else:
         raise ValueError("{} is not a valid smoothing option".format(smoothing))
