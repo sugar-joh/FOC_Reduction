@@ -105,10 +105,10 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     if not(savename is None):
         fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png', bbox_inches='tight')
         if not(rectangle is None):
-            plot_obs(data, headers, vmin=data.min(), vmax=data.max(), rectangle=rectangle,
+            plot_obs(data, headers, vmin=data[data > 0.].min(), vmax=data[data > 0.].max(), rectangle=rectangle,
                     savename=savename+"_background_location",plots_folder=plots_folder)
     elif not(rectangle is None):
-        plot_obs(data, headers, vmin=vmin, vmax=vmax, rectangle=rectangle)
+        plot_obs(data, headers, vmin=data[data > 0.].min(), vmax=data[data > 0.].max(), rectangle=rectangle)
 
     plt.show()
 

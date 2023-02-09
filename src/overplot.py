@@ -6,7 +6,7 @@ from copy import deepcopy
 from lib.plots import overplot_radio, overplot_pol, align_pol
 from matplotlib.colors import LogNorm
 
-Stokes_UV = fits.open("../data/IC5063_x3nl030/IC5063_FOC_combine_FWHM020.fits")
+Stokes_UV = fits.open("../data/IC5063_x3nl030/IC5063_FOC_c_020.fits")
 Stokes_18GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
 Stokes_24GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.24GHz.fits")
 Stokes_103GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_103GHz.fits")
@@ -43,7 +43,7 @@ E.plot(levels=levels357GHz, SNRp_cut=2.0, SNRi_cut=15.0, savename='../plots/IC50
 #F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='../plots/IC5063_x3nl030/S2_overplot_forced.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
 
 G = overplot_pol(Stokes_UV, Stokes_IR, cmap='inferno')
-G.plot(SNRp_cut=2.0, SNRi_cut=15.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+G.plot(SNRp_cut=1.0, SNRi_cut=10.0, savename='../plots/IC5063_x3nl030/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
 
 #data_folder1 = "../data/M87/POS1/"
 #plots_folder1 = "../plots/M87/POS1/"

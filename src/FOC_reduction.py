@@ -142,7 +142,7 @@ def main():
     align_center = 'image'          #If None will align image to image center
     display_data = False
     # Smoothing
-    smoothing_function = 'weighted_gaussian'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
+    smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
     smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     # Rotation
@@ -153,7 +153,7 @@ def main():
     final_display = True
     # Polarization map output
     figname = 'NGC1068_FOC'         #target/intrument name
-    figtype = '_wg_020'    #additionnal informations
+    figtype = '_c_020'    #additionnal informations
     SNRp_cut = 5.    #P measurments with SNR>3
     SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
@@ -202,15 +202,18 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=False)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=True)
+    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(1,1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=True)
 
     ## Step 3:
     # Rotate images to have North up
     if rotate_stokes:
         I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, SNRi_cut=None)
+        I_bkg, Q_bkg, U_bkg, S_cov_bkg, _, _ = proj_red.rotate_Stokes(I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1,1), headers, SNRi_cut=None)
 
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
+    P_bkg, debiased_P_bkg, s_P_bkg, s_P_P_bkg, PA_bkg, s_PA_bkg, s_PA_P_bkg = proj_red.compute_pol(I_bkg, Q_bkg, U_bkg, S_cov_bkg, headers)
 
     ## Step 4:
     # Save image to FITS.
@@ -229,6 +232,10 @@ def main():
     print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'],*proj_plots.sci_not(Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'],np.sqrt(Stokes_test[3].data[0,0][data_mask].sum())*headers[0]['photflam'],2,out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100.,np.ceil(headers[0]['p_int_err']*1000.)/10.))
     print("PA_int = {0:.1f} ± {1:.1f} °".format(headers[0]['pa_int'],np.ceil(headers[0]['pa_int_err']*10.)/10.))
+    # Background values
+    print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'],*proj_plots.sci_not(I_bkg[0,0]*headers[0]['photflam'],np.sqrt(S_cov_bkg[0,0][0,0])*headers[0]['photflam'],2,out=int)))
+    print("P_bkg = {0:.1f} ± {1:.1f} %".format(debiased_P_bkg[0,0]*100.,np.ceil(s_P_bkg[0,0]*1000.)/10.))
+    print("PA_bkg = {0:.1f} ± {1:.1f} °".format(PA_bkg[0,0],np.ceil(s_PA_bkg[0,0]*10.)/10.))
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate'] and final_display:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder)

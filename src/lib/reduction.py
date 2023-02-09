@@ -46,7 +46,7 @@ import matplotlib.dates as mdates
 from matplotlib.patches import Rectangle
 from matplotlib.colors import LogNorm
 from scipy.ndimage import rotate as sc_rotate, shift as sc_shift
-from scipy.signal import convolve2d
+from scipy.signal import fftconvolve
 from astropy.wcs import WCS
 from astropy import log
 log.setLevel('ERROR')
@@ -683,7 +683,7 @@ def align_data(data_array, headers, error_array=None, background=None,
         raise ValueError("All images in data_array must have same shape as\
             ref_data")
     if (error_array is None) or (background is None):
-        _, error_array, headers, background = get_error(data_array, headers, sub_type=(10,10), return_background=True)
+        _, error_array, headers, background = get_error(data_array, headers, return_background=True)
 
     # Crop out any null edges
     #(ref_data must be cropped as well)
@@ -866,8 +866,8 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1.,
             weights /= weights.sum()
             kernel = gaussian2d(x, y, stdev)
             kernel /= kernel.sum()
-            smoothed[i] = np.where(data_mask, convolve2d(image*weights,kernel,'same')/convolve2d(weights,kernel,'same'), image)
-            error[i] = np.where(data_mask, np.sqrt(convolve2d(image_error**2*weights**2,kernel**2,'same'))/convolve2d(weights,kernel,'same'), image_error)
+            smoothed[i] = np.where(data_mask, fftconvolve(image*weights,kernel,'same')/fftconvolve(weights,kernel,'same'), image)
+            error[i] = np.where(data_mask, np.sqrt(fftconvolve(image_error**2*weights**2,kernel**2,'same'))/fftconvolve(weights,kernel,'same'), image_error)
 
             # Nan handling
             error[i][np.logical_or(np.isnan(smoothed[i]*error[i]),1-data_mask)] = 0.
@@ -1007,7 +1007,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None,
                 list_head = headers60
             elif header['filtnam1']=='POL120':
                 list_head = headers120
-            header['exptime'] = np.sum([head['exptime'] for head in list_head])#/len(list_head)
+            header['exptime'] = np.sum([head['exptime'] for head in list_head])
         pol_headers = [headers0[0], headers60[0], headers120[0]]
 
         # Get image shape
