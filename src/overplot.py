@@ -7,11 +7,11 @@ from lib.plots import overplot_radio, overplot_pol, align_pol
 from matplotlib.colors import LogNorm
 
 Stokes_UV = fits.open("../data/IC5063_x3nl030/IC5063_FOC_c_020.fits")
-Stokes_18GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.18GHz.fits")
-Stokes_24GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063.24GHz.fits")
-Stokes_103GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_103GHz.fits")
-Stokes_229GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_229GHz.fits")
-Stokes_357GHz = fits.open("../data/IC5063_x3nl030/radio/I5063_357GHz.fits")
+Stokes_18GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063_18GHz.fits")
+Stokes_24GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063_24GHz.fits")
+Stokes_103GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063_103GHz.fits")
+Stokes_229GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063_229GHz.fits")
+Stokes_357GHz = fits.open("../data/IC5063_x3nl030/radio/IC5063_357GHz.fits")
 #Stokes_S2 = fits.open("../data/IC5063_x3nl030/POLARIZATION_COMPARISON/S2_rot_crop.fits")
 Stokes_IR = fits.open("../data/IC5063_x3nl030/IR/u2e65g01t_c0f_rot.fits")
 

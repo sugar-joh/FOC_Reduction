@@ -327,8 +327,8 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
             #fig.suptitle(savename+'_'+filt+'_crop_region')
             fig.savefig(plots_folder+savename+'_'+filt+'_crop_region.png',
                     bbox_inches='tight')
-            plot_obs(data_array, headers, vmin=data_array.min(),
-                    vmax=data_array.max(), rectangle=[rectangle,]*len(headers),
+            plot_obs(data_array, headers, vmin=data_array[data_array>0.].min(),
+                    vmax=data_array[data_array>0.].max(), rectangle=[rectangle,]*len(headers),
                     savename=savename+'_crop_region',plots_folder=plots_folder)
         plt.show()
 
@@ -436,6 +436,10 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         If int, number of bins for the counts/s histogram.
         If tuple, shape of the sub-image to look for. Must be odd.
         Defaults to None.
+    subtract_error : float or bool, optional
+        If float, factor to which the estimated background should be multiplied
+        If False the background is not subtracted.
+        Defaults to True (factor = 1.).
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.

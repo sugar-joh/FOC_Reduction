@@ -158,6 +158,10 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         2D boolean array delimiting the data to work on.
     headers : header list
         Headers associated with the images in data_array.
+    subtract_error : float or bool, optional
+        If float, factor to which the estimated background should be multiplied
+        If False the background is not subtracted.
+        Defaults to True (factor = 1.).
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
@@ -203,7 +207,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         weights = 1/chi2**2
         weights /= weights.sum()
 
-        bkg = np.sum(weights*coeff[:,1])
+        bkg = np.sum(weights*coeff[:,1])*subtract_error if subtract_error>0 else np.sum(weights*coeff[:,1])
        
         error_bkg[i] *= bkg
        
@@ -221,7 +225,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        if subtract_error:
+        if subtract_error>0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
             n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  
@@ -250,6 +254,10 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         If str, statistic rule to be used for the number of bins in counts/s.
         If int, number of bins for the counts/s histogram.
         Defaults to "Freedman-Diaconis".
+    subtract_error : float or bool, optional
+        If float, factor to which the estimated background should be multiplied
+        If False the background is not subtracted.
+        Defaults to True (factor = 1.).
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
@@ -314,7 +322,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         p0 = [hist.max(), binning[-1][np.argmax(hist)], fwhm, 1e-3, 1e-3, 1e-3, 1e-3]
         popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
         coeff.append(popt)
-        bkg = popt[1]
+        bkg = popt[1]*subtract_error if subtract_error>0 else popt[1]
         
         error_bkg[i] *= bkg
        
@@ -332,9 +340,9 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        if subtract_error:
+        if subtract_error > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+            n_data_array[i][np.logical_and(mask,n_data_array[i] < 0.)] = 0.
  
         std_bkg[i] = image[np.abs(image-bkg)/bkg<1.].std()
         background[i] = bkg
@@ -363,6 +371,10 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15,15), subtract_error=True,
     sub_shape : tuple, optional
         Shape of the sub-image to look for. Must be odd.
         Defaults to 10% of input array.
+    subtract_error : float or bool, optional
+        If float, factor to which the estimated background should be multiplied
+        If False the background is not subtracted.
+        Defaults to True (factor = 1.).
     display : boolean, optional
         If True, data_array will be displayed with a rectangle around the
         sub-image selected for background computation.
@@ -419,7 +431,7 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15,15), subtract_error=True,
         # Compute error : root mean square of the background
         sub_image = image[minima[0]:minima[0]+sub_shape[0],minima[1]:minima[1]+sub_shape[1]]
         #bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
-        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)
+        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)*subtract_error if subtract_error>0 else np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_bkg[i] *= bkg
        
         # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
@@ -436,7 +448,7 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15,15), subtract_error=True,
         n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
         
         #Substract background
-        if subtract_error:
+        if subtract_error>0.:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
             n_data_array[i][np.logical_and(mask,n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
  

@@ -15,7 +15,7 @@ root_dir = path_join('/home/t.barnouin/Documents/Thesis/HST')
 root_dir_K = path_join(root_dir,'Kishimoto','output')
 root_dir_S = path_join(root_dir,'FOC_Reduction','output')
 root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068_x274020')
-filename_S = "NGC1068_FOC_bg_b_10px.fits"
+filename_S = "NGC1068_FOC_b_10px.fits"
 
 data_K = {}
 data_S = {}
@@ -31,13 +31,16 @@ for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,
 wcs = WCS(header)
 convert_flux = header['photflam']
 
+bkg_S = np.median(data_S['I'])/3
+bkg_K = np.median(data_K['I'])/3
+
 #zeropad data to get same size of array
 shape = data_S['I'].shape
 for d in data_K:
     data_K[d] = zeropad(data_K[d],shape)
 
 #shift array to get same information in same pixel
-data_arr, error_ar, heads, data_msk, shifts, shifts_err = align_data(np.array([data_S['I'],data_K['I']]), [header, header], upsample_factor=10., return_shifts=True)
+data_arr, error_ar, heads, data_msk, shifts, shifts_err = align_data(np.array([data_S['I'],data_K['I']]), [header, header], error_array=np.array([data_S['sI'],data_K['sI']]), background=np.array([bkg_S,bkg_K]), upsample_factor=10., return_shifts=True)
 for d in data_K:
     data_K[d] = shift(data_K[d],shifts[1],order=1,cval=0.)
 

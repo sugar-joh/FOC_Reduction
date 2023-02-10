@@ -25,10 +25,10 @@ globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f
 #psf_file = 'NGC1068_f253m00.fits'
 globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
-#globals()['data_folder'] = "../data/IC5063_x3nl030/"
-#globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-##psf_file = 'IC5063_f502m00.fits'
-#globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+globals()['data_folder'] = "../data/IC5063_x3nl030/"
+globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+#psf_file = 'IC5063_f502m00.fits'
+globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #globals()['infiles'] = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -131,8 +131,8 @@ def main():
     display_crop = False
     # Error estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
-    subtract_error = True
-    display_error = False
+    subtract_error = 1.25
+    display_error = True
     # Data binning
     rebin = True
     pxsize = 0.10
@@ -152,10 +152,10 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = 'NGC1068_FOC'         #target/intrument name
+    figname = 'IC5063_FOC'         #target/intrument name
     figtype = '_c_020'    #additionnal informations
-    SNRp_cut = 5.    #P measurments with SNR>3
-    SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 3.    #P measurments with SNR>3
+    SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -181,8 +181,8 @@ def main():
     # Rebin data to desired pixel size.
     if rebin:
         data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
-
-    # Rotate data to have North up
+    
+   # Rotate data to have North up
     if rotate_data:
         data_mask = np.ones(data_array.shape[1:]).astype(bool)
         alpha = headers[0]['orientat']
@@ -194,7 +194,10 @@ def main():
         shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
         rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'g']
 
-        proj_plots.plot_obs(data_array, headers, vmin=data_array.min(), vmax=data_array.max(), rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min(), vmax=data_array[data_array>0.].max(), rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
+
+    background = np.array([np.array(bkg).reshape(1,1) for bkg in background])
+    background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1']==head['filtnam1'] for h in headers],dtype=bool)].mean())**2/np.sum([h['filtnam1']==head['filtnam1'] for h in headers]))).reshape(1,1) for bkg,head in zip(background,headers)])
 
     ## Step 2:
     # Compute Stokes I, Q, U with smoothed polarized images
@@ -202,8 +205,8 @@ def main():
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=True)
-    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(1,1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=True)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=False)
+    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(1,1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function,transmitcorr=False)
 
     ## Step 3:
     # Rotate images to have North up
