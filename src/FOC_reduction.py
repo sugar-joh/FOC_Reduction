@@ -132,7 +132,7 @@ def main():
     # Error estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
     subtract_error = 1.25
-    display_error = True
+    display_error = False
     # Data binning
     rebin = True
     pxsize = 0.10
@@ -154,8 +154,8 @@ def main():
     # Polarization map output
     figname = 'IC5063_FOC'         #target/intrument name
     figtype = '_c_020'    #additionnal informations
-    SNRp_cut = 3.    #P measurments with SNR>3
-    SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 1.    #P measurments with SNR>3
+    SNRi_cut = 10.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
