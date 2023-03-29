@@ -44,6 +44,7 @@ from matplotlib.path import Path
 from matplotlib.widgets import RectangleSelector, LassoSelector, Button, Slider, TextBox
 from matplotlib.colors import LogNorm
 import matplotlib.font_manager as fm
+import matplotlib.patheffects as pe
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
 from astropy.io import fits
@@ -127,37 +128,36 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
     fig, ax = plt.subplots(shape[0], shape[1], figsize=(10,10), dpi=200,
             sharex=True, sharey=True)
 
-    for i, enum in enumerate(list(zip(ax.flatten(),data_array))):
-        ax = enum[0]
-        data = enum[1]
-        instr = headers[i]['instrume']
-        rootname = headers[i]['rootname']
-        exptime = headers[i]['exptime']
-        filt = headers[i]['filtnam1']
+    for i, (axe,data,head) in enumerate(zip(ax.flatten(),data_array,headers)):
+        instr = head['instrume']
+        rootname = head['rootname']
+        exptime = head['exptime']
+        filt = head['filtnam1']
+        convert = head['photflam']
         #plots
         if vmin is None or vmax is None:
-            vmin, vmax = data[data>0.].min()/10., data[data>0.].max()
-        #im = ax.imshow(data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
-        im = ax.imshow(data, norm=LogNorm(vmin,vmax), origin='lower', cmap='gray')
+            vmin, vmax = convert*data[data>0.].min()/10., convert*data[data>0.].max()
+        #im = axe.imshow(convert*data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
+        im = axe.imshow(convert*data, norm=LogNorm(vmin,vmax), origin='lower', cmap='gray')
         if not(rectangle is None):
             x, y, width, height, angle, color = rectangle[i]
-            ax.add_patch(Rectangle((x, y), width, height, angle=angle,
+            axe.add_patch(Rectangle((x, y), width, height, angle=angle,
                 edgecolor=color, fill=False))
         #position of centroid
-        ax.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], '--', lw=1,
+        axe.plot([data.shape[1]/2, data.shape[1]/2], [0,data.shape[0]-1], '--', lw=1,
                 color='grey', alpha=0.5)
-        ax.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
+        axe.plot([0,data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
                 color='grey', alpha=0.5)
-        ax.annotate(instr+":"+rootname,color='white',fontsize=5,xy=(0.02, 0.95),
+        axe.annotate(instr+":"+rootname,color='white',fontsize=5,xy=(0.02, 0.95),
                 xycoords='axes fraction')
-        ax.annotate(filt,color='white',fontsize=10,xy=(0.02, 0.02),
+        axe.annotate(filt,color='white',fontsize=10,xy=(0.02, 0.02),
                 xycoords='axes fraction')
-        ax.annotate(exptime,color='white',fontsize=5,xy=(0.80, 0.02),
+        axe.annotate(exptime,color='white',fontsize=5,xy=(0.80, 0.02),
                 xycoords='axes fraction')
 
     fig.subplots_adjust(hspace=0.01, wspace=0.01, right=0.85)
     cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
-    fig.colorbar(im, cax=cbar_ax, label=r'$Counts \cdot s^{-1}$')
+    fig.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
     if not (savename is None):
         #fig.suptitle(savename)
@@ -217,7 +217,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
 
 def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
-        step_vec=1, savename=None, plots_folder="", display="default"):
+        step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
     """
     Plots polarization map from Stokes HDUList.
     ----------
@@ -241,6 +241,10 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         Number of steps between each displayed polarization vector.
         If step_vec = 2, every other vector will be displayed.
         Defaults to 1
+    vec_scale : float, optional
+        Pixel length of displayed 100% polarization vector.
+        If vec_scale = 2, a vector of 50% polarization will be 1 pixel wide.
+        Defaults to 2.
     savename : str, optional
         Name of the figure the map should be saved to. If None, the map won't
         be saved (only displayed).
@@ -316,7 +320,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if display.lower() in ['intensity']:
         # If no display selected, show intensity map
         display='i'
-        vmin, vmax = 1./3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -327,7 +331,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         # Display polarisation flux
         display='pf'
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
-        vmin, vmax = 1./3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux*pol.data, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -382,7 +386,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         #ax.clabel(cont,inline=True,fontsize=6)
     else:
         # Defaults to intensity map
-        vmin, vmax = 3.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         #im = ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         #cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
@@ -400,27 +404,28 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     px_size = wcs.wcs.get_cdelt()[0]*3600.
     px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
-    north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
+    north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': 'k', 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': 'k','fc':'w','alpha': 1,'lw': 1})
 
     if display.lower() in ['i','s_i','snri','pf','p','pa','s_p','snrp']:
         if step_vec == 0:
             pol.data[np.isfinite(pol.data)] = 1./2.
             step_vec = 1
+            vec_scale = 2.
         X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
-        pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+        Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='w',edgecolor='k')
+        pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         
         ax.add_artist(pol_sc)
         ax.add_artist(px_sc)
         ax.add_artist(north_dir)
         
-        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', xy=(0.01, 0.92), xycoords='axes fraction')
+        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_diluted*100.,P_diluted_err*100.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_diluted,PA_diluted_err), color='white', xy=(0.01, 0.92), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
     else:
         if display.lower() == 'default':
             ax.add_artist(px_sc)
             ax.add_artist(north_dir)
-        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2)), color='white', xy=(0.01, 0.97), xycoords='axes fraction')
+        ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(pivot_wav,sci_not(I_diluted*convert_flux,I_diluted_err*convert_flux,2)), color='white', xy=(0.01, 0.97), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
 
     # Display instrument FOV
     if not(rectangle is None):
@@ -1339,6 +1344,7 @@ class pol_map(object):
         self.region = None
         self.data = None
         self.display_selection = selection
+        self.vec_scale = 2.
 
         #Get data
         self.targ = self.Stokes[0].header['targname']
@@ -1363,11 +1369,13 @@ class pol_map(object):
         #Set axes for sliders (SNRp_cut, SNRi_cut)
         ax_I_cut = self.fig.add_axes([0.125, 0.080, 0.35, 0.01])
         ax_P_cut = self.fig.add_axes([0.125, 0.055, 0.35, 0.01])
+        ax_vec_sc = self.fig.add_axes([0.300, 0.030, 0.175, 0.01])
         ax_snr_reset = self.fig.add_axes([0.125, 0.020, 0.05, 0.02])
         SNRi_max = np.max(self.I[self.IQU_cov[0,0]>0.]/np.sqrt(self.IQU_cov[0,0][self.IQU_cov[0,0]>0.]))
         SNRp_max = np.max(self.P[self.s_P>0.]/self.s_P[self.s_P > 0.])
         s_I_cut = Slider(ax_I_cut,r"$SNR^{I}_{cut}$",1.,int(SNRi_max*0.95),valstep=1,valinit=self.SNRi_cut)
         s_P_cut = Slider(ax_P_cut,r"$SNR^{P}_{cut}$",1.,int(SNRp_max*0.95),valstep=1,valinit=self.SNRp_cut)
+        s_vec_sc = Slider(ax_vec_sc,r"Vectors scale",1.,10.,valstep=1,valinit=self.vec_scale)
         b_snr_reset = Button(ax_snr_reset,"Reset")
         b_snr_reset.label.set_fontsize(8)
 
@@ -1383,13 +1391,22 @@ class pol_map(object):
             self.pol_int()
             self.fig.canvas.draw_idle()
 
+        def update_vecsc(val):
+            self.vec_scale = val
+            self.pol_vector()
+            self.ax_cosmetics()
+            self.fig.canvas.draw_idle()
+
         def reset_snr(event):
             s_I_cut.reset()
             s_P_cut.reset()
+            s_vec_sc.reset()
 
         s_I_cut.on_changed(update_snri)
         s_P_cut.on_changed(update_snrp)
+        s_vec_sc.on_changed(update_vecsc)
         b_snr_reset.on_clicked(reset_snr)
+
 
         #Set axe for Aperture selection
         ax_aper = self.fig.add_axes([0.55, 0.040, 0.05, 0.02])
@@ -1543,6 +1560,7 @@ class pol_map(object):
         def saveplot(event):
             ax_text_save.set(visible=True)
             ax_snr_reset.set(visible=False)
+            ax_vec_sc.set(visible=False)
             ax_save.set(visible=False)
             ax_dump.set(visible=False)
             self.fig.canvas.draw_idle()
@@ -1566,6 +1584,7 @@ class pol_map(object):
                 plt.close(save_fig)
                 text_save.set_val('')
             ax_snr_reset.set(visible=True)
+            ax_vec_sc.set(visible=True)
             ax_save.set(visible=True)
             ax_dump.set(visible=True)
             plt.rcParams.update({'font.size': 10})
@@ -1583,6 +1602,7 @@ class pol_map(object):
         def dump(event):
             ax_text_dump.set(visible=True)
             ax_snr_reset.set(visible=False)
+            ax_vec_sc.set(visible=False)
             ax_save.set(visible=False)
             ax_dump.set(visible=False)
             self.fig.canvas.draw_idle()
@@ -1612,6 +1632,7 @@ class pol_map(object):
                 np.savetxt(expression, self.data_dump)
                 text_dump.set_val('')
             ax_snr_reset.set(visible=True)
+            ax_vec_sc.set(visible=True)
             ax_save.set(visible=True)
             ax_dump.set(visible=True)
             self.fig.canvas.draw_idle()
@@ -1732,7 +1753,7 @@ class pol_map(object):
         ax.add_artist(self.px_sc)
         if hasattr(self,'pol_sc'):
             self.pol_sc.remove()
-        self.pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='white', fontproperties=fontprops)
+        self.pol_sc = AnchoredSizeBar(ax.transData, self.vec_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='white', fontproperties=fontprops)
         ax.add_artist(self.pol_sc)
         if hasattr(self,'north_dir'):
             self.north_dir.remove()
@@ -1810,11 +1831,11 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'quiver'):
                 self.quiver.remove()
-            self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, color='white')
+            self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white',edgecolor='black')
             fig.canvas.draw_idle()
             return self.quiver
         else:
-            ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, color='white')
+            ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white',edgecolor='black')
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):
@@ -1906,15 +1927,15 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'an_int'):
                 self.an_int.remove()
-            self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction')
-            #self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.85), xycoords='axes fraction')
+            self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+            #self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.85), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
             if not self.region is None:
                 self.cont = ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
             return self.an_int
         else:
-            ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.94), xycoords='axes fraction')
-            #ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction')
+            ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.94), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+            #ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav,sci_not(I_reg*self.convert_flux,I_reg_err*self.convert_flux,2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100.,np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg,np.ceil(PA_reg_err*10.)/10.)+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100.,np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut,np.ceil(PA_cut_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 0.90), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
             if not self.region is None:
                 ax.contour(self.region.astype(float),levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()

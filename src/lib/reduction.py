@@ -292,9 +292,10 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
     if display:
         plt.rcParams.update({'font.size': 20})
         fig, ax = plt.subplots(figsize=(10,10))
-        data = deepcopy(data_array[0])
+        convert_flux = headers[0]['photflam']
+        data = deepcopy(data_array[0]*convert_flux)
         data[data <= data[data>0.].min()] = data[data > 0.].min()
-        crop = crop_array[0]
+        crop = crop_array[0]*convert_flux
         instr = headers[0]['instrume']
         rootname = headers[0]['rootname']
         exptime = headers[0]['exptime']
@@ -321,14 +322,14 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
 
         fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
         cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig.colorbar(im, cax=cbar_ax, label=r'$Counts \cdot s^{-1}$')
+        fig.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         if not(savename is None):
             #fig.suptitle(savename+'_'+filt+'_crop_region')
             fig.savefig(plots_folder+savename+'_'+filt+'_crop_region.png',
                     bbox_inches='tight')
-            plot_obs(data_array, headers, vmin=data_array[data_array>0.].min(),
-                    vmax=data_array[data_array>0.].max(), rectangle=[rectangle,]*len(headers),
+            plot_obs(data_array, headers, vmin=convert_flux*data_array[data_array>0.].mean()/5.,
+                    vmax=convert_flux*data_array[data_array>0.].max(), rectangle=[rectangle,]*len(headers),
                     savename=savename+'_crop_region',plots_folder=plots_folder)
         plt.show()
 

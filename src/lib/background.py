@@ -66,14 +66,14 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
         fig_h, ax_h = plt.subplots(figsize=(10,6), constrained_layout=True)
         for i, (hist, bins) in enumerate(zip(histograms, binning)):
             filt_obs[headers[i]['filtnam1']] += 1
-            ax_h.plot(bins,hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
-            ax_h.plot([background[i],background[i]],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
+            ax_h.plot(bins*convert_flux[i],hist,'+',color="C{0:d}".format(i),alpha=0.8,label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
+            ax_h.plot([background[i]*convert_flux[i],background[i]*convert_flux[i]],[hist.min(), hist.max()],'x--',color="C{0:d}".format(i),alpha=0.8)
             if not(coeff is None):
-                ax_h.plot(bins,gausspol(bins,*coeff[i]),'--',color="C{0:d}".format(i),alpha=0.8)
+                ax_h.plot(bins*convert_flux[i],gausspol(bins,*coeff[i]),'--',color="C{0:d}".format(i),alpha=0.8)
         ax_h.set_xscale('log')
         ax_h.set_ylim([0.,np.max([hist.max() for hist in histograms])])
-        ax_h.set_xlim([np.min(background)*1e-2,np.max(background)*1e2])
-        ax_h.set_xlabel(r"Count rate [$s^{-1}$]")
+        ax_h.set_xlim([np.min(background*convert_flux)*1e-2,np.max(background*convert_flux)*1e2])
+        ax_h.set_xlabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         ax_h.set_ylabel(r"Number of pixels in bin")
         ax_h.set_title("Histogram for each observation")
         plt.legend()
@@ -105,7 +105,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     if not(savename is None):
         fig2.savefig(plots_folder+savename+'_'+filt+'_background_location.png', bbox_inches='tight')
         if not(rectangle is None):
-            plot_obs(data, headers, vmin=data[data > 0.].min(), vmax=data[data > 0.].max(), rectangle=rectangle,
+            plot_obs(data, headers, vmin=data[data > 0.].min()*convert_flux.mean(), vmax=data[data > 0.].max()*convert_flux.mean(), rectangle=rectangle,
                     savename=savename+"_background_location",plots_folder=plots_folder)
     elif not(rectangle is None):
         plot_obs(data, headers, vmin=data[data > 0.].min(), vmax=data[data > 0.].max(), rectangle=rectangle)

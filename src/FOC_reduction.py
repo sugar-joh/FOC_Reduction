@@ -25,10 +25,10 @@ globals()['infiles'] = ['x274020at_c0f.fits','x274020bt_c0f.fits','x274020ct_c0f
 #psf_file = 'NGC1068_f253m00.fits'
 globals()['plots_folder'] = "../plots/NGC1068_x274020/"
 
-globals()['data_folder'] = "../data/IC5063_x3nl030/"
-globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
-#psf_file = 'IC5063_f502m00.fits'
-globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
+#globals()['data_folder'] = "../data/IC5063_x3nl030/"
+#globals()['infiles'] = ['x3nl0301r_c0f.fits','x3nl0302r_c0f.fits','x3nl0303r_c0f.fits']
+##psf_file = 'IC5063_f502m00.fits'
+#globals()['plots_folder'] = "../plots/IC5063_x3nl030/"
 
 #globals()['data_folder'] = "../data/NGC1068_x14w010/"
 #globals()['infiles'] = ['x14w0101t_c0f.fits','x14w0102t_c0f.fits','x14w0103t_c0f.fits',
@@ -128,11 +128,11 @@ def main():
         iterations = 5
         algo="richardson"
     # Initial crop
-    display_crop = False
+    display_crop = True
     # Error estimation
-    error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (15,15))
+    error_sub_type = (51,51)#'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51,51))
     subtract_error = 1.25
-    display_error = False
+    display_error = True
     # Data binning
     rebin = True
     pxsize = 0.10
@@ -140,7 +140,7 @@ def main():
     rebin_operation = 'sum'     #sum or average
     # Alignement
     align_center = 'image'          #If None will align image to image center
-    display_data = False
+    display_data = True
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
     smoothing_FWHM = 0.20           #If None, no smoothing is done
@@ -152,10 +152,11 @@ def main():
     crop = False                    #Crop to desired ROI
     final_display = True
     # Polarization map output
-    figname = 'IC5063_FOC'         #target/intrument name
+    figname = 'NGC1068_FOC'         #target/intrument name
     figtype = '_c_020'    #additionnal informations
-    SNRp_cut = 1.    #P measurments with SNR>3
-    SNRi_cut = 10.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRp_cut = 5.    #P measurments with SNR>3
+    SNRi_cut = 50.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    vec_scale = 2.0
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -194,7 +195,7 @@ def main():
         shape = np.array([vertex[1]-vertex[0],vertex[3]-vertex[2]])
         rectangle = [vertex[2], vertex[0], shape[1], shape[0], 0., 'g']
 
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min(), vmax=data_array[data_array>0.].max(), rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], rectangle =[rectangle,]*data_array.shape[0], savename=figname+"_center_"+align_center, plots_folder=plots_folder)
 
     background = np.array([np.array(bkg).reshape(1,1) for bkg in background])
     background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1']==head['filtnam1'] for h in headers],dtype=bool)].mean())**2/np.sum([h['filtnam1']==head['filtnam1'] for h in headers]))).reshape(1,1) for bkg,head in zip(background,headers)])
@@ -241,17 +242,17 @@ def main():
     print("PA_bkg = {0:.1f} ± {1:.1f} °".format(PA_bkg[0,0],np.ceil(s_PA_bkg[0,0]*10.)/10.))
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full','integrate'] and final_display:
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder)
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I", plots_folder=plots_folder, display='Intensity')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_PA", plots_folder=plots_folder, display='Pol_ang')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype, plots_folder=plots_folder)
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_I", plots_folder=plots_folder, display='Intensity')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_P_flux", plots_folder=plots_folder, display='Pol_Flux')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_P", plots_folder=plots_folder, display='Pol_deg')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_PA", plots_folder=plots_folder, display='Pol_ang')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_I_err", plots_folder=plots_folder, display='I_err')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_P_err", plots_folder=plots_folder, display='Pol_deg_err')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_SNRi", plots_folder=plots_folder, display='SNRi')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, vec_scale=vec_scale, savename=figname+figtype+"_SNRp", plots_folder=plots_folder, display='SNRp')
     elif final_display:
-        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, step_vec=step_vec, savename=figname+figtype, plots_folder=plots_folder, display='integrate')
+        proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=figname+figtype, plots_folder=plots_folder, display='integrate')
     elif px_scale.lower() not in ['full', 'integrate']:
         pol_map = proj_plots.pol_map(Stokes_test, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut)
 
