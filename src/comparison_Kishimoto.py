@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from lib.reduction import align_data, crop_array, princ_angle
+from lib.background import gauss, bin_centers
 from lib.deconvolve import zeropad
 from matplotlib.colors import LogNorm
 from os.path import join as path_join
@@ -8,6 +9,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from re import compile as regcompile, IGNORECASE
 from scipy.ndimage import shift
+from scipy.optimize import curve_fit
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -15,6 +17,7 @@ root_dir = path_join('/home/t.barnouin/Documents/Thesis/HST')
 root_dir_K = path_join(root_dir,'Kishimoto','output')
 root_dir_S = path_join(root_dir,'FOC_Reduction','output')
 root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068_x274020')
+root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068_x274020')
 filename_S = "NGC1068_FOC_b_10px.fits"
 
 data_K = {}
@@ -50,7 +53,7 @@ for d in [data_S, data_K]:
         d[i][np.isnan(d[i])] = 0.
     d['P'] = np.where(np.logical_and(np.isfinite(d['I']),d['I']>0.),np.sqrt(d['Q']**2+d['U']**2)/d['I'],0.)
     d['sP'] = np.where(np.logical_and(np.isfinite(d['I']),d['I']>0.),np.sqrt((d['Q']**2*d['sQ']**2+d['U']**2*d['sU']**2)/(d['Q']**2+d['U']**2)+((d['Q']/d['I'])**2+(d['U']/d['I'])**2)*d['sI']**2)/d['I'],0.)
-    d['PA'] = princ_angle((90./np.pi)*np.arctan2(d['U'],d['Q'])+180.)
+    d['PA'] = 0.5*np.arctan2(d['U'],d['Q'])+np.pi
     d['SNRp'] = np.zeros(d['P'].shape)
     d['SNRp'][d['sP']>0.] = d['P'][d['sP']>0.]/d['sP'][d['sP']>0.]
     d['SNRi'] = np.zeros(d['I'].shape)
@@ -58,22 +61,63 @@ for d in [data_S, data_K]:
     d['mask'] = np.logical_and(d['SNRi']>30,d['SNRp']>5)
 data_S['mask'], data_K['mask'] = np.logical_and(data_S['mask'],data_K['mask']), np.logical_and(data_S['mask'],data_K['mask'])
 
-for d in [data_S, data_K]:
-    d['X'], d['Y'] = np.meshgrid(np.arange(d['I'].shape[1]), np.arange(d['I'].shape[0]))
-    d['xy_U'], d['xy_V'] = np.where(d['mask'],d['P']*np.cos(np.pi/2.+d['PA']*np.pi/180.), np.nan), np.where(d['mask'],d['P']*np.sin(np.pi/2.+d['PA']*np.pi/180.), np.nan)
 
-#display both polarization maps to check consistencfig = plt.figure()
-plt.rcParams.update({'font.size': 20})
-fig = plt.figure()
+#####
+###Compute histogram of measured polarization in cut
+#####
+bins=int(data_S['mask'].sum()/5)
+bin_size=1./bins
+mod_p = np.linspace(0.,1.,300)
+for d in [data_S, data_K]:
+    d['hist'], d['bin_edges'] = np.histogram(d['P'][d['mask']],bins=bins,range=(0.,1.))
+    d['binning'] = bin_centers(d['bin_edges'])
+    peak, bins_fwhm = d['binning'][np.argmax(d['hist'])], d['binning'][d['hist']>d['hist'].max()/2.]
+    fwhm = bins_fwhm[1]-bins_fwhm[0]
+    p0 = [d['hist'].max(), peak, fwhm]
+    try:
+        popt, pcov = curve_fit(gauss, d['binning'], d['hist'], p0=p0)
+    except RuntimeError:
+        popt = p0
+    d['hist_chi2'] = np.sum((d['hist']-gauss(d['binning'],*popt))**2)/d['hist'].size
+    d['hist_popt'] = popt
+    
+fig_p, ax_p = plt.subplots(num="Polarization degree histogram",figsize=(10,6),constrained_layout=True)
+ax_p.errorbar(data_S['binning'],data_S['hist'],xerr=bin_size/2.,fmt='b.',ecolor='b',label='P through this pipeline')
+ax_p.plot(mod_p,gauss(mod_p,*data_S['hist_popt']),'b--',label='mean = {1:.2f}, stdev = {2:.2f}'.format(*data_S['hist_popt']))
+ax_p.errorbar(data_K['binning'],data_K['hist'],xerr=bin_size/2.,fmt='r.',ecolor='r',label="P through Kishimoto's pipeline")
+ax_p.plot(mod_p,gauss(mod_p,*data_K['hist_popt']),'r--',label='mean = {1:.2f}, stdev = {2:.2f}'.format(*data_K['hist_popt']))
+ax_p.set(xlabel="Polarization degree",ylabel="Counts",title="Histogram of polarization degree computed in the cut for both pipelines.")
+ax_p.legend()
+fig_p.savefig(path_join(root_dir_plot_S,"NGC1068_K_pol_deg.png"),bbox_inches="tight")
+
+#####
+###Compute angular difference between the maps in cut
+#####
+dtheta = np.where(data_S['mask'], 0.5*np.arctan((np.sin(2*data_S['PA'])*np.cos(2*data_K['PA'])-np.cos(2*data_S['PA'])*np.cos(2*data_K['PA']))/(np.cos(2*data_S['PA'])*np.cos(2*data_K['PA'])+np.cos(2*data_S['PA'])*np.sin(2*data_K['PA']))),np.nan)
+fig_pa = plt.figure(num="Polarization degree alignement")
+ax_pa = fig_pa.add_subplot(111, projection=wcs)
+cbar_ax_pa = fig_pa.add_axes([0.88, 0.12, 0.01, 0.75])
+ax_pa.set_title(r"Degree of alignement $\zeta$ of the polarization angles from the 2 pipelines in the cut")
+im_pa = ax_pa.imshow(np.cos(2*dtheta), vmin=-1., vmax=1., origin='lower', cmap='bwr', label=r"$\zeta$ between this pipeline and Kishimoto's")
+cbar_pa = plt.colorbar(im_pa, cax=cbar_ax_pa, label=r"$\zeta = \cos\left( 2 \cdot \delta\theta_P \right)$")
+ax_pa.coords[0].set_axislabel('Right Ascension (J2000)')
+ax_pa.coords[1].set_axislabel('Declination (J2000)')
+fig_pa.savefig(path_join(root_dir_plot_S,"NGC1068_K_pol_ang.png"),bbox_inches="tight")
+
+#####
+###display both polarization maps to check consistency
+#####
+plt.rcParams.update({'font.size': 10})
+fig = plt.figure(num="Polarization maps comparison")
 ax = fig.add_subplot(111, projection=wcs)
 fig.subplots_adjust(right=0.85)
 cbar_ax = fig.add_axes([0.88, 0.12, 0.01, 0.75])
 
+for d in [data_S, data_K]:
+    d['X'], d['Y'] = np.meshgrid(np.arange(d['I'].shape[1]), np.arange(d['I'].shape[0]))
+    d['xy_U'], d['xy_V'] = np.where(d['mask'],d['P']*np.cos(np.pi/2.+d['PA']), np.nan), np.where(d['mask'],d['P']*np.sin(np.pi/2.+d['PA']), np.nan)
+
 im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0].min()*convert_flux,data_S['I'][data_S['I']>0].max()*convert_flux),origin='lower',cmap='gray',label=r"$I_{STOKES}$ through this pipeline")
-#im0 = ax.imshow(data_K['P']*100.,vmin=0.,vmax=100.,origin='lower',cmap='inferno',label=r"$P$ through Kishimoto's pipeline")
-#im0 = ax.imshow(data_S['P']*100.,vmin=0.,vmax=100.,origin='lower',cmap='inferno',label=r"$P$ through this pipeline")
-#im0 = ax.imshow(data_K['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through Kishimoto's pipeline")
-#im0 = ax.imshow(data_S['PA'],vmin=0.,vmax=360.,origin='lower',cmap='inferno',label=r"$\theta_P$ through this pipeline")
 quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.2,color='b',alpha=0.75, label="PA through this pipeline")
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
 
@@ -88,10 +132,9 @@ ax.coords[1].set_ticklabel_position('l')
 #ax.axis('equal')
 
 cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-#cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$P$ [%]")
-#cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$\theta_P$ [°]")
-plt.rcParams.update({'font.size': 15})
+plt.rcParams.update({'font.size': 8})
 ax.legend(loc='upper right')
+fig.savefig(path_join(root_dir_plot_S,"NGC1068_K_comparison.png"),bbox_inches="tight")
 
 #compute integrated polarization parameters on a specific cut
 for d in [data_S, data_K]:
