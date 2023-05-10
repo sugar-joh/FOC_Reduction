@@ -19,6 +19,7 @@ root_dir_S = path_join(root_dir,'FOC_Reduction','output')
 root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068_x274020')
 root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068_x274020')
 filename_S = "NGC1068_FOC_b_10px.fits"
+plt.rcParams.update({'font.size': 15})
 
 data_K = {}
 data_S = {}
@@ -107,7 +108,6 @@ fig_pa.savefig(path_join(root_dir_plot_S,"NGC1068_K_pol_ang.png"),bbox_inches="t
 #####
 ###display both polarization maps to check consistency
 #####
-plt.rcParams.update({'font.size': 10})
 fig = plt.figure(num="Polarization maps comparison")
 ax = fig.add_subplot(111, projection=wcs)
 fig.subplots_adjust(right=0.85)
@@ -132,7 +132,7 @@ ax.coords[1].set_ticklabel_position('l')
 #ax.axis('equal')
 
 cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-plt.rcParams.update({'font.size': 8})
+#plt.rcParams.update({'font.size': 8})
 ax.legend(loc='upper right')
 fig.savefig(path_join(root_dir_plot_S,"NGC1068_K_comparison.png"),bbox_inches="tight")
 

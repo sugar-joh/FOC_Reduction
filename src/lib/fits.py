@@ -10,6 +10,7 @@ prototypes :
 """
 
 import numpy as np
+from os.path import join as path_join
 from astropy.io import fits
 from astropy import wcs
 from lib.convex_hull import image_hull, clean_ROI
@@ -39,7 +40,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     """
     data_array, headers = [], []
     for i in range(len(infiles)):
-        with fits.open(data_folder+infiles[i]) as f:
+        with fits.open(path_join(data_folder,infiles[i])) as f:
             headers.append(f[0].header)
             data_array.append(f[0].data)
     data_array = np.array(data_array,dtype=np.double)
@@ -188,7 +189,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         hdul.append(hdu)
 
     #Save fits file to designated filepath
-    hdul.writeto(data_folder+filename+".fits", overwrite=True)
+    hdul.writeto(path_join(data_folder,filename+".fits"), overwrite=True)
 
     if return_hdul:
         return hdul

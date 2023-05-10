@@ -1,5 +1,3 @@
-from sys import exit as sys_exit, argv as sys_argv
-from getopt import getopt, error as geterr
 from os import system
 from os.path import join as path_join, exists as path_exists
 from astroquery.mast import MastMissions, Observations
@@ -102,10 +100,11 @@ def get_product_list(target, proposal_id=None):
     return products
 
 
-def retrieve_products(target, products):
+def retrieve_products(target, proposal_id=None):
     """
-    Given a target name and a products list, create the local directories and retrieve the fits files from the MAST Archive
+    Given a target name and a proposal_id, create the local directories and retrieve the fits files from the MAST Archive
     """
+    products = get_product_list(target=target,proposal_id=proposal_id)
     prodpaths = []
     data_dir = path_join("../data", target)
     out = ""
@@ -113,7 +112,7 @@ def retrieve_products(target, products):
         filepaths = []
         obs_dir = path_join(data_dir, obs_id)
         if not path_exists(obs_dir):
-            system("mkdir -p "+obs_dir)
+            system("mkdir -p {0:s} {1:s}".format(obs_dir,path_join("../plots",target,obs_id)))
         for file in products['productFilename'][products['proposal_id'] == obs_id]:
             fpath = path_join(obs_dir, file)
             if not path_exists(fpath):
@@ -121,37 +120,20 @@ def retrieve_products(target, products):
                     products['dataURI'][products['productFilename'] == file][0], local_path=fpath)[0])
             else:
                 out += "{0:s} : Exists\n".format(file)
-            filepaths.append(fpath)
-        prodpaths.append(filepaths)
+            filepaths.append([obs_dir,file])
+        prodpaths.append(np.array(filepaths,dtype=str))
 
     return prodpaths
 
 
-def main():
-    
-    target, proposal_id = None, None
-    try:
-        arg, _ = getopt(sys_argv[1:], "ht:p:", ["help", "target=", "proposal_id="])
-        for curr_arg, curr_val in arg:
-            if curr_arg in ("-h", "--help"):
-                print("python3 query.py -t <target_name> -p <proposal_id>")
-            elif curr_arg in ("-t", "--target"):
-                target = str(curr_val)
-            elif curr_arg in ("-p", "--proposal_id"):
-                proposal_id = int(curr_val)
-    except geterr:
-        print(str(geterr))
-    
-    if target is None:
-        target = input("Target name\n>")
-
-    products = get_product_list(target=target,proposal_id=proposal_id)
-    products_paths = retrieve_products(target=target, products=products)
-
-    print(products_paths)
-
-    return 0
-
-
 if __name__ == "__main__":
-    sys_exit(main())
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Query MAST for target products')
+    parser.add_argument('-t','--target', metavar='targetname', required=False,
+                        help='the name of the target', type=str, default=None)
+    parser.add_argument('-p','--proposal_id', metavar='proposal_id', required=False,
+                        help='the proposal id of the data products', type=int, default=None)
+    args = parser.parse_args()
+    prodpaths = retrieve_products(target=args.target, proposal_id=args.proposal_id)
+    print(prodpaths)

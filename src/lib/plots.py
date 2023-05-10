@@ -38,6 +38,7 @@ prototypes :
 
 from copy import deepcopy
 import numpy as np
+from os.path import join as path_join
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle
 from matplotlib.path import Path
@@ -161,7 +162,7 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
 
     if not (savename is None):
         #fig.suptitle(savename)
-        fig.savefig(plots_folder+savename+".png",bbox_inches='tight')
+        fig.savefig(path_join(plots_folder,savename+".png"),bbox_inches='tight')
     plt.show()
     return 0
 
@@ -211,7 +212,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
     if not (savename is None):
         #fig.suptitle(savename+"_IQU")
-        fig.savefig(plots_folder+savename+"_IQU.png",bbox_inches='tight')
+        fig.savefig(path_join(plots_folder,savename+"_IQU.png"),bbox_inches='tight')
     plt.show()
     return 0
 
@@ -320,7 +321,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if display.lower() in ['intensity']:
         # If no display selected, show intensity map
         display='i'
-        vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        vmin, vmax = 1/5.0*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -446,7 +447,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
 
     if not savename is None:
         #fig.suptitle(savename)
-        fig.savefig(plots_folder+savename+".png",bbox_inches='tight',dpi=300)
+        fig.savefig(path_join(plots_folder,savename+".png"),bbox_inches='tight',dpi=300)
 
     plt.show()
     return fig, ax
@@ -1766,7 +1767,7 @@ class pol_map(object):
             self.display_selection = "total_flux"
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = 1/2.0*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
+            vmin, vmax = 1/5.0*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
