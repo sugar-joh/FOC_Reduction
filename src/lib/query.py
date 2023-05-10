@@ -5,7 +5,7 @@ from astropy.table import unique
 import numpy as np
 
 
-def get_product_list(target, proposal_id=None):
+def get_product_list(target=None, proposal_id=None):
     """
     Retrieve products list for a given target from the MAST archive
     """
@@ -36,6 +36,9 @@ def get_product_list(target, proposal_id=None):
         'Target name',
         'Proposal ID',
         'PI last name']
+
+    if target is None:
+        target = input("Target name:\n>")
 
     # Use query_object method to resolve the object name into coordinates
     results = mission.query_object(
@@ -97,14 +100,14 @@ def get_product_list(target, proposal_id=None):
                                             calib_level=[2],
                                             description="DADS C0F file - Calibrated exposure WFPC/WFPC2/FOC/FOS/GHRS/HSP")
 
-    return products
+    return target, products
 
 
-def retrieve_products(target, proposal_id=None):
+def retrieve_products(target=None, proposal_id=None):
     """
     Given a target name and a proposal_id, create the local directories and retrieve the fits files from the MAST Archive
     """
-    products = get_product_list(target=target,proposal_id=proposal_id)
+    target, products = get_product_list(target=target,proposal_id=proposal_id)
     prodpaths = []
     data_dir = path_join("../data", target)
     out = ""
@@ -123,7 +126,7 @@ def retrieve_products(target, proposal_id=None):
             filepaths.append([obs_dir,file])
         prodpaths.append(np.array(filepaths,dtype=str))
 
-    return prodpaths
+    return target, prodpaths
 
 
 if __name__ == "__main__":
