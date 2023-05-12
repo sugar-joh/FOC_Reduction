@@ -21,7 +21,7 @@ def divide_proposal(products):
         close_date = np.unique(np.array([TimeDelta(np.abs(Time(obs['Start']).unix-date.unix),format='sec') < 7.*u.d for date in obs['Start']], dtype=bool), axis=0)
         if len(close_date)>1:
             for date in close_date:
-                products['Proposal ID'][np.any([products['Dataset']==dataset for dataset in obs['Dataset'][date]],axis=0)] = "_".join([obs['Proposal ID'][date][0],obs['Start'][date][0].to_string()[:10]])
+                products['Proposal ID'][np.any([products['Dataset']==dataset for dataset in obs['Dataset'][date]],axis=0)] = "_".join([obs['Proposal ID'][date][0],str(obs['Start'][date][0])[:10]])
     for pid in np.unique(products['Proposal ID']):
         obs = products[products['Proposal ID']==pid].copy()
         same_filt = np.unique(np.array(np.sum([obs['Filters'][:,1:]==filt[1:] for filt in obs['Filters']],axis=2)<3,dtype=bool),axis=0)
