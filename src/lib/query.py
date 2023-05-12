@@ -109,7 +109,7 @@ def get_product_list(target=None, proposal_id=None):
     else:
         print(obs)
         a = [np.array(i.split(":"), dtype=str) for i in input("select observations to be downloaded ('1,3,4,5' or '1,3:5' or 'all','*' default to 1)\n>").split(',')]
-        if a[0]==['']:
+        if a[0][0]=='':
             a = [[1]]
         if a[0][0] in ['a','all','*']:
             b = np.ones(len(results),dtype=bool)

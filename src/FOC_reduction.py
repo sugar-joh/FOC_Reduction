@@ -11,7 +11,7 @@ import lib.fits as proj_fits        #Functions to handle fits files
 import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
 from lib.deconvolve import from_file_psf
-from lib.query import retrieve_products
+from lib.query import retrieve_products, path_exists, system
 
 
 def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
@@ -69,17 +69,23 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     ## Step 1:
     # Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
     if not infiles is None:
-        products = [np.array([["/".join(filepath.split('/')[:-1]),filepath.split('/')[-1]] for filepath in infiles],dtype=str)]
+        prod = np.array([["/".join(filepath.split('/')[:-1]),filepath.split('/')[-1]] for filepath in infiles],dtype=str)
+        obs_dir = "/".join(infiles[0].split()[:-1])
+        if not path_exists(obs_dir):
+            system("mkdir -p {0:s} {1:s}".format(obs_dir,obs_dir.replace("data","plots")))
         if target is None:
             target = input("Target name:\n>")
     else:
         target, products = retrieve_products(target,proposal_id,output_dir=output_dir)
-    data_folder = products[0][0,0]
+        prod = products.pop()
+        for prods in products:
+            main(target=target,infiles=["/".join(pr) for pr in prods],output_dir=output_dir)
+    data_folder = prod[0,0]
     try:
         plots_folder = data_folder.replace("data","plots")
     except:
         plots_folder = "."
-    infiles = products[0][:,1]
+    infiles = prod[:,1]
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target,"FOC"])
