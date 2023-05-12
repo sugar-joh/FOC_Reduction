@@ -150,7 +150,7 @@ def retrieve_products(target=None, proposal_id=None, output_dir='./data'):
         filepaths = []
         obs_dir = path_join(data_dir, obs_id)
         if not path_exists(obs_dir):
-            system("mkdir -p {0:s} {1:s}".format(obs_dir,path_join("../plots",target,obs_id)))
+            system("mkdir -p {0:s} {1:s}".format(obs_dir,obs_dir.replace("data","plots")))
         for file in products['productFilename'][products['proposal_id'] == obs_id]:
             fpath = path_join(obs_dir, file)
             if not path_exists(fpath):
