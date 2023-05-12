@@ -14,7 +14,7 @@ from lib.deconvolve import from_file_psf
 from lib.query import retrieve_products
 
 
-def main(target=None, proposal_id=None, infiles=None):
+def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     ## Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -73,7 +73,7 @@ def main(target=None, proposal_id=None, infiles=None):
         if target is None:
             target = input("Target name:\n>")
     else:
-        target, products = retrieve_products(target,proposal_id)
+        target, products = retrieve_products(target,proposal_id,output_dir=output_dir)
     data_folder = products[0][0,0]
     try:
         plots_folder = data_folder.replace("data","plots")
@@ -83,7 +83,7 @@ def main(target=None, proposal_id=None, infiles=None):
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target,"FOC"])
-    figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),str(smoothing_FWHM).replace(".","")])    #additionnal informations
+    figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),"{0:.2f}".format(smoothing_FWHM).replace(".","")])    #additionnal informations
 
     # Crop data to remove outside blank margins.
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
@@ -185,6 +185,8 @@ if __name__ == "__main__":
                         help='the proposal id of the data products', type=int, default=None)
     parser.add_argument('-f','--files', metavar='path', required=False, nargs='*',
                         help='the full or relative path to the data products', default=None)
+    parser.add_argument('-o','--output_dir', metavar='directory_path', required=False,
+                        help='output directory path for the data products', type=str, default="./data")
     args = parser.parse_args()
-    exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files)
+    exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files, output_dir=args.output_dir)
     print("Finished with ExitCode: ",exitcode)
