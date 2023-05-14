@@ -70,7 +70,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     # Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
     if not infiles is None:
         prod = np.array([["/".join(filepath.split('/')[:-1]),filepath.split('/')[-1]] for filepath in infiles],dtype=str)
-        obs_dir = "/".join(infiles[0].split()[:-1])
+        obs_dir = "/".join(infiles[0].split("/")[:-1])
         if not path_exists(obs_dir):
             system("mkdir -p {0:s} {1:s}".format(obs_dir,obs_dir.replace("data","plots")))
         if target is None:
