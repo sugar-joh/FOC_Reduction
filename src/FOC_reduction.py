@@ -46,8 +46,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     display_data = False
     
     # Smoothing
-    smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_function = 'gaussian'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
+    smoothing_FWHM = None           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     
     # Rotation
@@ -77,8 +77,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
             target = input("Target name:\n>")
     else:
         target, products = retrieve_products(target,proposal_id,output_dir=output_dir)
-        prod = products.pop()
-        for prods in products:
+        prod = products[0]
+        for prods in products[1:]:
             main(target=target,infiles=["/".join(pr) for pr in prods],output_dir=output_dir)
     data_folder = prod[0,0]
     try:
@@ -89,7 +89,15 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target,"FOC"])
-    figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),"{0:.2f}".format(smoothing_FWHM).replace(".","")])    #additionnal informations
+    if smoothing_FWHM is None:
+        if px_scale in ['px','pixel','pixels']:
+            figtype = "".join(["b_",str(pxsize),'px'])
+        elif px_scale in ['arcsec','arcseconds','arcs']:
+            figtype = "".join(["b_","{0:.2f}".format(pxsize).replace(".",""),'arcsec'])
+        else:
+            figtype = "full"
+    else:
+        figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),"".join(["{0:.2f}".format(smoothing_FWHM).replace(".",""),smoothing_scale])])    #additionnal informations
 
     # Crop data to remove outside blank margins.
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
@@ -100,7 +108,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
 
     # Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
-    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([figname,"_errors"]), plots_folder=plots_folder, return_background=True)
+    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([figname,"errors"]), plots_folder=plots_folder, return_background=True)
 
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)

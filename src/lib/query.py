@@ -132,7 +132,7 @@ def get_product_list(target=None, proposal_id=None):
     products['target_name'] = Column(observations['target_name'])
     
     for prod in products:
-        products['proposal_id'] = results['Proposal ID'][results['Dataset']==prod['productFilename'][:len(results['Dataset'][0])].upper()]
+        prod['proposal_id'] = results['Proposal ID'][results['Dataset']==prod['productFilename'][:len(results['Dataset'][0])].upper()][0]
     
     #for prod in products:
     #    prod['target_name'] = observations['target_name'][observation['obsid']==prod['obsID']]
@@ -169,7 +169,7 @@ def retrieve_products(target=None, proposal_id=None, output_dir='./data'):
             filepaths.append([obs_dir,file])
         prodpaths.append(np.array(filepaths,dtype=str))
 
-    return target, prodpaths
+    return target, np.array(prodpaths)
 
 
 if __name__ == "__main__":

@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 root_dir = path_join('/home/t.barnouin/Documents/Thesis/HST')
 root_dir_K = path_join(root_dir,'Kishimoto','output')
 root_dir_S = path_join(root_dir,'FOC_Reduction','output')
-root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068_x274020')
-root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068_x274020')
+root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068','5144')
+root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068','5144')
 filename_S = "NGC1068_FOC_b_10px.fits"
 plt.rcParams.update({'font.size': 15})
 

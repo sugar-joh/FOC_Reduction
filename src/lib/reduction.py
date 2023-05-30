@@ -485,17 +485,30 @@ def get_error(data_array, headers, error_array=None, data_mask=None,
         mask = zeropad(mask_c, data[0].shape).astype(bool)
     background = np.zeros((data.shape[0]))
     
+    #wavelength dependence of the polariser filters
+    #estimated to less than 1%
+    err_wav = data*0.01
+    #difference in PSFs through each polarizers
+    #estimated to less than 3%
+    err_psf = data*0.03
+    #flatfielding uncertainties
+    #estimated to less than 3%
+    err_flat = data*0.03
+ 
     if (sub_type is None):
-        n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+        n_data_array, c_error_bkg, headers, background = bkg_hist(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     elif type(sub_type)==str:
         if sub_type.lower() in ['auto']:
-            n_data_array, n_error_array, headers, background = bkg_fit(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+            n_data_array, c_error_bkg, headers, background = bkg_fit(data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
         else:
-            n_data_array, n_error_array, headers, background = bkg_hist(data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+            n_data_array, c_error_bkg, headers, background = bkg_hist(data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     elif type(sub_type)==tuple:
-        n_data_array, n_error_array, headers, background = bkg_mini(data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+        n_data_array, c_error_bkg, headers, background = bkg_mini(data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     else:
         print("Warning: Invalid subtype.")
+    
+    # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
+    n_error_array = np.sqrt(err_wav**2+err_psf**2+err_flat**2+c_error_bkg**2)
 
     if return_background:
         return n_data_array, n_error_array, headers, background
@@ -553,29 +566,39 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
                 (yet)".format(instr))
 
     rebinned_data, rebinned_error, rebinned_headers = [], [], []
-    Dxy = np.array([1, 1],dtype=int)
+    Dxy = np.array([1., 1.])
 
     # Routine for the FOC instrument
     if instr == 'FOC':
         HST_aper = 2400.    # HST aperture in mm
+        Dxy_arr = np.ones((data_array.shape[0],2))
         for i, enum in enumerate(list(zip(data_array, error_array, headers))):
             image, error, header = enum
             # Get current pixel size
             w = WCS(header).deepcopy()
+            new_header = deepcopy(header)
 
             # Compute binning ratio
             if scale.lower() in ['px', 'pixel']:
-                Dxy = np.array([pxsize,]*2)
+                Dxy_arr[i] = np.array([pxsize,]*2)
             elif scale.lower() in ['arcsec','arcseconds']:
-                Dxy = np.floor(pxsize/np.abs(w.wcs.cdelt)/3600.).astype(int)
+                Dxy_arr[i] = np.array(pxsize/np.abs(w.wcs.cdelt)/3600.)
             elif scale.lower() in ['full','integrate']:
-                Dxy = np.floor(image.shape).astype(int)
+                Dxy_arr[i] = image.shape
             else:
                 raise ValueError("'{0:s}' invalid scale for binning.".format(scale))
+        new_shape = np.ceil(min(image.shape/Dxy_arr,key=lambda x:x[0]+x[1])).astype(int)
 
+        for i, enum in enumerate(list(zip(data_array, error_array, headers))):
+            image, error, header = enum
+            # Get current pixel size
+            w = WCS(header).deepcopy()
+            new_header = deepcopy(header)
+
+            Dxy = image.shape/new_shape
             if (Dxy < 1.).any():
                 raise ValueError("Requested pixel size is below resolution.")
-            new_shape = (image.shape//Dxy).astype(int)
+            new_shape = np.ceil(image.shape/Dxy).astype(int)
 
             # Rebin data
             rebin_data = bin_ndarray(image, new_shape=new_shape,
@@ -606,10 +629,15 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
 
             # Update header
-            w = w.slice((np.s_[::Dxy[0]], np.s_[::Dxy[1]]))
-            header['NAXIS1'],header['NAXIS2'] = w.array_shape
-            header.update(w.to_header())
-            rebinned_headers.append(header)
+            #nw = w.slice((np.s_[::Dxy[0]], np.s_[::Dxy[1]]))
+            nw = w.deepcopy()
+            nw.wcs.cdelt *= Dxy
+            nw.wcs.crpix /= Dxy
+            nw.array_shape = new_shape
+            new_header['NAXIS1'],new_header['NAXIS2'] = nw.array_shape
+            for key, val in nw.to_header().items():
+                new_header.set(key,val)
+            rebinned_headers.append(new_header)
         if not data_mask is None:
             data_mask = bin_ndarray(data_mask,new_shape=new_shape,operation='average') > 0.80
 
@@ -1180,6 +1208,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         if mask.any():
             print("WARNING : found {0:d} pixels for which I_pol > I_stokes".format(I_stokes[mask].size))
 
+        # Statistical error: Poisson noise is assumed
+        sigma_flux = np.array([np.sqrt(flux/head['exptime']) for flux,head in zip(pol_flux,pol_headers)])
+        s_I2_stat = np.sum([coeff_stokes[0,i]**2*sigma_flux[i]**2 for i in range(len(sigma_flux))],axis=0)
+        s_Q2_stat = np.sum([coeff_stokes[1,i]**2*sigma_flux[i]**2 for i in range(len(sigma_flux))],axis=0)
+        s_U2_stat = np.sum([coeff_stokes[2,i]**2*sigma_flux[i]**2 for i in range(len(sigma_flux))],axis=0)
+
         # Compute the derivative of each Stokes parameter with respect to the polarizer orientation
         dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*theta[2]+2.*theta[0])*(pol_flux[1]-I_stokes) - pol_eff[1]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes))
         dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*theta[0]+2.*theta[1])*(pol_flux[2]-I_stokes) - pol_eff[2]*np.cos(-2.*theta[1]+2.*theta[2])*(pol_flux[0]-I_stokes))
@@ -1205,9 +1239,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers,
         #np.savetxt("output/sU_dir.txt", np.sqrt(s_U2_axis))
 
         # Add quadratically the uncertainty to the Stokes covariance matrix
-        Stokes_cov[0,0] += s_I2_axis
-        Stokes_cov[1,1] += s_Q2_axis
-        Stokes_cov[2,2] += s_U2_axis
+        Stokes_cov[0,0] += s_I2_axis + s_I2_stat
+        Stokes_cov[1,1] += s_Q2_axis + s_Q2_stat
+        Stokes_cov[2,2] += s_U2_axis + s_U2_stat
 
         #Compute integrated values for P, PA before any rotation
         mask = np.logical_and(data_mask.astype(bool), (I_stokes > 0.))

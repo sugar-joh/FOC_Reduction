@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+#-*- coding:utf-8 -*-
 """
 Library function for simplified fits handling.
 
@@ -12,7 +14,7 @@ prototypes :
 import numpy as np
 from os.path import join as path_join
 from astropy.io import fits
-from astropy import wcs
+from astropy.wcs import WCS
 from lib.convex_hull import image_hull, clean_ROI
 from lib.plots import princ_angle
 import matplotlib.pyplot as plt
@@ -51,7 +53,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     
     # force WCS to convention PCi_ja unitary, cdelt in deg
     for header in headers:
-        new_wcs = wcs.WCS(header).deepcopy()
+        new_wcs = WCS(header).deepcopy()
         if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt == np.array([1., 1.])).all():
             # Update WCS with relevant information
             if new_wcs.wcs.has_cd():
@@ -69,6 +71,16 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             for key, val in new_wcs.to_header().items():
                 header[key] = val
         header['orientat'] = princ_angle(float(header['orientat']))
+
+    # force WCS for POL60 to have same pixel size as POL0 and POL120
+    is_pol60 = np.array([head['filtnam1'].lower()=='pol60' for head in headers],dtype=bool)
+    cdelt = np.array([WCS(head).wcs.cdelt for head in headers])
+    if np.unique(cdelt[np.logical_not(is_pol60)],axis=0).size!=2:
+        print(np.unique(cdelt[np.logical_not(is_pol60)],axis=0).size)
+        raise ValueError("Not all images have same pixel size")
+    else:
+        for head in np.array(headers,dtype=object)[is_pol60]:
+            head['cdelt1'],head['cdelt2'] = np.unique(cdelt[np.logical_not(is_pol60)],axis=0)[0]
 
     if compute_flux:
         for i in range(len(infiles)):
@@ -118,7 +130,7 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     #Create new WCS object given the modified images
     ref_header = headers[0]
     exp_tot = np.array([header['exptime'] for header in headers]).sum()
-    new_wcs = wcs.WCS(ref_header).deepcopy()
+    new_wcs = WCS(ref_header).deepcopy()
     
     if data_mask.shape != (1,1):
         vertex = clean_ROI(data_mask)

@@ -119,7 +119,7 @@ def sky_part(img):
     # Intensity range
     sky_med = np.median(rand_pix)
     sig = np.min([img[img<sky_med].std(),img[img>sky_med].std()])
-    sky_range = [sky_med-2.*sig, sky_med+sig]
+    sky_range = [sky_med-2.*sig, np.max([sky_med+sig,7e-4])]    #Detector background average FOC Data Handbook Sec. 7.6
 
     sky = img[np.logical_and(img>=sky_range[0],img<=sky_range[1])]
     return sky, sky_range
@@ -170,7 +170,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
     savename : str, optional
         Name of the figure the map should be saved to. If None, the map won't
         be saved (only displayed). Only used if display is True.
-        Defaults to None.
+        Defaults to None.CNRS-Unistra Labo ObsAstroS
     plots_folder : str, optional
         Relative (or absolute) filepath to the folder in wich the map will
         be saved. Not used if savename is None.
@@ -212,18 +212,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
        
         error_bkg[i] *= bkg
        
-        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
-        #wavelength dependence of the polariser filters
-        #estimated to less than 1%
-        err_wav = data[i]*0.01
-        #difference in PSFs through each polarizers
-        #estimated to less than 3%
-        err_psf = data[i]*0.03
-        #flatfielding uncertainties
-        #estimated to less than 3%
-        err_flat = data[i]*0.03
-
-        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
         
         #Substract background
         if subtract_error>0:
@@ -327,18 +316,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         
         error_bkg[i] *= bkg
        
-        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
-        #wavelength dependence of the polariser filters
-        #estimated to less than 1%
-        err_wav = data[i]*0.01
-        #difference in PSFs through each polarizers
-        #estimated to less than 3%
-        err_psf = data[i]*0.03
-        #flatfielding uncertainties
-        #estimated to less than 3%
-        err_flat = data[i]*0.03
-
-        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
         
         #Substract background
         if subtract_error > 0:
@@ -435,18 +413,7 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15,15), subtract_error=True,
         bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)*subtract_error if subtract_error>0 else np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_bkg[i] *= bkg
        
-        # Quadratically add uncertainties in the "correction factors" (see Kishimoto 1999)
-        #wavelength dependence of the polariser filters
-        #estimated to less than 1%
-        err_wav = data[i]*0.01
-        #difference in PSFs through each polarizers
-        #estimated to less than 3%
-        err_psf = data[i]*0.03
-        #flatfielding uncertainties
-        #estimated to less than 3%
-        err_flat = data[i]*0.03
-
-        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2 + err_wav**2 + err_psf**2 + err_flat**2)
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
         
         #Substract background
         if subtract_error>0.:
