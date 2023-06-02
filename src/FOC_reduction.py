@@ -28,7 +28,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
         algo="richardson"
     
     # Initial crop
-    display_crop = True
+    display_crop = False
     
     # Background estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51,51))
@@ -58,7 +58,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = False           #Whether to display all polarization map outputs
+    final_display = True           #Whether to display all polarization map outputs
     
     # Polarization map output
     SNRp_cut = 3.    #P measurments with SNR>3
@@ -87,6 +87,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
         plots_folder = data_folder.replace("data","plots")
     except:
         plots_folder = "."
+    if not path_exists(plots_folder):
+        system("mkdir -p {0:s} ".format(plots_folder))
     infiles = [p[1] for p in prod]
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
