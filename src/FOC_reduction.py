@@ -28,12 +28,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
         algo="richardson"
     
     # Initial crop
-    display_crop = False
+    display_crop = True
     
     # Background estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51,51))
-    subtract_error = 1.25
-    display_error = False
+    subtract_error = 1.00
+    display_error = True
     
     # Data binning
     rebin = True
@@ -42,12 +42,14 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     rebin_operation = 'sum'     #sum or average
     
     # Alignement
-    align_center = 'image'          #If None will align image to image center
+    align_center = 'center'          #If None will not align the images
+    display_bkg = False
+    display_align = False
     display_data = False
     
     # Smoothing
-    smoothing_function = 'gaussian'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = None           #If None, no smoothing is done
+    smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     
     # Rotation
@@ -56,7 +58,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     
     # Final crop
     crop = False                    #Crop to desired ROI
-    final_display = True           #Whether to display all polarization map outputs
+    final_display = False           #Whether to display all polarization map outputs
     
     # Polarization map output
     SNRp_cut = 3.    #P measurments with SNR>3
@@ -77,15 +79,15 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
             target = input("Target name:\n>")
     else:
         target, products = retrieve_products(target,proposal_id,output_dir=output_dir)
-        prod = products[0]
-        for prods in products[1:]:
+        prod = products.pop()
+        for prods in products:
             main(target=target,infiles=["/".join(pr) for pr in prods],output_dir=output_dir)
-    data_folder = prod[0,0]
+    data_folder = prod[0][0]
     try:
         plots_folder = data_folder.replace("data","plots")
     except:
         plots_folder = "."
-    infiles = prod[:,1]
+    infiles = [p[1] for p in prod]
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target,"FOC"])
@@ -98,6 +100,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
             figtype = "full"
     else:
         figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),"".join(["{0:.2f}".format(smoothing_FWHM).replace(".",""),smoothing_scale])])    #additionnal informations
+    if align_center is None:
+        figtype += "_not_aligned"
 
     # Crop data to remove outside blank margins.
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0., inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
@@ -110,8 +114,14 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     background = None
     data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([figname,"errors"]), plots_folder=plots_folder, return_background=True)
 
+    if display_bkg:
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,"bkg"]), plots_folder=plots_folder)
+
     # Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
+
+    if display_align:
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,"center",str(align_center)]), plots_folder=plots_folder)
 
     # Rebin data to desired pixel size.
     if rebin:
@@ -125,7 +135,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
 
     #Plot array for checking output
     if display_data and px_scale.lower() not in ['full','integrate']:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,"center",align_center]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,"rebin"]), plots_folder=plots_folder)
 
     background = np.array([np.array(bkg).reshape(1,1) for bkg in background])
     background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1']==head['filtnam1'] for h in headers],dtype=bool)].mean())**2/np.sum([h['filtnam1']==head['filtnam1'] for h in headers]))).reshape(1,1) for bkg,head in zip(background,headers)])

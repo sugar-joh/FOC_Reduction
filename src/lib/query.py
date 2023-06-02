@@ -91,7 +91,7 @@ def get_product_list(target=None, proposal_id=None):
         used_pol = np.zeros(3)
         for dataset in obs[obs['Proposal ID'] == pid]:
             used_pol[polfilt[dataset['Filters'][0]]] += 1
-        if np.all(used_pol < 1):
+        if np.any(used_pol < 1):
             obs.remove_rows(np.arange(len(obs))[obs['Proposal ID'] == pid])
 
     tab = unique(obs, ['Target name', 'Proposal ID'])
@@ -134,8 +134,8 @@ def get_product_list(target=None, proposal_id=None):
     for prod in products:
         prod['proposal_id'] = results['Proposal ID'][results['Dataset']==prod['productFilename'][:len(results['Dataset'][0])].upper()][0]
     
-    #for prod in products:
-    #    prod['target_name'] = observations['target_name'][observation['obsid']==prod['obsID']]
+    for prod in products:
+        prod['target_name'] = observations['target_name'][observations['obsid']==prod['obsID']][0]
     tab = unique(products, ['target_name', 'proposal_id'])
     if np.all(tab['target_name']==tab['target_name'][0]):
         target = tab['target_name'][0]
@@ -156,7 +156,7 @@ def retrieve_products(target=None, proposal_id=None, output_dir='./data'):
         filepaths = []
         #obs_dir = path_join(data_dir, obs['prodposal_id'])
         #if obs['target_name']!=target:
-        obs_dir = path_join(path_join(output_dir, obs['target_name']), obs['proposal_id'])
+        obs_dir = path_join(path_join(output_dir, target), obs['proposal_id'])
         if not path_exists(obs_dir):
             system("mkdir -p {0:s} {1:s}".format(obs_dir,obs_dir.replace("data","plots")))
         for file in products['productFilename'][products['Obs'] == obs['Obs']]:
@@ -169,7 +169,7 @@ def retrieve_products(target=None, proposal_id=None, output_dir='./data'):
             filepaths.append([obs_dir,file])
         prodpaths.append(np.array(filepaths,dtype=str))
 
-    return target, np.array(prodpaths)
+    return target, prodpaths
 
 
 if __name__ == "__main__":

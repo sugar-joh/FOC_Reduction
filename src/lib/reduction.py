@@ -290,7 +290,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
         crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
 
     if display:
-        plt.rcParams.update({'font.size': 20})
+        plt.rcParams.update({'font.size': 15})
         fig, ax = plt.subplots(figsize=(10,10))
         convert_flux = headers[0]['photflam']
         data = deepcopy(data_array[0]*convert_flux)
@@ -326,7 +326,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5,
 
         if not(savename is None):
             #fig.suptitle(savename+'_'+filt+'_crop_region')
-            fig.savefig(plots_folder+savename+'_'+filt+'_crop_region.png',
+            fig.savefig("/".join([plots_folder,savename+'_'+filt+'_crop_region.png']),
                     bbox_inches='tight')
             plot_obs(data_array, headers, vmin=convert_flux*data_array[data_array>0.].mean()/5.,
                     vmax=convert_flux*data_array[data_array>0.].max(), rectangle=[rectangle,]*len(headers),
@@ -730,11 +730,12 @@ def align_data(data_array, headers, error_array=None, background=None,
 
     data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
-
+    do_shift = True
     if ref_center is None:
         # Define the center of the reference image to be the center pixel
         #if None have been specified
         ref_center = (np.array(ref_data.shape)/2).astype(int)
+        do_shift = False
     elif ref_center.lower() in ['max', 'flux', 'maxflux', 'max_flux']:
         # Define the center of the reference image to be the pixel of max flux.
         ref_center = np.unravel_index(np.argmax(ref_data),ref_data.shape)
@@ -767,8 +768,10 @@ def align_data(data_array, headers, error_array=None, background=None,
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(error_array[i])
         # Shift images to align
-        rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
-        rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
+        if do_shift:
+            rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
+            rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
+        
         curr_mask = sc_shift(res_mask, shift, order=1, cval=False)
         mask_vertex = clean_ROI(curr_mask)
         rescaled_mask[i,mask_vertex[2]:mask_vertex[3],mask_vertex[0]:mask_vertex[1]] = True

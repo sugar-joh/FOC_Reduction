@@ -79,8 +79,8 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
         print(np.unique(cdelt[np.logical_not(is_pol60)],axis=0).size)
         raise ValueError("Not all images have same pixel size")
     else:
-        for head in np.array(headers,dtype=object)[is_pol60]:
-            head['cdelt1'],head['cdelt2'] = np.unique(cdelt[np.logical_not(is_pol60)],axis=0)[0]
+        for i in np.arange(len(headers))[is_pol60]:
+            headers[i]['cdelt1'],headers[i]['cdelt2'] = np.unique(cdelt[np.logical_not(is_pol60)],axis=0)[0]
 
     if compute_flux:
         for i in range(len(infiles)):

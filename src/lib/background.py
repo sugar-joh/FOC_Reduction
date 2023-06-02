@@ -56,6 +56,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     formatter = mdates.ConciseDateFormatter(locator)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
+    ax.set_ylim(bottom=0.)
     ax.set_xlabel("Observation date and time")
     ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     plt.legend()

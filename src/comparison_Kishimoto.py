@@ -21,6 +21,9 @@ root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068','5144')
 filename_S = "NGC1068_FOC_b_10px.fits"
 plt.rcParams.update({'font.size': 15})
 
+SNRi_cut = 30.
+SNRp_cut = 3.
+
 data_K = {}
 data_S = {}
 for d,i in zip(['I','Q','U','P','PA','sI','sQ','sU','sP','sPA'],[0,1,2,5,8,(3,0,0),(3,1,1),(3,2,2),6,9]):
@@ -59,7 +62,7 @@ for d in [data_S, data_K]:
     d['SNRp'][d['sP']>0.] = d['P'][d['sP']>0.]/d['sP'][d['sP']>0.]
     d['SNRi'] = np.zeros(d['I'].shape)
     d['SNRi'][d['sI']>0.] = d['I'][d['sI']>0.]/d['sI'][d['sI']>0.]
-    d['mask'] = np.logical_and(d['SNRi']>30,d['SNRp']>5)
+    d['mask'] = np.logical_and(d['SNRi']>SNRi_cut,d['SNRp']>SNRp_cut)
 data_S['mask'], data_K['mask'] = np.logical_and(data_S['mask'],data_K['mask']), np.logical_and(data_S['mask'],data_K['mask'])
 
 
@@ -121,7 +124,7 @@ im0 = ax.imshow(data_S['I']*convert_flux,norm=LogNorm(data_S['I'][data_S['I']>0]
 quiv0 = ax.quiver(data_S['X'],data_S['Y'],data_S['xy_U'],data_S['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.2,color='b',alpha=0.75, label="PA through this pipeline")
 quiv1 = ax.quiver(data_K['X'],data_K['Y'],data_K['xy_U'],data_K['xy_V'],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='r',alpha=0.75, label="PA through Kishimoto's pipeline")
 
-ax.set_title(r"$SNR_P \geq 5 \; & \; SNR_I \geq 30$")
+ax.set_title(r"$SNR_P \geq$ "+str(SNRi_cut)+r"$\; & \; SNR_I \geq $"+str(SNRp_cut))
 #ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
 ax.coords[0].set_axislabel('Right Ascension (J2000)')
 ax.coords[0].set_axislabel_position('b')

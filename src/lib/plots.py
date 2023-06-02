@@ -139,6 +139,7 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
         if vmin is None or vmax is None:
             vmin, vmax = convert*data[data>0.].min()/10., convert*data[data>0.].max()
         #im = axe.imshow(convert*data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
+        data[data*convert<vmin*10.] = vmin*10./convert
         im = axe.imshow(convert*data, norm=LogNorm(vmin,vmax), origin='lower', cmap='gray')
         if not(rectangle is None):
             x, y, width, height, angle, color = rectangle[i]
@@ -320,9 +321,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         # If no display selected, show intensity map
         display='i'
         if mask.sum() > 0.:
-            vmin, vmax = 1/5.0*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         else:
-            vmin, vmax = 1/5.0*np.mean(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -334,9 +335,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         display='pf'
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
         if mask.sum() > 0.:
-            vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         else:
-            vmin, vmax = 1.*np.mean(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         im = ax.imshow(stkI.data*convert_flux*pol.data, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -1787,12 +1788,12 @@ class pol_map(object):
             self.display_selection = "total_flux"
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = 1/5.0*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
+            vmin, vmax = 1./2.*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
             self.data = self.I*self.convert_flux*self.P
-            vmin, vmax = 1/2.0*np.median(self.I[self.I > 0.]*self.convert_flux), np.max(self.I[self.I > 0.]*self.convert_flux)
+            vmin, vmax = 1./2.*np.median(self.I[self.I > 0.]*self.convert_flux), np.max(self.I[self.I > 0.]*self.convert_flux)
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_deg']:
