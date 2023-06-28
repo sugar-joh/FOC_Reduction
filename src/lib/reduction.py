@@ -68,6 +68,9 @@ globals()['pol_efficiency'] = {'pol0' : 0.92, 'pol60' : 0.92, 'pol120' : 0.91}
 globals()['theta'] = np.array([180.*np.pi/180., 60.*np.pi/180., 120.*np.pi/180.])
 # Uncertainties on the orientation of the polarizers' axes taken to be 3deg (see Nota et. al 1996, p36; Robinson & Thomson 1995)
 globals()['sigma_theta'] = np.array([3.*np.pi/180., 3.*np.pi/180., 3.*np.pi/180.])
+# Image shift between polarizers as measured by Hodge (1995)
+globals()['pol_shift'] = {'pol0' : np.array([0.,0.])*1., 'pol60' : np.array([3.63,-0.68])*1., 'pol120' : np.array([0.65,0.20])*1.}
+globals()['sigma_shift'] = {'pol0' : [0.3,0.3], 'pol60' : [0.3,0.3], 'pol120' : [0.3,0.3]}
 
 
 def princ_angle(ang):
@@ -598,7 +601,6 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             Dxy = image.shape/new_shape
             if (Dxy < 1.).any():
                 raise ValueError("Requested pixel size is below resolution.")
-            new_shape = np.ceil(image.shape/Dxy).astype(int)
 
             # Rebin data
             rebin_data = bin_ndarray(image, new_shape=new_shape,
@@ -769,6 +771,10 @@ def align_data(data_array, headers, error_array=None, background=None,
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(error_array[i])
         # Shift images to align
         if do_shift:
+            rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
+            rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
+        else:
+            shift = pol_shift[headers[i]['filtnam1'].lower()]
             rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
             rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
         
