@@ -15,3 +15,7 @@ ipython_config.py
 *.zip
 *.tar
 *.tar.xz
+
+# Remove local data and plots folders
+data/
+plots/
