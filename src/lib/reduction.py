@@ -575,8 +575,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
     if instr == 'FOC':
         HST_aper = 2400.    # HST aperture in mm
         Dxy_arr = np.ones((data_array.shape[0],2))
-        for i, enum in enumerate(list(zip(data_array, error_array, headers))):
-            image, error, header = enum
+        for i, (image, error, header) in enumerate(list(zip(data_array, error_array, headers))):
             # Get current pixel size
             w = WCS(header).deepcopy()
             new_header = deepcopy(header)
@@ -592,8 +591,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
                 raise ValueError("'{0:s}' invalid scale for binning.".format(scale))
         new_shape = np.ceil(min(image.shape/Dxy_arr,key=lambda x:x[0]+x[1])).astype(int)
 
-        for i, enum in enumerate(list(zip(data_array, error_array, headers))):
-            image, error, header = enum
+        for i, (image, error, header) in enumerate(list(zip(data_array, error_array, headers))):
             # Get current pixel size
             w = WCS(header).deepcopy()
             new_header = deepcopy(header)
@@ -617,21 +615,12 @@ def rebin_array(data_array, error_array, headers, pxsize, scale,
             if operation.lower() in ["mean", "average", "avg"]:
                 new_error = np.sqrt(bin_ndarray(error**2,
                     new_shape=new_shape, operation='average'))
-                #new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
-                #    new_shape=new_shape, operation='average')[mask]/sum_image[mask])
-                #new_error[mask] = np.sqrt(bin_ndarray(error**2,
-                #    new_shape=new_shape, operation='average')[mask])
             else:
                 new_error = np.sqrt(bin_ndarray(error**2,
                     new_shape=new_shape, operation='sum'))
-                #new_error[mask] = np.sqrt(bin_ndarray(error**2*image,
-                #    new_shape=new_shape, operation='sum')[mask]/sum_image[mask])
-                #new_error[mask] = np.sqrt(bin_ndarray(error**2,
-                #    new_shape=new_shape, operation='sum')[mask])
             rebinned_error.append(np.sqrt(rms_image**2 + new_error**2))
 
             # Update header
-            #nw = w.slice((np.s_[::Dxy[0]], np.s_[::Dxy[1]]))
             nw = w.deepcopy()
             nw.wcs.cdelt *= Dxy
             nw.wcs.crpix /= Dxy
@@ -762,21 +751,20 @@ def align_data(data_array, headers, error_array=None, background=None,
         # Initialize rescaled images to background values
         rescaled_error[i] *= 0.01*background[i]
         # Get shifts and error by cross-correlation to ref_data
-        shift, error, phase_diff = phase_cross_correlation(ref_data/ref_data.max(), image/image.max(),
-                upsample_factor=upsample_factor)
+        if do_shift:
+            shift, error, _ = phase_cross_correlation(ref_data/ref_data.max(), image/image.max(),
+                    upsample_factor=upsample_factor)
+        else:
+            shift = pol_shift[headers[i]['filtnam1'].lower()]
+            error = sigma_shift[headers[i]['filtnam1'].lower()]
         # Rescale image to requested output
         rescaled_image[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(image)
         rescaled_error[i,res_shift[0]:res_shift[0]+shape[1],
                 res_shift[1]:res_shift[1]+shape[2]] = deepcopy(error_array[i])
         # Shift images to align
-        if do_shift:
-            rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
-            rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
-        else:
-            shift = pol_shift[headers[i]['filtnam1'].lower()]
-            rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
-            rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
+        rescaled_image[i] = sc_shift(rescaled_image[i], shift, order=1, cval=0.)
+        rescaled_error[i] = sc_shift(rescaled_error[i], shift, order=1, cval=background[i])
         
         curr_mask = sc_shift(res_mask, shift, order=1, cval=False)
         mask_vertex = clean_ROI(curr_mask)
@@ -792,9 +780,6 @@ def align_data(data_array, headers, error_array=None, background=None,
         #sum quadratically the errors
         rescaled_error[i] = np.sqrt(rescaled_error[i]**2 + error_shift**2)
             
-        #if i==1:
-            #np.savetxt("output/s_shift.txt",error_shift)
-
         shifts.append(shift)
         errors.append(error)
 

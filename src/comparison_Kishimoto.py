@@ -17,8 +17,8 @@ root_dir = path_join('/home/t.barnouin/Documents/Thesis/HST')
 root_dir_K = path_join(root_dir,'Kishimoto','output')
 root_dir_S = path_join(root_dir,'FOC_Reduction','output')
 root_dir_data_S = path_join(root_dir,'FOC_Reduction','data','NGC1068','5144')
-root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068','5144')
-filename_S = "NGC1068_FOC_b_10px.fits"
+root_dir_plot_S = path_join(root_dir,'FOC_Reduction','plots','NGC1068','5144','notaligned')
+filename_S = "NGC1068_FOC_b10.00pixel_not_aligned.fits"
 plt.rcParams.update({'font.size': 15})
 
 SNRi_cut = 30.
@@ -140,7 +140,8 @@ fig_dif_pa.savefig(path_join(root_dir_plot_S,"NGC1068_K_polang_diff.png"),bbox_i
 #####
 ###display both polarization maps to check consistency
 #####
-fig = plt.figure(num="Polarization maps comparison")
+#plt.rcParams.update({'font.size': 15})
+fig = plt.figure(num="Polarization maps comparison",figsize=(10,10))
 ax = fig.add_subplot(111, projection=wcs)
 fig.subplots_adjust(right=0.85)
 cbar_ax = fig.add_axes([0.88, 0.12, 0.01, 0.75])
@@ -164,7 +165,6 @@ ax.coords[1].set_ticklabel_position('l')
 #ax.axis('equal')
 
 cbar = plt.colorbar(im0, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-#plt.rcParams.update({'font.size': 8})
 ax.legend(loc='upper right')
 fig.savefig(path_join(root_dir_plot_S,"NGC1068_K_comparison.png"),bbox_inches="tight",dpi=300)
 

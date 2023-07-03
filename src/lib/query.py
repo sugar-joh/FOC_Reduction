@@ -137,7 +137,7 @@ def get_product_list(target=None, proposal_id=None):
     for prod in products:
         prod['target_name'] = observations['target_name'][observations['obsid']==prod['obsID']][0]
     tab = unique(products, ['target_name', 'proposal_id'])
-    if np.all(tab['target_name']==tab['target_name'][0]):
+    if len(tab)>1 and np.all(tab['target_name']==tab['target_name'][0]):
         target = tab['target_name'][0]
     
     products["Obs"] = [np.argmax(np.logical_and(tab['proposal_id']==data['proposal_id'],tab['target_name']==data['target_name']))+1 for data in products]

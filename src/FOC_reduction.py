@@ -33,7 +33,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     # Background estimation
     error_sub_type = 'freedman-diaconis'   #sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51,51))
     subtract_error = 1.00
-    display_error = True
+    display_error = False
     
     # Data binning
     rebin = True
@@ -93,15 +93,13 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target,"FOC"])
-    if smoothing_FWHM is None:
-        if px_scale in ['px','pixel','pixels']:
-            figtype = "".join(["b_",str(pxsize),'px'])
-        elif px_scale in ['arcsec','arcseconds','arcs']:
-            figtype = "".join(["b_","{0:.2f}".format(pxsize).replace(".",""),'arcsec'])
+    if rebin:
+        if not px_scale in ['full']:
+            figtype = "".join(["b","{0:.2f}".format(pxsize),px_scale])    #additionnal informations
         else:
             figtype = "full"
-    else:
-        figtype = "_".join(["".join([s[0] for s in smoothing_function.split("_")]),"".join(["{0:.2f}".format(smoothing_FWHM).replace(".",""),smoothing_scale])])    #additionnal informations
+    if not smoothing_FWHM is None:
+        figtype += "_"+"".join(["".join([s[0] for s in smoothing_function.split("_")]),"{0:.2f}".format(smoothing_FWHM),smoothing_scale])    #additionnal informations
     if align_center is None:
         figtype += "_not_aligned"
 
@@ -123,7 +121,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     data_array, error_array, headers, data_mask = proj_red.align_data(data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
 
     if display_align:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,"center",str(align_center)]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array>0.].min()*headers[0]['photflam'], vmax=data_array[data_array>0.].max()*headers[0]['photflam'], savename="_".join([figname,str(align_center)]), plots_folder=plots_folder)
 
     # Rebin data to desired pixel size.
     if rebin:
