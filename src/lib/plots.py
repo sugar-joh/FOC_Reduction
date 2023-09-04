@@ -728,7 +728,7 @@ class overplot_pol(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+    def overplot(self, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
@@ -774,7 +774,7 @@ class overplot_pol(align_maps):
         step_vec = 1
         X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black')
 
         #Display "other" intensity map
         vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
@@ -807,10 +807,10 @@ class overplot_pol(align_maps):
 
         self.fig2.canvas.draw()
 
-    def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
+    def plot(self, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
+        self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
         plt.show(block=True)
 
 
