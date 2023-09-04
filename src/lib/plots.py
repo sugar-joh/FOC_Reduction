@@ -972,7 +972,7 @@ class crop_map(object):
             self.ax = ax
             self.mask_alpha = 0.75
             self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
-                    drawtype='box', button=[1], interactive=True)
+                    button=[1])
             self.embedded = True
         self.display()
         plt.ion()
@@ -1020,7 +1020,7 @@ class crop_map(object):
 
         if self.fig.canvas.manager.toolbar.mode == '':
             self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
-                    drawtype='box', button=[1], interactive=True)
+                    button=[1])
 
         self.RSextent = deepcopy(self.extent)
         self.RScenter = deepcopy(self.center)
@@ -1084,7 +1084,7 @@ class crop_map(object):
 
             if self.fig.canvas.manager.toolbar.mode == '':
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
-                        drawtype='box', button=[1], interactive=True)
+                        button=[1])
         self.fig.canvas.draw_idle()
 
     def on_close(self, event) -> None:
@@ -1096,7 +1096,7 @@ class crop_map(object):
     def crop(self) -> None:
         if self.fig.canvas.manager.toolbar.mode == '':
             self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
-                    drawtype='box', button=[1], interactive=True)
+                    button=[1])
         self.bapply.on_clicked(self.apply_crop)
         self.breset.on_clicked(self.reset_crop)
         self.fig.canvas.mpl_connect('close_event', self.on_close)
@@ -1172,7 +1172,7 @@ class crop_Stokes(crop_map):
 
             if self.fig.canvas.manager.toolbar.mode == '':
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
-                        drawtype='box', button=[1], interactive=True)
+                        button=[1])
         self.fig.canvas.draw_idle()
 
     @property
