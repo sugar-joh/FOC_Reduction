@@ -86,6 +86,13 @@ def get_product_list(target=None, proposal_id=None):
     results = divide_proposal(results)
     obs = results.copy()
 
+    ### Remove single observations for which a FIND filter is used
+    to_remove=[]
+    for i in range(len(obs)):
+        if "F1ND" in obs[i]['Filters']:
+            to_remove.append(i)
+    obs.remove_rows(to_remove)
+    ### Remove observations for which a polarization filter is missing
     polfilt = {"POL0":0,"POL60":1,"POL120":2}
     for pid in np.unique(obs['Proposal ID']):
         used_pol = np.zeros(3)
