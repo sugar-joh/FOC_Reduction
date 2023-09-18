@@ -219,7 +219,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
 
 def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
-        step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
+        flux_lim=None, step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
     """
     Plots polarization map from Stokes HDUList.
     ----------
@@ -239,6 +239,10 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         Cut that should be applied to the signal-to-noise ratio on I.
         Any SNR < SNRi_cut won't be displayed.
         Defaults to 30. This value implies an uncertainty in P of 4.7%
+    flux_lim : float list, optional
+        Limits that should be applied to the flux colorbar.
+        Defaults to None, limits are computed on the background value and the
+        maximum value in the cut.
     step_vec : int, optional
         Number of steps between each displayed polarization vector.
         If step_vec = 2, every other vector will be displayed.
@@ -320,10 +324,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if display.lower() in ['intensity']:
         # If no display selected, show intensity map
         display='i'
-        if mask.sum() > 0.:
-            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        if flux_lim is None:
+            if mask.sum() > 0.:
+                vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            else:
+                vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         else:
-            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = flux_lim
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -334,10 +341,13 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         # Display polarisation flux
         display='pf'
         pf_mask = (stkI.data > 0.) * (pol.data > 0.)
-        if mask.sum() > 0.:
-            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+        if flux_lim is None:
+            if mask.sum() > 0.:
+                vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][mask])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            else:
+                vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
         else:
-            vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov.data[0,0][stkI.data > 0.])*convert_flux), np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = flux_lim
         im = ax.imshow(stkI.data*convert_flux*pol.data, norm=LogNorm(vmin,vmax), aspect='equal', cmap='inferno', alpha=1.)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsPf = np.linspace(vmax*0.01, vmax*0.99, 10)
@@ -1353,13 +1363,14 @@ class pol_map(object):
     """
     Class to interactively study polarization maps.
     """
-    def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=30., selection=None):
+    def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=30., flux_lim=None, selection=None):
 
         if type(Stokes) == str:
             Stokes = fits.open(Stokes)
         self.Stokes = deepcopy(Stokes)
         self.SNRp_cut = SNRp_cut
         self.SNRi_cut = SNRi_cut
+        self.flux_lim = flux_lim
         self.SNRi = deepcopy(self.SNRi_cut)
         self.SNRp = deepcopy(self.SNRp_cut)
         self.region = None
@@ -1782,18 +1793,26 @@ class pol_map(object):
         self.north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.Stokes[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
         ax.add_artist(self.north_dir)
 
-    def display(self, fig=None, ax=None):
+    def display(self, fig=None, ax=None, flux_lim=None):
         norm = None
         if self.display_selection is None:
             self.display_selection = "total_flux"
+        if flux_lim is None:
+            flux_lim = self.flux_lim
         if self.display_selection.lower() in ['total_flux']:
             self.data = self.I*self.convert_flux
-            vmin, vmax = 1./2.*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
+            if flux_lim is None:
+                vmin, vmax = 1./2.*np.median(self.data[self.data > 0.]), np.max(self.data[self.data > 0.])
+            else:
+                vmin, vmax = flux_lim
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_flux']:
             self.data = self.I*self.convert_flux*self.P
-            vmin, vmax = 1./2.*np.median(self.I[self.I > 0.]*self.convert_flux), np.max(self.I[self.I > 0.]*self.convert_flux)
+            if flux_lim is None:
+                vmin, vmax = 1./2.*np.median(self.I[self.I > 0.]*self.convert_flux), np.max(self.I[self.I > 0.]*self.convert_flux)
+            else:
+                vmin, vmax = flux_lim
             norm = LogNorm(vmin, vmax)
             label = r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_deg']:
@@ -1853,11 +1872,11 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'quiver'):
                 self.quiver.remove()
-            self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white',edgecolor='black')
+            self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.15, linewidth=0.5, color='white',edgecolor='black')
             fig.canvas.draw_idle()
             return self.quiver
         else:
-            ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white',edgecolor='black')
+            ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.15, linewidth=0.5, color='white',edgecolor='black')
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):
