@@ -476,8 +476,9 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     ax.axis('equal')
 
     if not savename is None:
-        #fig.suptitle(savename)
-        fig.savefig(path_join(plots_folder,savename+".png"),bbox_inches='tight',dpi=300)
+        if not savename[-4:] in ['.png', '.jpg']:
+            savename += '.pdf'
+        fig.savefig(path_join(plots_folder,savename),bbox_inches='tight',dpi=300)
 
     plt.show()
     return fig, ax
@@ -1612,7 +1613,7 @@ class pol_map(object):
                 self.pol_int(fig=save_fig,ax=save_ax)
                 save_fig.suptitle(r"{0:s} with $SNR_{{p}} \geq$ {1:d} and $SNR_{{I}} \geq$ {2:d}".format(self.targ, int(self.SNRp), int(self.SNRi)))
                 if not expression[-4:] in ['.png', '.jpg']:
-                    expression += '.png'
+                    expression += '.pdf'
                 save_fig.savefig(expression, bbox_inches='tight', dpi=200)
                 plt.close(save_fig)
                 text_save.set_val('')
