@@ -61,7 +61,12 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     plt.legend()
     if not(savename is None):
-        fig.savefig(path_join(plots_folder,savename+"_background_flux.png"), bbox_inches='tight')
+        this_savename = deepcopy(savename)
+        if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+            this_savename += '_background_flux.pdf'
+        else:
+            this_savename = savename[:-4]+"_background_flux"+savename[-4:]
+        fig.savefig(path_join(plots_folder,this_savename), bbox_inches='tight')
 
     if not(histograms is None):
         filt_obs = {"POL0":0, "POL60":0, "POL120":0}
@@ -80,7 +85,12 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
         ax_h.set_title("Histogram for each observation")
         plt.legend()
         if not(savename is None):
-            fig_h.savefig(path_join(plots_folder,savename+'_histograms.png'), bbox_inches='tight')
+            this_savename = deepcopy(savename)
+            if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+                this_savename += '_histograms.pdf'
+            else:
+                this_savename = savename[:-4]+"_histograms"+savename[-4:]
+            fig_h.savefig(path_join(plots_folder,this_savename), bbox_inches='tight')
 
     fig2, ax2 = plt.subplots(figsize=(10,10))
     data0 = data[0]*convert_flux[0]
@@ -105,7 +115,12 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
     if not(savename is None):
-        fig2.savefig(path_join(plots_folder,savename+'_'+filt+'_background_location.png'), bbox_inches='tight')
+        this_savename = deepcopy(savename)
+        if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+            this_savename += '_'+filt+'_background_location.pdf'
+        else:
+            this_savename = savename[:-4]+'_'+filt+'_background_location'+savename[-4:]
+        fig2.savefig(path_join(plots_folder,this_savename), bbox_inches='tight')
         if not(rectangle is None):
             plot_obs(data, headers, vmin=data[data > 0.].min()*convert_flux.mean(), vmax=data[data > 0.].max()*convert_flux.mean(), rectangle=rectangle,
                     savename=savename+"_background_location",plots_folder=plots_folder)

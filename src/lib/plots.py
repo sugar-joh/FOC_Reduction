@@ -163,7 +163,9 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
 
     if not (savename is None):
         #fig.suptitle(savename)
-        fig.savefig(path_join(plots_folder,savename+".png"),bbox_inches='tight')
+        if not savename[-4:] in ['.png', '.jpg', 'pdf']:
+            savename += '.pdf'
+        fig.savefig(path_join(plots_folder,savename),bbox_inches='tight')
     plt.show()
     return 0
 
@@ -213,7 +215,11 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
     if not (savename is None):
         #fig.suptitle(savename+"_IQU")
-        fig.savefig(path_join(plots_folder,savename+"_IQU.png"),bbox_inches='tight')
+        if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+            savename += '_IQU.pdf'
+        else:
+            savename = savename[:-4]+"_IQU"+savename[-4:]
+        fig.savefig(path_join(plots_folder,savename),bbox_inches='tight')
     plt.show()
     return 0
 
@@ -476,7 +482,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     ax.axis('equal')
 
     if not savename is None:
-        if not savename[-4:] in ['.png', '.jpg']:
+        if not savename[-4:] in ['.png', '.jpg', '.pdf']:
             savename += '.pdf'
         fig.savefig(path_join(plots_folder,savename),bbox_inches='tight',dpi=300)
 
@@ -723,6 +729,8 @@ class overplot_radio(align_maps):
         self.cr_other, = self.ax.plot(*crpix_other, 'g+')
 
         if not(savename is None):
+            if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+                savename += '.pdf'
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
         self.fig2.canvas.draw()
@@ -814,6 +822,8 @@ class overplot_pol(align_maps):
         self.cr_other, = self.ax.plot(*crpix_other, 'g+')
 
         if not(savename is None):
+            if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+                savename += '.pdf'
             self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
 
         self.fig2.canvas.draw()
@@ -916,7 +926,9 @@ class align_pol(object):
         ax.add_artist(pol_sc)
 
         if not savename is None:
-            fig.savefig(savename+".png",bbox_inches='tight',dpi=300)
+            if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+                savename += '.pdf'
+            fig.savefig(savename,bbox_inches='tight',dpi=300)
 
         plt.show(block=True)
         return fig, ax
@@ -1612,7 +1624,7 @@ class pol_map(object):
                 self.pol_vector(fig=save_fig,ax=save_ax)
                 self.pol_int(fig=save_fig,ax=save_ax)
                 save_fig.suptitle(r"{0:s} with $SNR_{{p}} \geq$ {1:d} and $SNR_{{I}} \geq$ {2:d}".format(self.targ, int(self.SNRp), int(self.SNRi)))
-                if not expression[-4:] in ['.png', '.jpg']:
+                if not expression[-4:] in ['.png', '.jpg', '.pdf']:
                     expression += '.pdf'
                 save_fig.savefig(expression, bbox_inches='tight', dpi=200)
                 plt.close(save_fig)
