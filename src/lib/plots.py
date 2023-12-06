@@ -17,6 +17,9 @@ prototypes :
     class overplot_radio(align_maps)
         Class inherited from align_maps to overplot radio data as contours.
     
+    class overplot_chandra(align_maps)
+        Class inherited from align_maps to overplot chandra data as contours.
+    
     class overplot_pol(align_maps)
         Class inherited from align_maps to overplot UV polarization vectors on other maps.
     
@@ -49,6 +52,7 @@ import matplotlib.patheffects as pe
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
 from astropy.io import fits
+from scipy.ndimage import zoom as sc_zoom
 
 
 def princ_angle(ang):
@@ -503,22 +507,30 @@ class align_maps(object):
         if len(self.map[0].data.shape) == 4:
             self.map[0].data = self.map[0].data[0,0]
         elif len(self.map[0].data.shape) == 3:
-            self.map[0].data = self.map[0].data[1]
+            self.map[0].data = self.map[0].data[0]
 
         self.wcs_other = deepcopy(WCS(self.other_map[0])).celestial
         if len(self.other_map[0].data.shape) == 4:
             self.other_map[0].data = self.other_map[0].data[0,0]
         elif len(self.other_map[0].data.shape) == 3:
-            self.other_map[0].data = self.other_map[0].data[1]
+            self.other_map[0].data = self.other_map[0].data[0]
 
         try:
-            convert_flux = self.map[0].header['photflam']
+            self.convert_flux = self.map[0].header['photflam']
         except KeyError:
-            convert_flux = 1.
+            self.convert_flux = 1.
         try:
-            other_convert = self.other_map[0].header['photflam']
+            self.pivot_wav = self.map[0].header['photplam']
         except KeyError:
-            other_convert = 1.
+            pass
+        try:
+            self.other_convert = self.other_map[0].header['photflam']
+        except KeyError:
+            self.other_convert = 1.
+        try:
+            self.other_pivot_wav = self.other_map[0].header['photplam']
+        except KeyError:
+            pass
 
         #Get data
         data = self.map[0].data
@@ -530,19 +542,24 @@ class align_maps(object):
         self.ax1 = self.fig.add_subplot(121, projection=self.wcs_map)
         self.ax1.set_facecolor('k')
 
-        vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
+        old_kwargs = deepcopy(kwargs)
+        vmin, vmax = np.min(data[data > 0.])*self.convert_flux, np.max(data[data > 0.])*self.convert_flux
         for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
             try:
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        im1 = self.ax1.imshow(data*convert_flux, aspect='equal', **kwargs)
+        im1 = self.ax1.imshow(data*self.convert_flux, aspect='equal', **kwargs)
 
         px_size = self.wcs_map.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         self.ax1.add_artist(px_sc)
 
+        try:
+            annote1 = self.ax1.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.pivot_wav), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+        except AttributeError:
+            pass
         try:
             north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
             self.ax1.add_artist(north_dir1)
@@ -557,20 +574,25 @@ class align_maps(object):
         self.ax2 = self.fig.add_subplot(122, projection=self.wcs_other)
         self.ax2.set_facecolor('k')
 
-        vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
+        kwargs = old_kwargs
+        vmin, vmax = np.min(other_data[other_data > 0.])*self.other_convert, np.max(other_data[other_data > 0.])*self.other_convert
         for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
             try:
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        im2 = self.ax2.imshow(other_data*other_convert, aspect='equal', **kwargs)
+        im2 = self.ax2.imshow(other_data*self.other_convert, aspect='equal', **kwargs)
 
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax2.add_artist(px_sc)
 
+        try:
+            annote2 = self.ax2.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_pivot_wav), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+        except AttributeError:
+            pass
         try:
             north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
             self.ax2.add_artist(north_dir2)
@@ -661,7 +683,7 @@ class overplot_radio(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., savename=None):
+    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
@@ -673,14 +695,14 @@ class overplot_radio(align_maps):
         pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
 
         other_data = self.other_map[0].data
-        other_convert = 1.
+        self.other_convert = 1.
         other_unit = self.other_map[0].header['bunit']
         if other_unit.lower() == 'jy/beam':
             other_unit = r"mJy/Beam"
-            other_convert = 1e3
+            self.other_convert = 1e3
         other_freq = self.other_map[0].header['crval3']
 
-        convert_flux = self.Stokes_UV[0].header['photflam']
+        self.convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
         pol.data[pol.data == 0.] = np.nan
@@ -698,8 +720,8 @@ class overplot_radio(align_maps):
         self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
 
         #Display UV intensity map with polarization vectors
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        im = self.ax.imshow(stkI.data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
+        im = self.ax.imshow(stkI.data*self.convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
@@ -707,11 +729,11 @@ class overplot_radio(align_maps):
         step_vec = 1
         X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         self.ax.autoscale(False)
 
         #Display other map as contours
-        other_cont = self.ax.contour(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), levels=other_levels*other_convert, colors='grey')
+        other_cont = self.ax.contour(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), levels=other_levels*self.other_convert, colors='grey')
         self.ax.clabel(other_cont, inline=True, fontsize=8)
 
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, other_unit))
@@ -741,6 +763,90 @@ class overplot_radio(align_maps):
         self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
         plt.show(block=True)
 
+class overplot_chandra(align_maps):
+    """
+    Class to overplot maps from different observations.
+    Inherit from class align_maps in order to get the same WCS on both maps.
+    """
+    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., vec_scale=2, zoom=1, savename=None):
+        self.Stokes_UV = self.map
+        self.wcs_UV = self.wcs_map
+        #Get Data
+        obj = self.Stokes_UV[0].header['targname']
+        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
+        stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
+        pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
+        pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
+        pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
+
+        other_data = sc_zoom(self.other_map[0].data,zoom)
+        self.wcs_other.wcs.crpix *= zoom
+        self.wcs_other.wcs.cdelt /= zoom
+        other_unit = 'counts'
+        if (other_levels < 100.).all() and (other_levels > 0.).all():
+            other_levels *= other_data.max()/100.
+
+        self.convert_flux = self.Stokes_UV[0].header['photflam']
+
+        #Compute SNR and apply cuts
+        pol.data[pol.data == 0.] = np.nan
+        SNRp = pol.data/pol_err.data
+        SNRp[np.isnan(SNRp)] = 0.
+        pol.data[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        SNRi[np.isnan(SNRi)] = 0.
+        pol.data[SNRi < SNRi_cut] = np.nan
+
+        plt.rcParams.update({'font.size': 16})
+        self.fig2 = plt.figure(figsize=(15,15))
+        self.ax = self.fig2.add_subplot(111, projection=self.wcs_UV)
+        self.ax.set_facecolor('k')
+        self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
+
+        #Display UV intensity map with polarization vectors
+        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
+        im = self.ax.imshow(stkI.data*self.convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
+        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+
+        pol.data[np.isfinite(pol.data)] = 1./2.
+        step_vec = 1
+        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
+        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
+        self.ax.autoscale(False)
+
+        #Display other map as contours
+        other_cont = self.ax.contour(other_data, transform=self.ax.get_transform(self.wcs_other), levels=other_levels, colors='grey')
+        self.ax.clabel(other_cont, inline=True, fontsize=8)
+
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with Chandra map in counts.".format(obj))
+
+        #Display pixel scale and North direction
+        fontprops = fm.FontProperties(size=16)
+        px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
+        px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
+        self.ax.add_artist(px_sc)
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
+        self.ax.add_artist(north_dir)
+
+        self.cr_map, = self.ax.plot(*self.wcs_map.wcs.crpix, 'r+')
+        crpix_other = self.wcs_map.world_to_pixel(self.wcs_other.pixel_to_world(*self.wcs_other.wcs.crpix))
+        self.cr_other, = self.ax.plot(*crpix_other, 'g+')
+
+        if not(savename is None):
+            if not savename[-4:] in ['.png', '.jpg', '.pdf']:
+                savename += '.pdf'
+            self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
+
+        self.fig2.canvas.draw()
+
+    def plot(self, levels, SNRp_cut=3., SNRi_cut=30., zoom=1, savename=None) -> None:
+        while not self.aligned:
+            self.align()
+        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, zoom=zoom, savename=savename)
+        plt.show(block=True)
+
 
 class overplot_pol(align_maps):
     """
@@ -758,13 +864,9 @@ class overplot_pol(align_maps):
         pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
         pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
 
-        convert_flux = self.Stokes_UV[0].header['photflam']
+        self.convert_flux = self.Stokes_UV[0].header['photflam']
 
         other_data = self.other_map[0].data
-        try:
-            other_convert = self.other_map[0].header['photflam']
-        except KeyError:
-            other_convert = 1.
 
         #Compute SNR and apply cuts
         pol.data[pol.data == 0.] = np.nan
@@ -782,8 +884,8 @@ class overplot_pol(align_maps):
         self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
 
         #Display Stokes I as contours
-        levels_stkI = np.rint(np.linspace(10,99,10))/100.*np.max(stkI.data[stkI.data > 0.]*convert_flux)
-        cont_stkI = self.ax.contour(stkI.data*convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.5)
+        levels_stkI = np.rint(np.linspace(10,99,10))/100.*np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
+        cont_stkI = self.ax.contour(stkI.data*self.convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.5)
         #self.ax.clabel(cont_stkI, inline=True, fontsize=8)
 
         self.ax.autoscale(False)
@@ -796,14 +898,14 @@ class overplot_pol(align_maps):
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black')
 
         #Display "other" intensity map
-        vmin, vmax = 0., np.max(other_data[other_data > 0.]*other_convert)
+        vmin, vmax = np.min(other_data[other_data > 0.]*self.other_convert), np.max(other_data[other_data > 0.]*self.other_convert)
         for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
             try:
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        im = self.ax.imshow(other_data*other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
+        im = self.ax.imshow(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
@@ -820,6 +922,11 @@ class overplot_pol(align_maps):
         self.cr_map, = self.ax.plot(*self.wcs_map.wcs.crpix, 'r+')
         crpix_other = self.wcs_map.world_to_pixel(self.wcs_other.pixel_to_world(*self.wcs_other.wcs.crpix))
         self.cr_other, = self.ax.plot(*crpix_other, 'g+')
+        
+        try:
+            annote2 = self.ax.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_pivot_wav), color='white', fontsize=15, xy=(0.01, 0.98), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+        except AttributeError:
+            pass
 
         if not(savename is None):
             if not savename[-4:] in ['.png', '.jpg', '.pdf']:

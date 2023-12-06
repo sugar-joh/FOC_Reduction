@@ -54,10 +54,10 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     # force WCS to convention PCi_ja unitary, cdelt in deg
     for header in headers:
         new_wcs = WCS(header).deepcopy()
-        if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt == np.array([1., 1.])).all():
+        if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt[:2] == np.array([1., 1.])).all():
             # Update WCS with relevant information
             if new_wcs.wcs.has_cd():
-                old_cd = new_wcs.wcs.cd
+                old_cd = new_wcs.wcs.cd[:2,:2]
                 del new_wcs.wcs.cd
                 keys = list(new_wcs.to_header().keys())+['CD1_1','CD1_2','CD2_1','CD2_2']
                 for key in keys:
