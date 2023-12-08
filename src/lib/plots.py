@@ -1068,7 +1068,7 @@ class crop_map(object):
     """
     Class to interactively crop a map to desired Region of Interest
     """
-    def __init__(self, hdul, fig=None, ax=None):
+    def __init__(self, hdul, fig=None, ax=None, **kwargs):
         #Get data
         self.cropped=False
         self.hdul = hdul
@@ -1080,10 +1080,13 @@ class crop_map(object):
             self.convert_flux = self.header['photflam']
         except KeyError:
             self.convert_flux = 1.
+        try:
+            self.kwargs = kwargs
+        except AttributeError:
+            self.kwargs = {}
 
         #Plot the map
         plt.rcParams.update({'font.size': 12})
-        plt.ioff()
         if fig is None:
             self.fig = plt.figure(figsize=(15,15))
             self.fig.suptitle("Click and drag to crop to desired Region of Interest.")
@@ -1104,28 +1107,36 @@ class crop_map(object):
             self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                     button=[1])
             self.embedded = True
-        self.display()
-        plt.ion()
+        self.display(self.data, self.wcs, self.convert_flux, **self.kwargs)
 
         self.extent = np.array([0.,self.data.shape[0],0., self.data.shape[1]])
         self.center = np.array(self.data.shape)/2
         self.RSextent = deepcopy(self.extent)
         self.RScenter = deepcopy(self.center)
 
-        plt.show()
 
-    def display(self, data=None, wcs=None, convert_flux=None):
+    def display(self, data=None, wcs=None, convert_flux=None, **kwargs):
         if data is None:
             data = self.data
         if wcs is None:
             wcs = self.wcs
         if convert_flux is None:
             convert_flux = self.convert_flux
+        if kwargs is None:
+            kwargs = self.kwargs
+        else:
+            kwargs = {**self.kwargs, **kwargs}
 
-        vmin, vmax = 0., np.max(data[data > 0.]*convert_flux)
+        vmin, vmax = np.min(data[data > 0.]*convert_flux), np.max(data[data > 0.]*convert_flux)
+        for key, value in [["cmap",[["cmap","inferno"]]], ["origin",[["origin","lower"]]], ["aspect",[["aspect","equal"]]], ["alpha",[["alpha",self.mask_alpha]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
         if hasattr(self, 'im'):
             self.im.remove()
-        self.im = self.ax.imshow(data*convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=self.mask_alpha, origin='lower')
+        self.im = self.ax.imshow(data*convert_flux, **kwargs)
         if hasattr(self, 'cr'):
             self.cr[0].set_data(*wcs.wcs.crpix)
         else:
@@ -1199,14 +1210,9 @@ class crop_map(object):
             self.header_crop.update(self.wcs_crop.to_header())
             self.hdul_crop = fits.HDUList([fits.PrimaryHDU(self.data_crop,self.header_crop)])
 
-            try:
-                convert_flux = self.header_crop['photflam']
-            except KeyError:
-                convert_flux = 1.
-
             self.rect_selector.clear()
             self.ax.reset_wcs(self.wcs_crop)
-            self.display(data=self.data_crop, wcs=self.wcs_crop, convert_flux=convert_flux)
+            self.display(data=self.data_crop, wcs=self.wcs_crop)
 
             xlim, ylim = self.RSextent[1::2]-self.RSextent[0::2]
             self.ax.set_xlim(0,xlim)
@@ -1215,6 +1221,7 @@ class crop_map(object):
             if self.fig.canvas.manager.toolbar.mode == '':
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                         button=[1])
+
         self.fig.canvas.draw_idle()
 
     def on_close(self, event) -> None:
@@ -1283,16 +1290,11 @@ class crop_Stokes(crop_map):
                     dataset.data = deepcopy(dataset.data[vertex[2]:vertex[3], vertex[0]:vertex[1]])
                 dataset.header.update(self.wcs_crop.to_header())
 
-            try:
-                convert_flux = self.hdul_crop[0].header['photflam']
-            except KeyError:
-                convert_flux = 1.
-
             self.data_crop = self.hdul_crop[0].data
             self.rect_selector.clear()
             if not self.embedded:
                 self.ax.reset_wcs(self.wcs_crop)
-                self.display(data=self.data_crop, wcs=self.wcs_crop, convert_flux=convert_flux)
+                self.display(data=self.data_crop, wcs=self.wcs_crop)
 
                 xlim, ylim = self.RSextent[1::2]-self.RSextent[0::2]
                 self.ax.set_xlim(0,xlim)
@@ -1303,11 +1305,34 @@ class crop_Stokes(crop_map):
             if self.fig.canvas.manager.toolbar.mode == '':
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                         button=[1])
+        # Update integrated values
+        mask = np.logical_and(self.hdul_crop[-1].data.astype(bool), self.hdul_crop[0].data >0)
+        I_diluted = self.hdul_crop[0].data[mask].sum()
+        Q_diluted = self.hdul_crop[1].data[mask].sum()
+        U_diluted = self.hdul_crop[2].data[mask].sum()
+        I_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0,0][mask]))
+        Q_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[1,1][mask]))
+        U_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[2,2][mask]))
+        IQ_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0,1][mask]**2))
+        IU_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0,2][mask]**2))
+        QU_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[1,2][mask]**2))
+
+        P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
+        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+
+        PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted,Q_diluted))
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+        
+        for dataset in self.hdul_crop:
+            dataset.header['P_int'] = (P_diluted, 'Integrated polarization degree')
+            dataset.header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
+            dataset.header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+            dataset.header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
         self.fig.canvas.draw_idle()
 
     @property
     def data_mask(self):
-        return self.hdul_crop[-1].data
+        return self.hdul_crop[-1].data.astype(int)
 
 
 class image_lasso_selector(object):

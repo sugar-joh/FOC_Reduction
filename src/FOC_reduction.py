@@ -12,9 +12,10 @@ import lib.reduction as proj_red    #Functions used in reduction pipeline
 import lib.plots as proj_plots      #Functions for plotting data
 from lib.deconvolve import from_file_psf
 from lib.query import retrieve_products, path_exists, system
+from matplotlib.colors import LogNorm
 
 
-def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
+def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=0, interactive=0):
     ## Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -53,18 +54,18 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     smoothing_scale = 'arcsec'      #pixel or arcsec
     
     # Rotation
-    rotate_stokes = True
     rotate_data = False             #rotation to North convention can give erroneous results
+    rotate_stokes = True
     
     # Final crop
-    crop = False                    #Crop to desired ROI
-    final_display = True           #Whether to display all polarization map outputs
+    #crop = False                    #Crop to desired ROI
+    #interactive = False             #Whether to output to intercative analysis tool
     
     # Polarization map output
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    flux_lim = [5e-19,5e-14]    #lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    vec_scale = 2.0
+    flux_lim = None    #lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
+    vec_scale = 5
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 
@@ -168,21 +169,21 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
     ## Step 5:
     # crop to desired region of interest (roi)
     if crop:
-        figtype += "crop"
-        stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test))
+        figtype += "_crop"
+        stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test),norm=LogNorm())
         stokescrop.crop()
         stokescrop.writeto("/".join([data_folder,"_".join([figname,figtype+".fits"])]))
-        Stokes_test, data_mask = stokescrop.hdul_crop, stokescrop.data_mask
+        Stokes_test, data_mask, headers = stokescrop.hdul_crop, stokescrop.data_mask, [dataset.header for dataset in stokescrop.hdul_crop]
 
     print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'],*proj_plots.sci_not(Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'],np.sqrt(Stokes_test[3].data[0,0][data_mask].sum())*headers[0]['photflam'],2,out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100.,np.ceil(headers[0]['p_int_err']*1000.)/10.))
-    print("PA_int = {0:.1f} ± {1:.1f} °".format(headers[0]['pa_int'],np.ceil(headers[0]['pa_int_err']*10.)/10.))
+    print("PA_int = {0:.1f} ±t {1:.1f} °".format(headers[0]['pa_int'],np.ceil(headers[0]['pa_int_err']*10.)/10.))
     # Background values
     print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'],*proj_plots.sci_not(I_bkg[0,0]*headers[0]['photflam'],np.sqrt(S_cov_bkg[0,0][0,0])*headers[0]['photflam'],2,out=int)))
     print("P_bkg = {0:.1f} ± {1:.1f} %".format(debiased_P_bkg[0,0]*100.,np.ceil(s_P_bkg[0,0]*1000.)/10.))
     print("PA_bkg = {0:.1f} ± {1:.1f} °".format(PA_bkg[0,0],np.ceil(s_PA_bkg[0,0]*10.)/10.))
     # Plot polarization map (Background is either total Flux, Polarization degree or Polarization degree error).
-    if px_scale.lower() not in ['full','integrate'] and final_display:
+    if px_scale.lower() not in ['full','integrate'] and not interactive:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype]), plots_folder=plots_folder)
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype,"I"]), plots_folder=plots_folder, display='Intensity')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype,"P_flux"]), plots_folder=plots_folder, display='Pol_Flux')
@@ -192,7 +193,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data"):
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype,"P_err"]), plots_folder=plots_folder, display='Pol_deg_err')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype,"SNRi"]), plots_folder=plots_folder, display='SNRi')
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname,figtype,"SNRp"]), plots_folder=plots_folder, display='SNRp')
-    elif final_display:
+    elif not interactive:
         proj_plots.polarization_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename="_".join([figname,figtype]), plots_folder=plots_folder, display='integrate')
     elif px_scale.lower() not in ['full', 'integrate']:
         pol_map = proj_plots.pol_map(Stokes_test, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
@@ -212,6 +213,10 @@ if __name__ == "__main__":
                         help='the full or relative path to the data products', default=None)
     parser.add_argument('-o','--output_dir', metavar='directory_path', required=False,
                         help='output directory path for the data products', type=str, default="./data")
+    parser.add_argument('-c','--crop', metavar='crop_boolean', required=False,
+                        help='whether to crop the analysis region', type=int, default=0)
+    parser.add_argument('-i','--interactive', metavar='interactive_boolean', required=False,
+                        help='whether to output to the interactive analysis tool', type=int, default=0)
     args = parser.parse_args()
-    exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files, output_dir=args.output_dir)
+    exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files, output_dir=args.output_dir, crop=args.crop, interactive=args.interactive)
     print("Finished with ExitCode: ",exitcode)
