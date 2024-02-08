@@ -38,7 +38,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     
     # Data binning
     rebin = True
-    pxsize = 0.10
+    pxsize = 0.05
     px_scale = 'arcsec'         #pixel, arcsec or full
     rebin_operation = 'sum'     #sum or average
     
@@ -50,7 +50,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           #If None, no smoothing is done
+    smoothing_FWHM = 0.10           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     
     # Rotation
@@ -65,7 +65,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     SNRp_cut = 3.    #P measurments with SNR>3
     SNRi_cut = 30.   #I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     flux_lim = None    #lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    vec_scale = 5
+    vec_scale = 3
     step_vec = 1    #plot all vectors in the array. if step_vec = 2, then every other vector will be plotted
                     # if step_vec = 0 then all vectors are displayed at full length
 

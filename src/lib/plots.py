@@ -52,6 +52,7 @@ import matplotlib.patheffects as pe
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
 from astropy.wcs import WCS
 from astropy.io import fits
+from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
 
 
@@ -564,7 +565,7 @@ class align_maps(object):
             north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
             self.ax1.add_artist(north_dir1)
         except KeyError:
-            pass
+            passCTYPE
 
         self.cr_map, = self.ax1.plot(*self.wcs_map.wcs.crpix, 'r+')
 
@@ -683,16 +684,16 @@ class overplot_radio(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None):
+    def overplot(self, other_levels, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
-        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
-        stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
-        pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
-        pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
-        pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
+        stkI = deepcopy(self.Stokes_UV['I_STOKES'].data)
+        stk_cov = deepcopy(self.Stokes_UV['IQU_COV_MATRIX'].data)
+        pol = deepcopy(self.Stokes_UV['POL_DEG_DEBIASED'].data)
+        pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
+        pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
 
         other_data = self.other_map[0].data
         self.other_convert = 1.
@@ -700,40 +701,46 @@ class overplot_radio(align_maps):
         if other_unit.lower() == 'jy/beam':
             other_unit = r"mJy/Beam"
             self.other_convert = 1e3
-        other_freq = self.other_map[0].header['crval3']
+        other_freq = self.other_map[0].header['crval3'] if hasattr(self.other_map[0].header,'srval3') else 1.
 
         self.convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
-        pol.data[pol.data == 0.] = np.nan
-        SNRp = pol.data/pol_err.data
+        pol[pol == 0.] = np.nan
+        SNRp = pol/pol_err
         SNRp[np.isnan(SNRp)] = 0.
-        pol.data[SNRp < SNRp_cut] = np.nan
-        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        pol[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI/np.sqrt(stk_cov[0,0])
         SNRi[np.isnan(SNRi)] = 0.
-        pol.data[SNRi < SNRi_cut] = np.nan
+        pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
         self.fig2 = plt.figure(figsize=(15,15))
-        self.ax = self.fig2.add_subplot(111, projection=self.wcs_UV)
+        self.ax = self.fig2.add_subplot(111, projection=self.wcs_UV.celestial)
         self.ax.set_facecolor('k')
         self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
 
         #Display UV intensity map with polarization vectors
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
-        im = self.ax.imshow(stkI.data*self.convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(stkI[stkI > 0.]*self.convert_flux)
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
+        im = self.ax.imshow(stkI*self.convert_flux, aspect='equal', **kwargs)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
-        pol.data[np.isfinite(pol.data)] = 1./2.
+        pol[np.isfinite(pol)] = 1./2.
         step_vec = 1
-        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
-        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        U, V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         self.ax.autoscale(False)
 
         #Display other map as contours
-        other_cont = self.ax.contour(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), levels=other_levels*self.other_convert, colors='grey')
+        other_cont = self.ax.contour(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other.celestial), levels=other_levels*self.other_convert, colors='grey')
         self.ax.clabel(other_cont, inline=True, fontsize=8)
 
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, other_unit))
@@ -757,10 +764,10 @@ class overplot_radio(align_maps):
 
         self.fig2.canvas.draw()
 
-    def plot(self, levels, SNRp_cut=3., SNRi_cut=30., savename=None) -> None:
+    def plot(self, levels, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename)
+        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
         plt.show(block=True)
 
 class overplot_chandra(align_maps):
@@ -773,11 +780,11 @@ class overplot_chandra(align_maps):
         self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
-        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
-        stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
-        pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
-        pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
-        pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
+        stkI = deepcopy(self.Stokes_UV['I_STOKES'].data)
+        stk_cov = deepcopy(self.Stokes_UV['IQU_COV_MATRIX'].data)
+        pol = deepcopy(self.Stokes_UV['POL_DEG_DEBIASED'].data)
+        pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
+        pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
 
         other_data = sc_zoom(self.other_map[0].data,zoom)
         self.wcs_other.wcs.crpix *= zoom
@@ -789,13 +796,13 @@ class overplot_chandra(align_maps):
         self.convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
-        pol.data[pol.data == 0.] = np.nan
-        SNRp = pol.data/pol_err.data
+        pol[pol == 0.] = np.nan
+        SNRp = pol/pol_err
         SNRp[np.isnan(SNRp)] = 0.
-        pol.data[SNRp < SNRp_cut] = np.nan
-        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        pol[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI/np.sqrt(stk_cov[0,0])
         SNRi[np.isnan(SNRi)] = 0.
-        pol.data[SNRi < SNRi_cut] = np.nan
+        pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
         self.fig2 = plt.figure(figsize=(15,15))
@@ -804,15 +811,15 @@ class overplot_chandra(align_maps):
         self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
 
         #Display UV intensity map with polarization vectors
-        vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
-        im = self.ax.imshow(stkI.data*self.convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
+        vmin, vmax = 0., np.max(stkI[stkI > 0.]*self.convert_flux)
+        im = self.ax.imshow(stkI*self.convert_flux, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
-        pol.data[np.isfinite(pol.data)] = 1./2.
+        pol[np.isfinite(pol)] = 1./2.
         step_vec = 1
-        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
-        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        U, V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         self.ax.autoscale(False)
 
@@ -858,44 +865,47 @@ class overplot_pol(align_maps):
         self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
-        stkI = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes_UV))])]
-        stk_cov = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes_UV))])]
-        pol = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes_UV))])]
-        pol_err = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes_UV))])]
-        pang = self.Stokes_UV[np.argmax([self.Stokes_UV[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes_UV))])]
+        stkI = deepcopy(self.Stokes_UV['I_STOKES'].data)
+        stk_cov = deepcopy(self.Stokes_UV['IQU_COV_MATRIX'].data)
+        pol = deepcopy(self.Stokes_UV['POL_DEG_DEBIASED'].data)
+        pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
+        pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
 
         self.convert_flux = self.Stokes_UV[0].header['photflam']
 
-        other_data = self.other_map[0].data
+        other_data = deepcopy(self.other_map[0].data)
 
         #Compute SNR and apply cuts
-        pol.data[pol.data == 0.] = np.nan
-        SNRp = pol.data/pol_err.data
+        pol[pol == 0.] = np.nan
+        SNRp = pol/pol_err
         SNRp[np.isnan(SNRp)] = 0.
-        pol.data[SNRp < SNRp_cut] = np.nan
-        SNRi = stkI.data/np.sqrt(stk_cov.data[0,0])
+        pol[SNRp < SNRp_cut] = np.nan
+        SNRi = stkI/np.sqrt(stk_cov[0,0])
         SNRi[np.isnan(SNRi)] = 0.
-        pol.data[SNRi < SNRi_cut] = np.nan
+        pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig2 = plt.figure(figsize=(15,15))
-        self.ax = self.fig2.add_subplot(111, projection=self.wcs_UV)
+        self.fig2, self.ax = plt.subplots(figsize=(15,15), subplot_kw=dict(projection=self.wcs_UV))
         self.ax.set_facecolor('k')
-        self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.9)
+        self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
 
         #Display Stokes I as contours
-        levels_stkI = np.rint(np.linspace(10,99,10))/100.*np.max(stkI.data[stkI.data > 0.]*self.convert_flux)
-        cont_stkI = self.ax.contour(stkI.data*self.convert_flux, transform=self.ax.get_transform(self.wcs_UV), levels=levels_stkI, colors='grey', alpha=0.5)
+        levels_stkI = np.logspace(np.log(3)/np.log(10),2.,5)/100.*np.max(stkI[stkI > 0.])*self.convert_flux
+        cont_stkI = self.ax.contour(stkI*self.convert_flux, levels=levels_stkI, colors='grey', alpha=0.5)
         #self.ax.clabel(cont_stkI, inline=True, fontsize=8)
 
         self.ax.autoscale(False)
 
         #Display full size polarization vectors
-        pol.data[np.isfinite(pol.data)] = 1./2.
+        if vec_scale is None:
+            self.vec_scale = 2.
+            pol[np.isfinite(pol)] = 1./2.
+        else:
+            self.vec_scale = vec_scale
         step_vec = 1
-        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
-        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
-        Q = self.ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black')
+        self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
+        self.Q = self.ax.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='gray')
 
         #Display "other" intensity map
         vmin, vmax = np.min(other_data[other_data > 0.]*self.other_convert), np.max(other_data[other_data > 0.]*self.other_convert)
@@ -905,9 +915,9 @@ class overplot_pol(align_maps):
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        im = self.ax.imshow(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
-        cbar_ax = self.fig2.add_axes([0.95, 0.12, 0.01, 0.75])
-        cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        self.im = self.ax.imshow(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
+        self.cbar_ax = self.fig2.add_axes([0.855, 0.15, 0.01, 0.7])
+        self.cbar = plt.colorbar(self.im, cax=self.cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
 
@@ -941,6 +951,15 @@ class overplot_pol(align_maps):
         self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
         plt.show(block=True)
 
+    def add_vector(self,position='center',pol_deg=1.,pol_ang=0.,**kwargs):
+        if position == 'center':
+            position = np.array(self.X.shape)/2.
+        if type(position) == SkyCoord:
+            position = self.wcs_map.world_to_pixel(position)
+
+        u, v = pol_deg*np.cos(np.radians(pol_ang)+np.pi/2.), pol_deg*np.sin(np.radians(pol_ang)+np.pi/2.)
+        self.new_vec = self.ax.quiver(*position,u,v,units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,**kwargs)
+        self.fig2.canvas.draw()
 
 class align_pol(object):
     def __init__(self, maps, **kwargs):
@@ -957,15 +976,15 @@ class align_pol(object):
     
     def single_plot(self, curr_map, wcs, v_lim=None, ax_lim=None, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
         #Get data
-        stkI = curr_map[np.argmax([curr_map[i].header['datatype']=='I_stokes' for i in range(len(curr_map))])]
-        stkQ = curr_map[np.argmax([curr_map[i].header['datatype']=='Q_stokes' for i in range(len(curr_map))])]
-        stkU = curr_map[np.argmax([curr_map[i].header['datatype']=='U_stokes' for i in range(len(curr_map))])]
-        stk_cov = curr_map[np.argmax([curr_map[i].header['datatype']=='IQU_cov_matrix' for i in range(len(curr_map))])]
-        pol = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_deg_debiased' for i in range(len(curr_map))])]
-        pol_err = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_deg_err' for i in range(len(curr_map))])]
-        pang = curr_map[np.argmax([curr_map[i].header['datatype']=='Pol_ang' for i in range(len(curr_map))])]
+        stkI = deepcopy(curr_map['I_STOKES'].data)
+        stkQ = deepcopy(curr_map['Q_STOKES'].data)
+        stkU = deepcopy(curr_map['U_STOKES'].data)
+        stk_cov = deepcopy(curr_map['IQU_COV_MATRIX'].data)
+        pol = deepcopy(curr_map['POL_DEG_DEBIASED'].data)
+        pol_err = deepcopy(curr_map['POL_DEG_ERR'].data)
+        pang = deepcopy(curr_map['POL_ANG'].data)
         try:
-            data_mask = curr_map[np.argmax([curr_map[i].header['datatype']=='Data_mask' for i in range(len(curr_map))])].data.astype(bool)
+            data_mask = curr_map['DATA_MASK'].data.astype(bool)
         except KeyError:
             data_mask = np.ones(stkI.shape).astype(bool)
 
@@ -973,16 +992,16 @@ class align_pol(object):
         convert_flux = curr_map[0].header['photflam']
 
         #Compute SNR and apply cuts
-        pol.data[pol.data == 0.] = np.nan
-        pol_err.data[pol_err.data == 0.] = np.nan
-        SNRp = pol.data/pol_err.data
+        pol[pol == 0.] = np.nan
+        pol_err[pol_err == 0.] = np.nan
+        SNRp = pol/pol_err
         SNRp[np.isnan(SNRp)] = 0.
-        pol.data[SNRp < SNRp_cut] = np.nan
+        pol[SNRp < SNRp_cut] = np.nan
 
-        maskI = stk_cov.data[0,0] > 0
-        SNRi = np.zeros(stkI.data.shape)
-        SNRi[maskI] = stkI.data[maskI]/np.sqrt(stk_cov.data[0,0][maskI])
-        pol.data[SNRi < SNRi_cut] = np.nan
+        maskI = stk_cov[0,0] > 0
+        SNRi = np.zeros(stkI.shape)
+        SNRi[maskI] = stkI[maskI]/np.sqrt(stk_cov[0,0][maskI])
+        pol[SNRi < SNRi_cut] = np.nan
 
         mask = (SNRp > SNRp_cut) * (SNRi > SNRi_cut)
 
@@ -1002,7 +1021,7 @@ class align_pol(object):
             ax.set(xlim=x_lim,ylim=y_lim)
 
         if v_lim is None:
-            vmin, vmax = 0., np.max(stkI.data[stkI.data > 0.]*convert_flux)
+            vmin, vmax = 0., np.max(stkI[stkI > 0.]*convert_flux)
         else:
             vmin, vmax = v_lim*convert_flux
         
@@ -1015,7 +1034,7 @@ class align_pol(object):
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
 
-        im = ax.imshow(stkI.data*convert_flux, aspect='equal', **kwargs)
+        im = ax.imshow(stkI*convert_flux, aspect='equal', **kwargs)
         cbar = plt.colorbar(im, cax=cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         px_size = wcs.wcs.get_cdelt()[0]*3600.
@@ -1026,8 +1045,8 @@ class align_pol(object):
         ax.add_artist(north_dir)
         
         step_vec = 1
-        X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
-        U, V = pol.data*np.cos(np.pi/2.+pang.data*np.pi/180.), pol.data*np.sin(np.pi/2.+pang.data*np.pi/180.)
+        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        U, V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         Q = ax.quiver(X[::step_vec,::step_vec],Y[::step_vec,::step_vec],U[::step_vec,::step_vec],V[::step_vec,::step_vec],units='xy',angles='uv',scale=0.5,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,color='w')
         pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         ax.add_artist(pol_sc)
@@ -1874,28 +1893,28 @@ class pol_map(object):
         return deepcopy(WCS(self.Stokes[0].header))
     @property
     def I(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='I_stokes' for i in range(len(self.Stokes))])].data
+        return self.Stokes['I_STOKES'].data
     @property
     def Q(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Q_stokes' for i in range(len(self.Stokes))])].data
+        return self.Stokes['Q_STOKES'].data
     @property
     def U(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='U_stokes' for i in range(len(self.Stokes))])].data
+        return self.Stokes['U_STOKES'].data
     @property
     def IQU_cov(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='IQU_cov_matrix' for i in range(len(self.Stokes))])].data
+        return self.Stokes['IQU_COV_MATRIX'].data
     @property
     def P(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_deg_debiased' for i in range(len(self.Stokes))])].data
+        return self.Stokes['POL_DEG_DEBIASED'].data
     @property
     def s_P(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_deg_err' for i in range(len(self.Stokes))])].data
+        return self.Stokes['POL_DEG_ERR'].data
     @property
     def PA(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Pol_ang' for i in range(len(self.Stokes))])].data
+        return self.Stokes['POL_ANG'].data
     @property
     def data_mask(self):
-        return self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Data_mask' for i in range(len(self.Stokes))])].data
+        return self.Stokes['DATA_MASK'].data
 
     def set_data_mask(self, mask):
         self.Stokes[np.argmax([self.Stokes[i].header['datatype']=='Data_mask' for i in range(len(self.Stokes))])].data = mask.astype(float)
