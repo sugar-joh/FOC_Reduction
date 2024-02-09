@@ -516,29 +516,15 @@ class align_maps(object):
         elif len(self.other_map[0].data.shape) == 3:
             self.other_map[0].data = self.other_map[0].data[0]
 
-        try:
-            self.convert_flux = self.map[0].header['photflam']
-        except KeyError:
-            self.convert_flux = 1.
-        try:
-            self.pivot_wav = self.map[0].header['photplam']
-        except KeyError:
-            pass
-        try:
-            self.other_convert = self.other_map[0].header['photflam']
-        except KeyError:
-            self.other_convert = 1.
-        try:
-            self.other_pivot_wav = self.other_map[0].header['photplam']
-        except KeyError:
-            pass
+        self.convert_flux = self.map[0].header['photflam'] if "PHOTFLAM" in list(self.map[0].header.keys()) else 1.
+        self.other_convert = self.other_map[0].header['photflam'] if "PHOTFLAM" in list(self.other_map[0].header.keys()) else 1.
 
         #Get data
         data = self.map[0].data
         other_data = self.other_map[0].data
 
         plt.rcParams.update({'font.size': 10})
-        self.fig = plt.figure(figsize=(10,10))
+        self.fig = plt.figure(figsize=(20,10))
         #Plot the UV map
         self.ax1 = self.fig.add_subplot(121, projection=self.wcs_map)
         self.ax1.set_facecolor('k')
@@ -557,17 +543,13 @@ class align_maps(object):
         px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         self.ax1.add_artist(px_sc)
 
-        try:
-            annote1 = self.ax1.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.pivot_wav), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
-        except AttributeError:
-            pass
-        try:
+        if 'PHOTPLAM' in list(self.map[0].header.keys()):
+            annote1 = self.ax1.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.map[0].header['photplam']), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+        if 'ORIENTAT' in list(self.map[0].header.keys()):
             north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
             self.ax1.add_artist(north_dir1)
-        except KeyError:
-            passCTYPE
 
-        self.cr_map, = self.ax1.plot(*self.wcs_map.wcs.crpix, 'r+')
+        self.cr_map, = self.ax1.plot(*(self.wcs_map.wcs.crpix-(1.,1.)), 'r+')
 
         self.ax1.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
 
@@ -590,17 +572,13 @@ class align_maps(object):
         px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax2.add_artist(px_sc)
 
-        try:
-            annote2 = self.ax2.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_pivot_wav), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
-        except AttributeError:
-            pass
-        try:
+        if 'PHOTPLAM' in list(self.other_map[0].header.keys()):
+            annote2 = self.ax2.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_map[0].header['photplam']), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+        if 'ORIENTAT' in list(self.other_map[0].header.keys()):
             north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
             self.ax2.add_artist(north_dir2)
-        except KeyError:
-            pass
 
-        self.cr_other, = self.ax2.plot(*self.wcs_other.wcs.crpix, 'r+')
+        self.cr_other, = self.ax2.plot(*(self.wcs_other.wcs.crpix-(1.,1.)), 'r+')
 
         self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
 
@@ -648,13 +626,13 @@ class align_maps(object):
 
     def apply_align(self, event=None):
         if np.array(self.cr_map.get_data()).shape == (2,1):
-            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())[:,0]
+            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())[:,0]+(1.,1.)
         else:
-            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())
+            self.wcs_map.wcs.crpix = np.array(self.cr_map.get_data())+(1.,1.)
         if np.array(self.cr_other.get_data()).shape == (2,1):
-            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())[:,0]
+            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())[:,0]+(1.,1.)
         else:
-            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())
+            self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())+(1.,1.)
         self.wcs_map.wcs.crval = np.array(self.wcs_map.pixel_to_world_values(*self.wcs_map.wcs.crpix))
         self.wcs_other.wcs.crval = self.wcs_map.wcs.crval
         self.fig.canvas.draw_idle()
@@ -871,8 +849,6 @@ class overplot_pol(align_maps):
         pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
         pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
 
-        self.convert_flux = self.Stokes_UV[0].header['photflam']
-
         other_data = deepcopy(self.other_map[0].data)
 
         #Compute SNR and apply cuts
@@ -885,27 +861,8 @@ class overplot_pol(align_maps):
         pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig2, self.ax = plt.subplots(figsize=(15,15), subplot_kw=dict(projection=self.wcs_UV))
-        self.ax.set_facecolor('k')
-        self.fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
-
-        #Display Stokes I as contours
-        levels_stkI = np.logspace(np.log(3)/np.log(10),2.,5)/100.*np.max(stkI[stkI > 0.])*self.convert_flux
-        cont_stkI = self.ax.contour(stkI*self.convert_flux, levels=levels_stkI, colors='grey', alpha=0.5)
-        #self.ax.clabel(cont_stkI, inline=True, fontsize=8)
-
-        self.ax.autoscale(False)
-
-        #Display full size polarization vectors
-        if vec_scale is None:
-            self.vec_scale = 2.
-            pol[np.isfinite(pol)] = 1./2.
-        else:
-            self.vec_scale = vec_scale
-        step_vec = 1
-        self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
-        self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='gray')
+        self.fig2, self.ax = plt.subplots(figsize=np.array(other_data.shape[::-1])/200+(1,2), subplot_kw=dict(projection=self.wcs_other))
+        self.fig2.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
 
         #Display "other" intensity map
         vmin, vmax = np.min(other_data[other_data > 0.]*self.other_convert), np.max(other_data[other_data > 0.]*self.other_convert)
@@ -915,29 +872,51 @@ class overplot_pol(align_maps):
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        self.im = self.ax.imshow(other_data*self.other_convert, transform=self.ax.get_transform(self.wcs_other), alpha=1., **kwargs)
-        self.cbar_ax = self.fig2.add_axes([0.855, 0.15, 0.01, 0.7])
-        self.cbar = plt.colorbar(self.im, cax=self.cbar_ax, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        self.im = self.ax.imshow(other_data*self.other_convert, alpha=1., label="{0:s} observation".format(self.other_map[0].header['instrume']), **kwargs)
+        unit = self.other_map[0].header['bunit'] if 'BUNIT' in list(self.other_map[0].header.keys()) else 'Arbitrary Unit'
+        self.cbar = self.fig2.colorbar(self.im, ax=self.ax, aspect=100, shrink=0.75, pad=0.025, label=r"$F_{{\lambda}}$ [{0:s}]".format(unit))
 
-        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="{0:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj))
+        self.ax.autoscale(False)
+
+        #Display Stokes I as contours
+        levels_stkI = np.logspace(np.log(3)/np.log(10),2.,5)/100.*np.max(stkI[stkI > 0.])*self.convert_flux
+        cont_stkI = self.ax.contour(stkI*self.convert_flux, levels=levels_stkI, colors='grey', alpha=0.5, transform=self.ax.get_transform(self.wcs_UV))
+
+        #Display full size polarization vectors
+        if vec_scale is None:
+            self.vec_scale = 2.
+            pol[np.isfinite(pol)] = 1./2.
+        else:
+            self.vec_scale = vec_scale
+        step_vec = 1
+        px_scale = self.wcs_other.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
+        self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
+        self.Q = self.ax.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=px_scale/self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1/px_scale,linewidth=0.5,color='white',edgecolor='black', transform=self.ax.get_transform(self.wcs_UV),label="HST/FOC polarisation map")
+
+        self.ax.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)",facecolor='k')
+        self.fig2.suptitle("{0:s} observation from {1:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj,self.other_map[0].header['instrume']),wrap=True)
 
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
-        px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
+        px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
         px_sc = AnchoredSizeBar(self.ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
         self.ax.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
+        north_dir = AnchoredDirectionArrows(self.ax.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color='w', arrow_props={'ec': 'w', 'fc': 'w', 'alpha': 1,'lw': 0.5})
         self.ax.add_artist(north_dir)
+        pol_sc = AnchoredSizeBar(self.ax.transData, self.vec_scale/px_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='white', fontproperties=fontprops)
+        self.ax.add_artist(pol_sc)
 
-        self.cr_map, = self.ax.plot(*self.wcs_map.wcs.crpix, 'r+')
-        crpix_other = self.wcs_map.world_to_pixel(self.wcs_other.pixel_to_world(*self.wcs_other.wcs.crpix))
-        self.cr_other, = self.ax.plot(*crpix_other, 'g+')
+        self.cr_map, = self.ax.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+', transform=self.ax.get_transform(self.wcs_UV))
+        self.cr_other, = self.ax.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+')
+
+        if "PHOTPLAM" in list(self.other_map[0].header.keys()):
+            self.legend_title = r"{0:s} image at $\lambda$ = {0:.0f} $\AA$".format(self.other_map[0].header['instrume'],self.other_map[0].header['photplam'])
+        else:
+            self.legend_title = r"{0:s} image".format(self.other_map[0].header['instrume'])
+
+        self.legend = self.ax.legend(title=self.legend_title,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
         
-        try:
-            annote2 = self.ax.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_pivot_wav), color='white', fontsize=15, xy=(0.01, 0.98), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
-        except AttributeError:
-            pass
-
         if not(savename is None):
             if not savename[-4:] in ['.png', '.jpg', '.pdf']:
                 savename += '.pdf'
@@ -955,11 +934,20 @@ class overplot_pol(align_maps):
         if position == 'center':
             position = np.array(self.X.shape)/2.
         if type(position) == SkyCoord:
-            position = self.wcs_map.world_to_pixel(position)
+            position = self.wcs_other.world_to_pixel(position)
 
         u, v = pol_deg*np.cos(np.radians(pol_ang)+np.pi/2.), pol_deg*np.sin(np.radians(pol_ang)+np.pi/2.)
-        self.new_vec = self.ax.quiver(*position,u,v,units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,**kwargs)
+        for key, value in [["scale",[["scale",self.vec_scale]]], ["width",[["width",0.1]]], ["color",[["color",'k']]]]:
+            try:
+                test = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
+        new_vec = self.ax.quiver(*position,u,v,units='xy',angles='uv',scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,**kwargs)
+        self.legend.remove()
+        self.legend = self.ax.legend(title=self.legend_title,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
         self.fig2.canvas.draw()
+        return new_vec
 
 class align_pol(object):
     def __init__(self, maps, **kwargs):
