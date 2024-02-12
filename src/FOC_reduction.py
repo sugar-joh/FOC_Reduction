@@ -38,7 +38,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     
     # Data binning
     rebin = True
-    pxsize = 0.05
+    pxsize = 0.10
     px_scale = 'arcsec'         #pixel, arcsec or full
     rebin_operation = 'sum'     #sum or average
     
@@ -50,7 +50,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     
     # Smoothing
     smoothing_function = 'combine'  #gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           #If None, no smoothing is done
+    smoothing_FWHM = 0.20           #If None, no smoothing is done
     smoothing_scale = 'arcsec'      #pixel or arcsec
     
     # Rotation
