@@ -43,7 +43,7 @@ from copy import deepcopy
 import numpy as np
 from os.path import join as path_join
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Circle
+from matplotlib.patches import Rectangle, Circle, FancyArrowPatch
 from matplotlib.path import Path
 from matplotlib.widgets import RectangleSelector, LassoSelector, Button, Slider, TextBox
 from matplotlib.colors import LogNorm
@@ -516,80 +516,88 @@ class align_maps(object):
         elif len(self.other_map[0].data.shape) == 3:
             self.other_map[0].data = self.other_map[0].data[0]
 
-        self.convert_flux = self.map[0].header['photflam'] if "PHOTFLAM" in list(self.map[0].header.keys()) else 1.
-        self.other_convert = self.other_map[0].header['photflam'] if "PHOTFLAM" in list(self.other_map[0].header.keys()) else 1.
+        self.convert_flux, self.map_unit = (float(self.map[0].header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(self.map[0].header.keys()) else (1., self.map[0].header['bunit'] if 'BUNIT' in list(self.map[0].header.keys()) else "Arbitray Units")
+        self.other_convert, self.other_map_unit = (float(self.other_map[0].header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(self.other_map[0].header.keys()) else (1., self.other_map[0].header['bunit'] if 'BUNIT' in list(self.other_map[0].header.keys()) else "Arbitray Units")
 
         #Get data
         data = self.map[0].data
         other_data = self.other_map[0].data
 
         plt.rcParams.update({'font.size': 10})
-        self.fig = plt.figure(figsize=(20,10))
-        #Plot the UV map
-        self.ax1 = self.fig.add_subplot(121, projection=self.wcs_map)
-        self.ax1.set_facecolor('k')
+        fontprops = fm.FontProperties(size=16)
+        self.fig_align = plt.figure(figsize=(20,10))
+        self.ax_map = self.fig_align.add_subplot(121, projection=self.wcs_map)
+        self.ax_other = self.fig_align.add_subplot(122, projection=self.wcs_other)
 
-        old_kwargs = deepcopy(kwargs)
-        vmin, vmax = np.min(data[data > 0.])*self.convert_flux, np.max(data[data > 0.])*self.convert_flux
-        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+        #Plot the UV map
+        other_kwargs = deepcopy(kwargs)
+        vmin, vmax = data[data > 0.].max()/1e3*self.convert_flux, data[data > 0.].max()*self.convert_flux
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["norm",LogNorm(vmin,vmax)]]]]:
             try:
                 test = kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        im1 = self.ax1.imshow(data*self.convert_flux, aspect='equal', **kwargs)
+        im1 = self.ax_map.imshow(data*self.convert_flux, aspect='equal', **kwargs)
 
-        px_size = self.wcs_map.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax1.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
-        self.ax1.add_artist(px_sc)
+        if kwargs['cmap'] in ['inferno','magma','Greys_r','binary_r','gist_yarg_r','gist_gray','gray','bone','pink','hot','afmhot','gist_heat','copper','gist_earth','gist_stern','gnuplot','gnuplot2','CMRmap','cubehelix','nipy_spectral','gist_ncar','viridis']:
+            self.ax_map.set_facecolor('black')
+            self.ax_other.set_facecolor('black')
+            font_color="white"
+        else:
+            self.ax_map.set_facecolor('white')
+            self.ax_other.set_facecolor('white')
+            font_color="black"
+        px_size1 = self.wcs_map.wcs.get_cdelt()[0]*3600.
+        px_sc1 = AnchoredSizeBar(self.ax_map.transData, 1./px_size1, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_map.add_artist(px_sc1)
 
         if 'PHOTPLAM' in list(self.map[0].header.keys()):
-            annote1 = self.ax1.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.map[0].header['photplam']), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+            annote1 = self.ax_map.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.map[0].header['photplam']), color=font_color, fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
         if 'ORIENTAT' in list(self.map[0].header.keys()):
-            north_dir1 = AnchoredDirectionArrows(self.ax1.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10., angle=-self.map[0].header['orientat'], color='white', text_props={'ec': None, 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': None,'fc':'w','alpha': 1,'lw': 1})
-            self.ax1.add_artist(north_dir1)
+            north_dir1 = AnchoredDirectionArrows(self.ax_map.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.map[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
+            self.ax_map.add_artist(north_dir1)
 
-        self.cr_map, = self.ax1.plot(*(self.wcs_map.wcs.crpix-(1.,1.)), 'r+')
-
-        self.ax1.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
+        self.cr_map, = self.ax_map.plot(*(self.wcs_map.wcs.crpix-(1.,1.)), 'r+')
+        
+        self.ax_map.set_title("Click on selected point of reference.")
+        self.ax_map.set_xlabel(label="Right Ascension (J2000)")
+        self.ax_map.set_ylabel(label="Declination (J2000)",labelpad=-1)
 
         #Plot the other map
-        self.ax2 = self.fig.add_subplot(122, projection=self.wcs_other)
-        self.ax2.set_facecolor('k')
-
-        kwargs = old_kwargs
-        vmin, vmax = np.min(other_data[other_data > 0.])*self.other_convert, np.max(other_data[other_data > 0.])*self.other_convert
-        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["vmin",vmin],["vmax",vmax]]]]:
+        vmin, vmax = other_data[other_data > 0.].max()/1e3*self.other_convert, other_data[other_data > 0.].max()*self.other_convert
+        for key, value in [["cmap",[["cmap","inferno"]]], ["norm",[["norm",LogNorm(vmin,vmax)]]]]:
             try:
-                test = kwargs[key]
+                test = other_kwargs[key]
             except KeyError:
                 for key_i, val_i in value:
-                    kwargs[key_i] = val_i
-        im2 = self.ax2.imshow(other_data*self.other_convert, aspect='equal', **kwargs)
+                    other_kwargs[key_i] = val_i
+        im2 = self.ax_other.imshow(other_data*self.other_convert, aspect='equal', **other_kwargs)
 
-        fontprops = fm.FontProperties(size=16)
-        px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w', fontproperties=fontprops)
-        self.ax2.add_artist(px_sc)
+        px_size2 = self.wcs_other.wcs.get_cdelt()[0]*3600.
+        px_sc2 = AnchoredSizeBar(self.ax_other.transData, 1./px_size2, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_other.add_artist(px_sc2)
 
         if 'PHOTPLAM' in list(self.other_map[0].header.keys()):
-            annote2 = self.ax2.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_map[0].header['photplam']), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
+            annote2 = self.ax_other.annotate(r"$\lambda$ = {0:.0f} $\AA$".format(self.other_map[0].header['photplam']), color='white', fontsize=12, xy=(0.01, 0.93), xycoords='axes fraction',path_effects=[pe.withStroke(linewidth=0.5,foreground='k')])
         if 'ORIENTAT' in list(self.other_map[0].header.keys()):
-            north_dir2 = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color='w', arrow_props={'ec': None, 'fc': 'w', 'alpha': 1,'lw': 2})
-            self.ax2.add_artist(north_dir2)
+            north_dir2 = AnchoredDirectionArrows(self.ax_map.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.other_map[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
+            self.ax_other.add_artist(north_dir2)
 
-        self.cr_other, = self.ax2.plot(*(self.wcs_other.wcs.crpix-(1.,1.)), 'r+')
+        self.cr_other, = self.ax_other.plot(*(self.wcs_other.wcs.crpix-(1.,1.)), 'r+')
 
-        self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)", title="Click on selected point of reference.")
+        self.ax_other.set_title("Click on selected point of reference.")
+        self.ax_other.set_xlabel(label="Right Ascension (J2000)")
+        self.ax_other.set_ylabel(label="Declination (J2000)",labelpad=-1)
 
         #Selection button
-        self.axapply = self.fig.add_axes([0.80, 0.01, 0.1, 0.04])
+        self.axapply = self.fig_align.add_axes([0.80, 0.01, 0.1, 0.04])
         self.bapply = Button(self.axapply, 'Apply reference')
         self.bapply.label.set_fontsize(8)
-        self.axreset = self.fig.add_axes([0.60, 0.01, 0.1, 0.04])
+        self.axreset = self.fig_align.add_axes([0.60, 0.01, 0.1, 0.04])
         self.breset = Button(self.axreset, 'Leave as is')
         self.breset.label.set_fontsize(8)
-        self.enter = self.fig.canvas.mpl_connect('key_press_event', self.on_key)
+        self.enter = self.fig_align.canvas.mpl_connect('key_press_event', self.on_key)
 
     def on_key(self, event):
         if event.key.lower() == "enter":
@@ -599,25 +607,25 @@ class align_maps(object):
         return self.wcs_map, self.wcs_other
 
     def onclick_ref(self, event) -> None:
-        if self.fig.canvas.manager.toolbar.mode == '':
-            if (event.inaxes is not None) and (event.inaxes == self.ax1):
+        if self.fig_align.canvas.manager.toolbar.mode == '':
+            if (event.inaxes is not None) and (event.inaxes == self.ax_map):
                 x = event.xdata
                 y = event.ydata
 
                 self.cr_map.set(data=[x,y])
-                self.fig.canvas.draw_idle()
+                self.fig_align.canvas.draw_idle()
 
-            if (event.inaxes is not None) and (event.inaxes == self.ax2):
+            if (event.inaxes is not None) and (event.inaxes == self.ax_other):
                 x = event.xdata
                 y = event.ydata
 
                 self.cr_other.set(data=[x,y])
-                self.fig.canvas.draw_idle()
+                self.fig_align.canvas.draw_idle()
 
     def reset_align(self, event):
         self.wcs_map.wcs.crpix = WCS(self.map[0].header).wcs.crpix[:2]
         self.wcs_other.wcs.crpix = WCS(self.other_map[0].header).wcs.crpix[:2]
-        self.fig.canvas.draw_idle()
+        self.fig_align.canvas.draw_idle()
 
         if self.aligned:
             plt.close()
@@ -635,7 +643,7 @@ class align_maps(object):
             self.wcs_other.wcs.crpix = np.array(self.cr_other.get_data())+(1.,1.)
         self.wcs_map.wcs.crval = np.array(self.wcs_map.pixel_to_world_values(*self.wcs_map.wcs.crpix))
         self.wcs_other.wcs.crval = self.wcs_map.wcs.crval
-        self.fig.canvas.draw_idle()
+        self.fig_align.canvas.draw_idle()
 
         if self.aligned:
             plt.close()
@@ -648,11 +656,11 @@ class align_maps(object):
             self.apply_align()
 
     def align(self):
-        self.fig.canvas.draw()
-        self.fig.canvas.mpl_connect('button_press_event', self.onclick_ref)
+        self.fig_align.canvas.draw()
+        self.fig_align.canvas.mpl_connect('button_press_event', self.onclick_ref)
         self.bapply.on_clicked(self.apply_align)
         self.breset.on_clicked(self.reset_align)
-        self.fig.canvas.mpl_connect('close_event', self.on_close_align)
+        self.fig_align.canvas.mpl_connect('close_event', self.on_close_align)
         plt.show(block=True)
         return self.get_aligned_wcs()
 
@@ -662,7 +670,7 @@ class overplot_radio(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, other_levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
@@ -675,9 +683,8 @@ class overplot_radio(align_maps):
 
         other_data = self.other_map[0].data
         self.other_convert = 1.
-        other_unit = self.other_map[0].header['bunit']
-        if other_unit.lower() == 'jy/beam':
-            other_unit = r"mJy/Beam"
+        if self.other_map_unit.lower() == 'jy/beam':
+            self.other_map_unit = r"mJy/Beam"
             self.other_convert = 1e3
         other_freq = self.other_map[0].header['crval3'] if 'CRVAL3' in list(self.other_map[0].header.keys()) else 1.
 
@@ -693,8 +700,8 @@ class overplot_radio(align_maps):
         pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig2, self.ax2 = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=self.wcs_UV))
-        self.fig2.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
+        self.fig_overplot, self.ax_overplot = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=self.wcs_UV))
+        self.fig_overplot.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
 
         #Display UV intensity map with polarization vectors
         vmin, vmax = stkI[np.isfinite(stkI)].max()/1e3*self.convert_flux,stkI[np.isfinite(stkI)].max()*self.convert_flux
@@ -705,13 +712,13 @@ class overplot_radio(align_maps):
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
         if kwargs['cmap'] in ['inferno','magma','Greys_r','binary_r','gist_yarg_r','gist_gray','gray','bone','pink','hot','afmhot','gist_heat','copper','gist_earth','gist_stern','gnuplot','gnuplot2','CMRmap','cubehelix','nipy_spectral','gist_ncar','viridis']:
-            self.ax2.set_facecolor('black')
+            self.ax_overplot.set_facecolor('black')
             font_color="white"
         else:
-            self.ax2.set_facecolor('white')
+            self.ax_overplot.set_facecolor('white')
             font_color="black"
-        self.im = self.ax2.imshow(stkI*self.convert_flux, aspect='equal', **kwargs)
-        self.cbar = self.fig2.colorbar(self.im, ax=self.ax2, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        self.im = self.ax_overplot.imshow(stkI*self.convert_flux, aspect='equal', **kwargs)
+        self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [{0:s}]".format(self.map_unit))
 
         #Display full size polarization vectors
         if vec_scale is None:
@@ -723,47 +730,48 @@ class overplot_radio(align_maps):
         px_scale = self.wcs_other.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax2.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black',label="HST/FOC polarisation map")
-        self.ax2.autoscale(False)
+        self.Q = self.ax_overplot.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black',label="HST/FOC polarisation map")
+        self.ax_overplot.autoscale(False)
 
         #Display other map as contours
-        if other_levels is None:
-            other_levels = np.logspace(np.log(3)/np.log(10),2.,5)/100.*other_data[other_data > 0.].max()*self.other_convert
-        other_cont = self.ax2.contour(other_data*self.other_convert, transform=self.ax2.get_transform(self.wcs_other.celestial), levels=other_levels*self.other_convert, colors='grey')
-        self.ax2.clabel(other_cont, inline=True, fontsize=5)
+        if levels is None:
+            levels = np.logspace(np.log(3)/np.log(10),2.,5)/100.*other_data[other_data > 0.].max()*self.other_convert
+        other_cont = self.ax_overplot.contour(other_data*self.other_convert, transform=self.ax_overplot.get_transform(self.wcs_other.celestial), levels=levels*self.other_convert, colors='grey')
+        self.ax_overplot.clabel(other_cont, inline=True, fontsize=5)
         other_proxy = Rectangle((0,0),1,1,fc='w',ec=other_cont.collections[0].get_edgecolor()[0], label=r"{0:s} contour".format(self.other_map[0].header['telescop']))
-        self.ax2.add_patch(other_proxy)
+        self.ax_overplot.add_patch(other_proxy)
 
-        self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)")
-        self.fig2.suptitle("HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, other_unit),wrap=True)
+        self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
+        self.ax_overplot.set_ylabel(label="Declination (J2000)",labelpad=-1)
+        self.fig_overplot.suptitle("HST/FOC UV polarization map of {0:s} overplotted with {1:.2f}GHz map in {2:s}.".format(obj, other_freq*1e-9, self.other_map_unit),wrap=True)
 
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
-        self.ax2.add_artist(north_dir)
-        pol_sc = AnchoredSizeBar(self.ax2.transData, self.vec_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(pol_sc)
+        px_sc = AnchoredSizeBar(self.ax_overplot.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(px_sc)
+        north_dir = AnchoredDirectionArrows(self.ax_overplot.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
+        self.ax_overplot.add_artist(north_dir)
+        pol_sc = AnchoredSizeBar(self.ax_overplot.transData, self.vec_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(pol_sc)
 
-        self.cr_map, = self.ax2.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+')
-        self.cr_other, = self.ax2.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+', transform=self.ax2.get_transform(self.wcs_other))
+        self.cr_map, = self.ax_overplot.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+')
+        self.cr_other, = self.ax_overplot.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+', transform=self.ax_overplot.get_transform(self.wcs_other))
 
-        self.legend = self.ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
+        self.legend = self.ax_overplot.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
 
         if not(savename is None):
             if not savename[-4:] in ['.png', '.jpg', '.pdf']:
                 savename += '.pdf'
-            self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
+            self.fig_overplot.savefig(savename,bbox_inches='tight',dpi=200)
 
-        self.fig2.canvas.draw()
+        self.fig_overplot.canvas.draw()
 
 
     def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
+        self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
         plt.show(block=True)
 
 class overplot_chandra(align_maps):
@@ -771,7 +779,7 @@ class overplot_chandra(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, other_levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, zoom=1, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, zoom=1, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
@@ -781,15 +789,14 @@ class overplot_chandra(align_maps):
         pol = deepcopy(self.Stokes_UV['POL_DEG_DEBIASED'].data)
         pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
         pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
-
-        other_data = sc_zoom(self.other_map[0].data,zoom)
-        self.wcs_other.wcs.crpix *= zoom
-        self.wcs_other.wcs.cdelt /= zoom
+        
+        other_data = deepcopy(self.other_map[0].data)
+        other_wcs = deepcopy(self.wcs_other)
+        if zoom != 1:
+            other_data = sc_zoom(other_data,zoom)
+            other_wcs.wcs.crpix *= zoom
+            other_wcs.wcs.cdelt /= zoom
         other_unit = 'counts'
-        if (other_levels < 100.).all() and (other_levels > 0.).all():
-            other_levels *= other_data.max()/100.
-
-        self.convert_flux = self.Stokes_UV[0].header['photflam']
 
         #Compute SNR and apply cuts
         pol[pol == 0.] = np.nan
@@ -801,8 +808,8 @@ class overplot_chandra(align_maps):
         pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig2, self.ax2 = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=self.wcs_UV))
-        self.fig2.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
+        self.fig_overplot, self.ax_overplot = plt.subplots(figsize=(11,10), subplot_kw=dict(projection=self.wcs_UV))
+        self.fig_overplot.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
 
         #Display UV intensity map with polarization vectors
         vmin, vmax = stkI[np.isfinite(stkI)].max()/1e3*self.convert_flux,stkI[np.isfinite(stkI)].max()*self.convert_flux
@@ -813,13 +820,13 @@ class overplot_chandra(align_maps):
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
         if kwargs['cmap'] in ['inferno','magma','Greys_r','binary_r','gist_yarg_r','gist_gray','gray','bone','pink','hot','afmhot','gist_heat','copper','gist_earth','gist_stern','gnuplot','gnuplot2','CMRmap','cubehelix','nipy_spectral','gist_ncar','viridis']:
-            self.ax2.set_facecolor('black')
+            self.ax_overplot.set_facecolor('black')
             font_color="white"
         else:
-            self.ax2.set_facecolor('white')
+            self.ax_overplot.set_facecolor('white')
             font_color="black"
-        self.im = self.ax2.imshow(stkI*self.convert_flux, aspect='equal', **kwargs)
-        self.cbar = self.fig2.colorbar(self.im, ax=self.ax2, aspect=40, shrink=0.75, pad=0.08, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        self.im = self.ax_overplot.imshow(stkI*self.convert_flux, aspect='equal', **kwargs)
+        self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{{\lambda}}$ [{0:s}]".format(self.map_unit))
 
         #Display full size polarization vectors
         if vec_scale is None:
@@ -828,49 +835,54 @@ class overplot_chandra(align_maps):
         else:
             self.vec_scale = vec_scale
         step_vec = 1
-        px_scale = self.wcs_other.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
+        px_scale = 1./self.wcs_UV.wcs.get_cdelt()[0]
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax2.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black',label="HST/FOC polarisation map")
-        self.ax2.autoscale(False)
+        self.Q = self.ax_overplot.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=1./self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1,linewidth=0.5,color='white',edgecolor='black',label="HST/FOC polarisation map")
+        proxy_Q = FancyArrowPatch((0,0),(0,1),arrowstyle='-',fc='w',ec='k',lw=3)
+        self.ax_overplot.autoscale(False)
 
         #Display other map as contours
-        if other_levels is None:
-            other_levels = np.logspace(np.log(3)/np.log(10),2.,5)/100.*other_data[other_data > 0.].max()*self.other_convert
-        other_cont = self.ax2.contour(other_data*self.other_convert, transform=self.ax2.get_transform(self.wcs_other), levels=other_levels, colors='grey')
-        self.ax2.clabel(other_cont, inline=True, fontsize=8)
-        other_proxy = Rectangle((0,0),1,1,fc='w',ec=other_cont.collections[0].get_edgecolor()[0], label=r"{0:s} contour".format(self.other_map[0].header['telescop']))
-        self.ax2.add_patch(other_proxy)
+        if levels is None:
+            levels = np.logspace(np.log(3)/np.log(10),2.,5)/100.*other_data[other_data > 0.].max()*self.other_convert
+        elif zoom != 1:
+            levels *= other_data.max()/self.other_map[0].data.max()
+        other_cont = self.ax_overplot.contour(other_data*self.other_convert, transform=self.ax_overplot.get_transform(other_wcs), levels=levels, colors='grey')
+        self.ax_overplot.clabel(other_cont, inline=True, fontsize=8)
+        other_proxy = Rectangle((0,0),1.,1.,fc='w',ec=other_cont.collections[0].get_edgecolor()[0], lw=2, label=r"{0:s} contour in counts".format(self.other_map[0].header['telescop']))
+        self.ax_overplot.add_patch(other_proxy)
 
-        self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)")
-        self.fig2.suptitle("HST/FOC UV polarization map of {0:s} overplotted with {1:s} contour.".format(obj,self.other_map[0].header['telescop']),wrap=True)
+        self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
+        self.ax_overplot.set_ylabel(label="Declination (J2000)",labelpad=-1)
+        self.fig_overplot.suptitle("HST/FOC UV polarization map of {0:s} overplotted \nwith {1:s} contour in counts.".format(obj,self.other_map[0].header['telescop']),wrap=True)
 
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_UV.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
-        self.ax2.add_artist(north_dir)
-        pol_sc = AnchoredSizeBar(self.ax2.transData, self.vec_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(pol_sc)
+        px_sc = AnchoredSizeBar(self.ax_overplot.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(px_sc)
+        north_dir = AnchoredDirectionArrows(self.ax_overplot.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
+        self.ax_overplot.add_artist(north_dir)
+        pol_sc = AnchoredSizeBar(self.ax_overplot.transData, self.vec_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(pol_sc)
 
-        self.cr_map, = self.ax2.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+')
-        self.cr_other, = self.ax2.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+', transform=self.ax2.get_transform(self.wcs_other))
-        
-        self.legend = self.ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
+        self.cr_map, = self.ax_overplot.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+')
+        self.cr_other, = self.ax_overplot.plot(*(other_wcs.celestial.wcs.crpix-(1.,1.)), 'g+', transform=self.ax_overplot.get_transform(other_wcs))
+        h,l = self.ax_overplot.get_legend_handles_labels()
+        h[np.argmax([li=='HST/FOC polarisation map' for li in l])] = FancyArrowPatch((0,0),(0,1),arrowstyle='-',fc='w',ec='k',lw=2)
+        self.legend = self.ax_overplot.legend(handles=h,labels=l,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
 
         if not(savename is None):
             if not savename[-4:] in ['.png', '.jpg', '.pdf']:
                 savename += '.pdf'
-            self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
+            self.fig_overplot.savefig(savename,bbox_inches='tight',dpi=200)
 
-        self.fig2.canvas.draw()
+        self.fig_overplot.canvas.draw()
 
     def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., zoom=1, savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(other_levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, zoom=zoom, savename=savename, **kwargs)
+        self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, zoom=zoom, savename=savename, **kwargs)
         plt.show(block=True)
 
 
@@ -879,18 +891,18 @@ class overplot_pol(align_maps):
     Class to overplot maps from different observations.
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
-    def overplot(self, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.wcs_map
         #Get Data
         obj = self.Stokes_UV[0].header['targname']
-        stkI = deepcopy(self.Stokes_UV['I_STOKES'].data)
-        stk_cov = deepcopy(self.Stokes_UV['IQU_COV_MATRIX'].data)
+        stkI = self.Stokes_UV['I_STOKES'].data
+        stk_cov = self.Stokes_UV['IQU_COV_MATRIX'].data
         pol = deepcopy(self.Stokes_UV['POL_DEG_DEBIASED'].data)
-        pol_err = deepcopy(self.Stokes_UV['POL_DEG_ERR'].data)
-        pang = deepcopy(self.Stokes_UV['POL_ANG'].data)
+        pol_err = self.Stokes_UV['POL_DEG_ERR'].data
+        pang = self.Stokes_UV['POL_ANG'].data
 
-        other_data = deepcopy(self.other_map[0].data)
+        other_data = self.other_map[0].data
 
         #Compute SNR and apply cuts
         pol[pol == 0.] = np.nan
@@ -902,11 +914,12 @@ class overplot_pol(align_maps):
         pol[SNRi < SNRi_cut] = np.nan
 
         plt.rcParams.update({'font.size': 16})
-        self.fig2, self.ax2 = plt.subplots(figsize=(10,10), subplot_kw=dict(projection=self.wcs_other))
-        self.fig2.subplots_adjust(hspace=0,wspace=0,bottom=0.1,left=0.1,top=0.8,right=1)
+        self.fig_overplot, self.ax_overplot = plt.subplots(figsize=(11,10), subplot_kw=dict(projection=self.wcs_other))
+        self.fig_overplot.subplots_adjust(hspace=0,wspace=0,bottom=-0.02,left=0.12,top=0.90,right=1.02)
 
-        self.ax2.set(xlabel="Right Ascension (J2000)", ylabel="Declination (J2000)",aspect="equal")
-        self.fig2.suptitle("{0:s} observation from {1:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj,self.other_map[0].header['telescop']),wrap=True)
+        self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
+        self.ax_overplot.set_ylabel(label="Declination (J2000)",labelpad=-1)
+        self.fig_overplot.suptitle("{0:s} observation from {1:s} overplotted with polarization vectors and Stokes I contours from HST/FOC".format(obj,self.other_map[0].header['telescop']),wrap=True)
 
         #Display "other" intensity map
         vmin, vmax = other_data[other_data > 0.].max()/1e3*self.other_convert, other_data[other_data > 0.].max()*self.other_convert
@@ -917,21 +930,13 @@ class overplot_pol(align_maps):
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
         if kwargs['cmap'] in ['inferno','magma','Greys_r','binary_r','gist_yarg_r','gist_gray','gray','bone','pink','hot','afmhot','gist_heat','copper','gist_earth','gist_stern','gnuplot','gnuplot2','CMRmap','cubehelix','nipy_spectral','gist_ncar','viridis']:
-            self.ax2.set_facecolor('black')
+            self.ax_overplot.set_facecolor('black')
             font_color="white"
         else:
-            self.ax2.set_facecolor('white')
+            self.ax_overplot.set_facecolor('white')
             font_color="black"
-        self.im = self.ax2.imshow(other_data*self.other_convert, alpha=1., label="{0:s} observation".format(self.other_map[0].header['telescop']), **kwargs)
-        unit = self.other_map[0].header['bunit'] if 'BUNIT' in list(self.other_map[0].header.keys()) else 'Arbitrary Unit'
-        self.cbar = self.fig2.colorbar(self.im, ax=self.ax2, aspect=80, shrink=0.75, pad=0.025, label=r"$F_{{\lambda}}$ [{0:s}]".format(unit))
-
-        #Display Stokes I as contours
-        levels_stkI = np.logspace(np.log(3)/np.log(10),2.,5)/100.*np.max(stkI[stkI > 0.])*self.convert_flux
-        cont_stkI = self.ax2.contour(stkI*self.convert_flux, levels=levels_stkI, colors='grey', alpha=0.5, transform=self.ax2.get_transform(self.wcs_UV))
-        self.ax2.clabel(cont_stkI, inline=True, fontsize=5)
-        cont_proxy = Rectangle((0,0),1,1,fc='w',ec=cont_stkI.collections[0].get_edgecolor()[0], label="HST/FOC Stokes I contour")
-        self.ax2.add_patch(cont_proxy)
+        self.im = self.ax_overplot.imshow(other_data*self.other_convert, alpha=1., label="{0:s} observation".format(self.other_map[0].header['telescop']), **kwargs)
+        self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=80, shrink=0.75, pad=0.025, label=r"$F_{{\lambda}}$ [{0:s}]".format(self.other_map_unit))
 
         #Display full size polarization vectors
         if vec_scale is None:
@@ -943,20 +948,28 @@ class overplot_pol(align_maps):
         px_scale = self.wcs_other.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax2.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=px_scale/self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1/px_scale,linewidth=0.5,color='white',edgecolor='black', transform=self.ax2.get_transform(self.wcs_UV),label="HST/FOC polarisation map")
+        self.Q = self.ax_overplot.quiver(self.X[::step_vec,::step_vec],self.Y[::step_vec,::step_vec],self.U[::step_vec,::step_vec],self.V[::step_vec,::step_vec],units='xy',angles='uv',scale=px_scale/self.vec_scale,scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,width=0.1/px_scale,linewidth=0.5,color='white',edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV),label="HST/FOC polarisation map")
+
+        #Display Stokes I as contours
+        if levels is None:
+            levels = np.logspace(np.log(3)/np.log(10),2.,5)/100.*np.max(stkI[stkI > 0.])*self.convert_flux
+        cont_stkI = self.ax_overplot.contour(stkI*self.convert_flux, levels=levels, colors='grey', alpha=0.75, transform=self.ax_overplot.get_transform(self.wcs_UV))
+        self.ax_overplot.clabel(cont_stkI, inline=True, fontsize=5)
+        cont_proxy = Rectangle((0,0),1,1,fc='w',ec=cont_stkI.collections[0].get_edgecolor()[0], label="HST/FOC Stokes I contour")
+        self.ax_overplot.add_patch(cont_proxy)
 
         #Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
         px_size = self.wcs_other.wcs.get_cdelt()[0]*3600.
-        px_sc = AnchoredSizeBar(self.ax2.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(px_sc)
-        north_dir = AnchoredDirectionArrows(self.ax2.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
-        self.ax2.add_artist(north_dir)
-        pol_sc = AnchoredSizeBar(self.ax2.transData, self.vec_scale/px_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
-        self.ax2.add_artist(pol_sc)
+        px_sc = AnchoredSizeBar(self.ax_overplot.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(px_sc)
+        north_dir = AnchoredDirectionArrows(self.ax_overplot.transAxes, "E", "N", length=-0.08, fontsize=0.03, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, angle=-self.Stokes_UV[0].header['orientat'], color=font_color, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1,'lw': 0.5})
+        self.ax_overplot.add_artist(north_dir)
+        pol_sc = AnchoredSizeBar(self.ax_overplot.transData, self.vec_scale/px_scale, r"$P$= 100%", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color=font_color, fontproperties=fontprops)
+        self.ax_overplot.add_artist(pol_sc)
 
-        self.cr_map, = self.ax2.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+', transform=self.ax2.get_transform(self.wcs_UV))
-        self.cr_other, = self.ax2.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+')
+        self.cr_map, = self.ax_overplot.plot(*(self.wcs_map.celestial.wcs.crpix-(1.,1.)), 'r+', transform=self.ax_overplot.get_transform(self.wcs_UV))
+        self.cr_other, = self.ax_overplot.plot(*(self.wcs_other.celestial.wcs.crpix-(1.,1.)), 'g+')
 
         if "PHOTPLAM" in list(self.other_map[0].header.keys()):
             self.legend_title = r"{0:s} image at $\lambda$ = {1:.0f} $\AA$".format(self.other_map[0].header['telescop'],float(self.other_map[0].header['photplam']))
@@ -965,19 +978,21 @@ class overplot_pol(align_maps):
         else:
             self.legend_title = r"{0:s} image".format(self.other_map[0].header['telescop'])
 
-        self.legend = self.ax2.legend(title=self.legend_title,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
+        h,l = self.ax_overplot.get_legend_handles_labels()
+        h[np.argmax([li=='HST/FOC polarisation map' for li in l])] = FancyArrowPatch((0,0),(0,1),arrowstyle='-',fc='w',ec='k',lw=2)
+        self.legend = self.ax_overplot.legend(handles=h,labels=l,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
         
         if not(savename is None):
             if not savename[-4:] in ['.png', '.jpg', '.pdf']:
                 savename += '.pdf'
-            self.fig2.savefig(savename,bbox_inches='tight',dpi=200)
+            self.fig_overplot.savefig(savename,bbox_inches='tight',dpi=200)
 
-        self.fig2.canvas.draw()
+        self.fig_overplot.canvas.draw()
 
-    def plot(self, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs) -> None:
+    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
+        self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
         plt.show(block=True)
 
     def add_vector(self,position='center',pol_deg=1.,pol_ang=0.,**kwargs):
@@ -993,10 +1008,10 @@ class overplot_pol(align_maps):
             except KeyError:
                 for key_i, val_i in value:
                     kwargs[key_i] = val_i
-        new_vec = self.ax2.quiver(*position,u,v,units='xy',angles='uv',scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,**kwargs)
+        new_vec = self.ax_overplot.quiver(*position,u,v,units='xy',angles='uv',scale_units='xy',pivot='mid',headwidth=0.,headlength=0.,headaxislength=0.,**kwargs)
         self.legend.remove()
-        self.legend = self.ax2.legend(title=self.legend_title,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
-        self.fig2.canvas.draw()
+        self.legend = self.ax_overplot.legend(title=self.legend_title,bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
+        self.fig_overplot.canvas.draw()
         return new_vec
 
 class align_pol(object):
