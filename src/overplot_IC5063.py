@@ -15,35 +15,34 @@ Stokes_UV = fits.open("./data/IC5063/5918/IC5063_FOC_b0.10arcsec_c0.20arcsec.fit
 #Stokes_S2 = fits.open("./data/IC5063/POLARIZATION_COMPARISON/S2_rot_crop.fits")
 Stokes_IR = fits.open("./data/IC5063/IR/u2e65g01t_c0f_rot.fits")
 
-levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
-
-#levels18GHz = np.array([0.6, 1.5, 3, 6, 12, 24, 48, 96])/100.*Stokes_18GHz[0].data.max()
-#levels18GHz = levelsMorganti*0.28*1e-3
+##levelsMorganti = np.array([1.,2.,3.,8.,16.,32.,64.,128.])
+#levelsMorganti = np.logspace(0.,1.97,5)/100.
+#
+#levels18GHz = levelsMorganti*Stokes_18GHz[0].data.max()
 #A = overplot_radio(Stokes_UV, Stokes_18GHz)
-#A.plot(levels=levels18GHz, SNRp_cut=1.0, SNRi_cut=10.0, savename='./plots/IC5063/18GHz_overplot_forced.png')
-#
-##levels24GHz = np.array([1.,1.5, 3, 6, 12, 24, 48, 96])/100.*Stokes_24GHz[0].data.max()
-#levels24GHz = levelsMorganti*0.46*1e-3
+#A.plot(levels=levels18GHz, SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/18GHz_overplot_forced.pdf',vec_scale=None)
+##
+#levels24GHz = levelsMorganti*Stokes_24GHz[0].data.max()
 #B = overplot_radio(Stokes_UV, Stokes_24GHz)
-#B.plot(levels=levels24GHz, SNRp_cut=1.0, SNRi_cut=10.0, savename='./plots/IC5063/24GHz_overplot_forced.png')
-#
-#levels103GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_103GHz[0].data[Stokes_103GHz[0].data > 0.]))
+#B.plot(levels=levels24GHz, SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/24GHz_overplot_forced.pdf',vec_scale=None)
+##
+#levels103GHz = levelsMorganti*Stokes_103GHz[0].data.max()
 #C = overplot_radio(Stokes_UV, Stokes_103GHz)
-#C.plot(levels=levels103GHz, SNRp_cut=1.0, SNRi_cut=10.0, savename='./plots/IC5063/103GHz_overplot_forced.png')
-#
-#levels229GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_229GHz[0].data[Stokes_229GHz[0].data > 0.]))
+#C.plot(levels=levels103GHz, SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/103GHz_overplot_forced.pdf',vec_scale=None)
+##
+#levels229GHz = levelsMorganti*Stokes_229GHz[0].data.max()
 #D = overplot_radio(Stokes_UV, Stokes_229GHz)
-#D.plot(levels=levels229GHz, SNRp_cut=1.0, SNRi_cut=10.0, savename='./plots/IC5063/229GHz_overplot_forced.png')
-#
-#levels357GHz = np.linspace(1,99,11)/100.*np.max(deepcopy(Stokes_357GHz[0].data[Stokes_357GHz[0].data > 0.]))
+#D.plot(levels=levels229GHz, SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/229GHz_overplot_forced.pdf',vec_scale=None)
+##
+#levels357GHz = levelsMorganti*Stokes_357GHz[0].data.max()
 #E = overplot_radio(Stokes_UV, Stokes_357GHz)
-#E.plot(levels=levels357GHz, SNRp_cut=1.0, SNRi_cut=10.0, savename='./plots/IC5063/357GHz_overplot_forced.png')
-#
+#E.plot(levels=levels357GHz, SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/357GHz_overplot_forced.pdf',vec_scale=None)
+##
 #F = overplot_pol(Stokes_UV, Stokes_S2)
-#F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='./plots/IC5063/S2_overplot_forced.png', norm=LogNorm(vmin=5e-20,vmax=5e-18))
+#F.plot(SNRp_cut=3.0, SNRi_cut=80.0, savename='./plots/IC5063/S2_overplot_forced.pdf', norm=LogNorm(vmin=5e-20,vmax=5e-18))
 
 G = overplot_pol(Stokes_UV, Stokes_IR, cmap='inferno')
-G.plot(SNRp_cut=1.0, SNRi_cut=10.0, vec_scale=3., savename='./plots/IC5063/IR_overplot_forced.png', norm=LogNorm(vmin=1e-17,vmax=5e-15), cmap='inferno_r')
+G.plot(SNRp_cut=2.0, SNRi_cut=10.0, savename='./plots/IC5063/IR_overplot_forced.pdf',vec_scale=None,norm=LogNorm(Stokes_IR[0].data.max()*Stokes_IR[0].header['photflam']/1e3,Stokes_IR[0].data.max()*Stokes_IR[0].header['photflam']),cmap='inferno_r')
 
 #data_folder1 = "./data/M87/POS1/"
 #plots_folder1 = "./plots/M87/POS1/"
@@ -56,7 +55,7 @@ G.plot(SNRp_cut=1.0, SNRi_cut=10.0, vec_scale=3., savename='./plots/IC5063/IR_ov
 
 #H = align_pol(np.array([M87_1_95,M87_1_96,M87_1_97,M87_1_98,M87_1_99]), norm=LogNorm())
 #H.plot(SNRp_cut=5.0, SNRi_cut=50.0, savename=plots_folder1+'animated_loop/'+basename1, norm=LogNorm())
-#command("convert -delay 50 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif".format(plots_folder1, basename1))
+#command("convert -delay 50 -loop 0 {0:s}animated_loop/{1:s}*.pdf {0:s}animated_loop/{1:s}.gif".format(plots_folder1, basename1))
 
 #data_folder3 = "./data/M87/POS3/"
 #plots_folder3 = "./plots/M87/POS3/"
@@ -69,4 +68,4 @@ G.plot(SNRp_cut=1.0, SNRi_cut=10.0, vec_scale=3., savename='./plots/IC5063/IR_ov
 
 #I = align_pol(np.array([M87_3_95,M87_3_96,M87_3_97,M87_3_98,M87_3_99]), norm=LogNorm())
 #I.plot(SNRp_cut=5.0, SNRi_cut=50.0, savename=plots_folder3+'animated_loop/'+basename3, norm=LogNorm())
-#command("convert -delay 20 -loop 0 {0:s}animated_loop/{1:s}*.png {0:s}animated_loop/{1:s}.gif".format(plots_folder3, basename3))
+#command("convert -delay 20 -loop 0 {0:s}animated_loop/{1:s}*.pdf {0:s}animated_loop/{1:s}.gif".format(plots_folder3, basename3))

@@ -139,7 +139,8 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
         new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
 
     header = new_wcs.to_header()
-    header['instrume'] = (ref_header['instrume'], 'Instrument from which data is reduced')
+    header['telescop'] = (ref_header['telescop'] if 'TELESCOP' in list(ref_header.keys()) else 'HST', 'telescope used to acquire data')
+    header['instrume'] = (ref_header['instrume'] if 'INSTRUME' in list(ref_header.keys()) else 'FOC', 'identifier for instrument used to acuire data')
     header['photplam'] = (ref_header['photplam'], 'Pivot Wavelength')
     header['photflam'] = (ref_header['photflam'], 'Inverse Sensitivity in DN/sec/cm**2/Angst')
     header['exptot'] = (exp_tot, 'Total exposure time in sec')
@@ -147,10 +148,10 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     header['targname'] = (ref_header['targname'], 'Target name')
     header['orientat'] = (ref_header['orientat'], 'Angle between North and the y-axis of the image')
     header['filename'] = (filename, 'Original filename')
-    header['P_int'] = (ref_header['P_int'], 'Integrated polarization degree')
-    header['P_int_err'] = (ref_header['P_int_err'], 'Integrated polarization degree error')
-    header['PA_int'] = (ref_header['PA_int'], 'Integrated polarization angle')
-    header['PA_int_err'] = (ref_header['PA_int_err'], 'Integrated polarization angle error')
+    header['P_int'] = (ref_header['P_int'], 'Integrated polarisation degree')
+    header['P_int_err'] = (ref_header['P_int_err'], 'Integrated polarisation degree error')
+    header['PA_int'] = (ref_header['PA_int'], 'Integrated polarisation angle')
+    header['PA_int_err'] = (ref_header['PA_int_err'], 'Integrated polarisation angle error')
 
     #Crop Data to mask
     if data_mask.shape != (1,1):

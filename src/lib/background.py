@@ -100,19 +100,18 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     exptime = headers[0]['exptime']
     filt = headers[0]['filtnam1']
     #plots
-    im = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
+    im2 = ax2.imshow(data0, norm=LogNorm(data0[data0>0.].mean()/10.,data0.max()), origin='lower', cmap='gray')
     bkg_im = ax2.imshow(bkg_data0, origin='lower', cmap='Reds', alpha=0.5)
     if not(rectangle is None):
         x, y, width, height, angle, color = rectangle[0]
         ax2.add_patch(Rectangle((x, y),width,height,edgecolor=color,fill=False,lw=2))
-    ax2.annotate(instr+":"+rootname, color='white', fontsize=10, xy=(0.02, 0.95), xycoords='axes fraction')
-    ax2.annotate(filt, color='white', fontsize=14, xy=(0.02, 0.02), xycoords='axes fraction')
-    ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02), xycoords='axes fraction')
-    ax2.set(xlabel='pixel offset', ylabel='pixel offset')
+    ax2.annotate(instr+":"+rootname, color='white', fontsize=10, xy=(0.01, 1.00), xycoords='axes fraction',verticalalignment='top', horizontalalignment='left')
+    ax2.annotate(filt, color='white', fontsize=14, xy=(0.01, 0.01), xycoords='axes fraction', verticalalignment='bottom', horizontalalignment='left')
+    ax2.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(1.00, 0.01), xycoords='axes fraction', verticalalignment='bottom', horizontalalignment='right')
+    ax2.set(xlabel='pixel offset', ylabel='pixel offset',aspect='equal')
 
-    fig2.subplots_adjust(hspace=0, wspace=0, right=0.85)
-    cbar_ax = fig2.add_axes([0.9, 0.12, 0.02, 0.75])
-    fig2.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+    fig2.subplots_adjust(hspace=0, wspace=0, right=1.0)
+    fig2.colorbar(im2, ax=ax2, location='right', aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
     if not(savename is None):
         this_savename = deepcopy(savename)
