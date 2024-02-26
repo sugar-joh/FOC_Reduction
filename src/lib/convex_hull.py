@@ -1,6 +1,5 @@
 """
-Library functions for graham algorithm implementation (find the convex hull
-of a given list of points).
+Library functions for graham algorithm implementation (find the convex hull of a given list of points).
 """
 
 from copy import deepcopy
@@ -8,30 +7,33 @@ import numpy as np
 
 
 def clean_ROI(image):
-    H,J = [],[]
+    """
+    Remove instruments borders from an observation.
+    """
+    H, J = [], []
 
     shape = np.array(image.shape)
     row, col = np.indices(shape)
 
-    for i in range(0,shape[0]):
-        r = row[i,:][image[i,:]>0.]
-        c = col[i,:][image[i,:]>0.]
-        if len(r)>1 and len(c)>1:
-            H.append((r[0],c[0]))
-            H.append((r[-1],c[-1]))
+    for i in range(0, shape[0]):
+        r = row[i, :][image[i, :] > 0.]
+        c = col[i, :][image[i, :] > 0.]
+        if len(r) > 1 and len(c) > 1:
+            H.append((r[0], c[0]))
+            H.append((r[-1], c[-1]))
     H = np.array(H)
-    for j in range(0,shape[1]):
-        r = row[:,j][image[:,j]>0.]
-        c = col[:,j][image[:,j]>0.]
-        if len(r)>1 and len(c)>1:
-            J.append((r[0],c[0]))
-            J.append((r[-1],c[-1]))
+    for j in range(0, shape[1]):
+        r = row[:, j][image[:, j] > 0.]
+        c = col[:, j][image[:, j] > 0.]
+        if len(r) > 1 and len(c) > 1:
+            J.append((r[0], c[0]))
+            J.append((r[-1], c[-1]))
     J = np.array(J)
-    xmin = np.min([H[:,1].min(),J[:,1].min()])
-    xmax = np.max([H[:,1].max(),J[:,1].max()])+1
-    ymin = np.min([H[:,0].min(),J[:,0].min()])
-    ymax = np.max([H[:,0].max(),J[:,0].max()])+1
-    return np.array([xmin,xmax,ymin,ymax])
+    xmin = np.min([H[:, 1].min(), J[:, 1].min()])
+    xmax = np.max([H[:, 1].max(), J[:, 1].max()])+1
+    ymin = np.min([H[:, 0].min(), J[:, 0].min()])
+    ymax = np.max([H[:, 0].max(), J[:, 0].max()])+1
+    return np.array([xmin, xmax, ymin, ymax])
 
 
 # Define angle and vectors operations
@@ -116,7 +118,8 @@ def min_lexico(s):
     """
     m = s[0]
     for x in s:
-        if lexico(x, m): m = x
+        if lexico(x, m):
+            m = x
     return m
 
 
@@ -145,16 +148,16 @@ def comp(Omega, A, B):
 
 
 # Implement quicksort
-def partition(s, l, r, order):
+def partition(s, left, right, order):
     """
-    Take a random element of a list 's' between indexes 'l', 'r' and place it
+    Take a random element of a list 's' between indexes 'left', 'right' and place it
     at its right spot using relation order 'order'. Return the index at which
     it was placed.
     ----------
     Inputs:
     s : list
         List of elements to be ordered.
-    l, r : int
+    left, right : int
         Index of the first and last elements to be considered.
     order : func: A, B -> bool
         Relation order between 2 elements A, B that returns True if A<=B,
@@ -164,30 +167,29 @@ def partition(s, l, r, order):
     index : int
         Index at which have been placed the element chosen by the function.
     """
-    i = l - 1
-    for j in range(l, r):
-        if order(s[j], s[r]):
+    i = left - 1
+    for j in range(left, right):
+        if order(s[j], s[right]):
             i = i + 1
             temp = deepcopy(s[i])
             s[i] = deepcopy(s[j])
             s[j] = deepcopy(temp)
     temp = deepcopy(s[i+1])
-    s[i+1] = deepcopy(s[r])
-    s[r] = deepcopy(temp)
+    s[i+1] = deepcopy(s[right])
+    s[right] = deepcopy(temp)
     return i + 1
 
 
-def sort_aux(s, l, r, order):
+def sort_aux(s, left, right, order):
     """
-    Sort a list 's' between indexes 'l', 'r' using relation order 'order' by
+    Sort a list 's' between indexes 'left', 'right' using relation order 'order' by
     dividing it in 2 sub-lists and sorting these.
     """
-    if l <= r:
-        # Call partition function that gives an index on which the list will be
-        #divided
-        q = partition(s, l, r, order)
-        sort_aux(s, l, q - 1, order)
-        sort_aux(s, q + 1, r, order)
+    if left <= right:
+        # Call partition function that gives an index on which the list will be divided
+        q = partition(s, left, right, order)
+        sort_aux(s, left, q - 1, order)
+        sort_aux(s, q + 1, right, order)
 
 
 def quicksort(s, order):
@@ -204,7 +206,7 @@ def sort_angles_distances(Omega, s):
     Sort the list of points 's' for the composition order given reference point
     Omega.
     """
-    order = lambda A, B: comp(Omega, A, B)
+    def order(A, B): return comp(Omega, A, B)
     quicksort(s, order)
 
 
@@ -326,24 +328,24 @@ def image_hull(image, step=5, null_val=0., inside=True):
     H = []
     shape = np.array(image.shape)
     row, col = np.indices(shape)
-    for i in range(0,shape[0],step):
-        r = row[i,:][image[i,:]>null_val]
-        c = col[i,:][image[i,:]>null_val]
-        if len(r)>1 and len(c)>1:
-            H.append((r[0],c[0]))
-            H.append((r[-1],c[-1]))
-    for j in range(0,shape[1],step):
-        r = row[:,j][image[:,j]>null_val]
-        c = col[:,j][image[:,j]>null_val]
-        if len(r)>1 and len(c)>1:
-            if not((r[0],c[0]) in H):
-                H.append((r[0],c[0]))
-            if not((r[-1],c[-1]) in H):
-                H.append((r[-1],c[-1]))
+    for i in range(0, shape[0], step):
+        r = row[i, :][image[i, :] > null_val]
+        c = col[i, :][image[i, :] > null_val]
+        if len(r) > 1 and len(c) > 1:
+            H.append((r[0], c[0]))
+            H.append((r[-1], c[-1]))
+    for j in range(0, shape[1], step):
+        r = row[:, j][image[:, j] > null_val]
+        c = col[:, j][image[:, j] > null_val]
+        if len(r) > 1 and len(c) > 1:
+            if not ((r[0], c[0]) in H):
+                H.append((r[0], c[0]))
+            if not ((r[-1], c[-1]) in H):
+                H.append((r[-1], c[-1]))
     S = np.array(convex_hull(H))
 
-    x_min, y_min = S[:,0]<S[:,0].mean(), S[:,1]<S[:,1].mean()
-    x_max, y_max = S[:,0]>S[:,0].mean(), S[:,1]>S[:,1].mean()
+    x_min, y_min = S[:, 0] < S[:, 0].mean(), S[:, 1] < S[:, 1].mean()
+    x_max, y_max = S[:, 0] > S[:, 0].mean(), S[:, 1] > S[:, 1].mean()
     # Get the 4 extrema
     S0 = S[x_min*y_min][np.abs(0-S[x_min*y_min].sum(axis=1)).min() == np.abs(0-S[x_min*y_min].sum(axis=1))][0]
     S1 = S[x_min*y_max][np.abs(shape[1]-S[x_min*y_max].sum(axis=1)).min() == np.abs(shape[1]-S[x_min*y_max].sum(axis=1))][0]
@@ -351,14 +353,14 @@ def image_hull(image, step=5, null_val=0., inside=True):
     S3 = S[x_max*y_max][np.abs(shape.sum()-S[x_max*y_max].sum(axis=1)).min() == np.abs(shape.sum()-S[x_max*y_max].sum(axis=1))][0]
     # Get the vertex of the biggest included rectangle
     if inside:
-        f0 = np.max([S0[0],S1[0]])
-        f1 = np.min([S2[0],S3[0]])
-        f2 = np.max([S0[1],S2[1]])
-        f3 = np.min([S1[1],S3[1]])
+        f0 = np.max([S0[0], S1[0]])
+        f1 = np.min([S2[0], S3[0]])
+        f2 = np.max([S0[1], S2[1]])
+        f3 = np.min([S1[1], S3[1]])
     else:
-        f0 = np.min([S0[0],S1[0]])
-        f1 = np.max([S2[0],S3[0]])
-        f2 = np.min([S0[1],S2[1]])
-        f3 = np.max([S1[1],S3[1]])
+        f0 = np.min([S0[0], S1[0]])
+        f1 = np.max([S2[0], S3[0]])
+        f2 = np.min([S0[1], S2[1]])
+        f3 = np.max([S1[1], S3[1]])
 
     return np.array([f0, f1, f2, f3]).astype(int)

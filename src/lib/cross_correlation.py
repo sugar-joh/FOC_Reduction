@@ -1,10 +1,10 @@
 """
 Library functions for phase cross-correlation computation.
 """
-##Prefer FFTs via the new scipy.fft module when available (SciPy 1.4+)
-#Otherwise fall back to numpy.fft.
-#Like numpy 1.15+ scipy 1.3+ is also using pocketfft, but a newer
-#C++/pybind11 version called pypocketfft
+# Prefer FFTs via the new scipy.fft module when available (SciPy 1.4+)
+# Otherwise fall back to numpy.fft.
+# Like numpy 1.15+ scipy 1.3+ is also using pocketfft, but a newer
+# C++/pybind11 version called pypocketfft
 try:
     import scipy.fft as fft
 except ImportError:
@@ -14,7 +14,7 @@ import numpy as np
 
 
 def _upsampled_dft(data, upsampled_region_size, upsample_factor=1,
-                    axis_offsets=None):
+                   axis_offsets=None):
     """
     Upsampled DFT by matrix multiplication.
     This code is intended to provide the same result as if the following
@@ -243,7 +243,7 @@ def phase_cross_correlation(reference_image, moving_image, *,
             raise ValueError(
                 "NaN values found, please remove NaNs from your input data")
 
-        return shifts, _compute_error(CCmax, src_amp, target_amp),\
+        return shifts, _compute_error(CCmax, src_amp, target_amp), \
             _compute_phasediff(CCmax)
     else:
         return shifts

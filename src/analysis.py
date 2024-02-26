@@ -4,7 +4,7 @@ from sys import argv
 
 arglist = argv[1:]
 options = "hf:p:i:l:"
-long_options = ["help","fits=","snrp=","snri=","lim="]
+long_options = ["help", "fits=", "snrp=", "snri=", "lim="]
 
 fits_path = None
 SNRp_cut, SNRi_cut = 3, 30
@@ -28,12 +28,12 @@ try:
 except get_error as err:
     print(str(err))
 
-if not fits_path is None:
+if fits_path is not None:
     from astropy.io import fits
     from lib.plots import pol_map
 
     Stokes_UV = fits.open(fits_path)
-    p = pol_map(Stokes_UV, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut,flux_lim=flux_lim)
+    p = pol_map(Stokes_UV, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
 
 else:
     print("python3 analysis.py -f <path_to_reduced_fits> -p <SNRp_cut> -i <SNRi_cut> -l <flux_lim>")
