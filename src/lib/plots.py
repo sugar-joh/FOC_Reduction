@@ -341,7 +341,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
             vmin, vmax = flux_lim
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin, vmax), aspect='equal', cmap='inferno', alpha=1.)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        levelsI = np.logspace(0.31, 1.955, 6)/100.*vmax
+        levelsI = np.array([2., 5., 10., 20., 50., 90.])/100.*vmax
         print("Total flux contour levels : ", levelsI)
         ax.contour(stkI.data*convert_flux, levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['pol_flux']:
@@ -435,10 +435,11 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     PA_diluted = Stokes[0].header['PA_int']
     PA_diluted_err = Stokes[0].header['PA_int_err']
 
+    plt.rcParams.update({'font.size': 12})
     px_size = wcs.wcs.get_cdelt()[0]*3600.
     px_sc = AnchoredSizeBar(ax.transData, 1./px_size, '1 arcsec', 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
     north_dir = AnchoredDirectionArrows(ax.transAxes, "E", "N", length=-0.08, fontsize=0.025, loc=1, aspect_ratio=-1, sep_y=0.01, sep_x=0.01, back_length=0., head_length=10., head_width=10.,
-                                        angle=-Stokes[0].header['orientat'], color='white', text_props={'ec': 'k', 'fc': 'w', 'alpha': 1, 'lw': 0.4}, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1, 'lw': 1})
+                                        angle=-Stokes[0].header['orientat'], text_props={'ec': 'k', 'fc': 'w', 'alpha': 1, 'lw': -0.2}, arrow_props={'ec': 'k', 'fc': 'w', 'alpha': 1, 'lw': 1})
 
     if display.lower() in ['i', 's_i', 'snri', 'pf', 'p', 'pa', 's_p', 'snrp']:
         if step_vec == 0:
