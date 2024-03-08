@@ -56,6 +56,14 @@ from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
 
 
+def rot2D(ang):
+    """
+    Return the 2D rotation matrix of given angle in degrees
+    """
+    alpha = np.pi*ang/180
+    return np.array([[np.cos(alpha), np.sin(alpha)], [-np.sin(alpha), np.cos(alpha)]])
+
+
 def princ_angle(ang):
     """
     Return the principal angle in the 0° to 360° quadrant.
@@ -170,7 +178,7 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
 
     if not (savename is None):
         # fig.suptitle(savename)
-        if not savename[-4:] in ['.png', '.jpg', 'pdf']:
+        if not savename[-4:] in ['.png', '.jpg', '.pdf']:
             savename += '.pdf'
         fig.savefig(path_join(plots_folder, savename), bbox_inches='tight')
     plt.show()
@@ -1540,6 +1548,122 @@ class image_lasso_selector(object):
             self.on_close()
 
 
+class slit(object):
+    def __init__(self, img, cdelt=np.array([1., 1.]), width=1., height=2., angle=0., fig=None, ax=None):
+        """
+        img must have shape (X, Y)
+        """
+        self.selected = False
+        self.img = img
+        self.vmin, self.vmax = 0., np.max(self.img[self.img > 0.])
+        plt.ioff()  # see https://github.com/matplotlib/matplotlib/issues/17013
+        if fig is None:
+            self.fig = plt.figure(figsize=(15, 15))
+        else:
+            self.fig = fig
+        if ax is None:
+            self.ax = self.fig.gca()
+            self.mask_alpha = 1.
+            self.embedded = False
+        else:
+            self.ax = ax
+            self.mask_alpha = 0.1
+            self.embedded = True
+
+        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='equal', cmap='inferno', alpha=self.mask_alpha)
+        plt.ion()
+
+        xx, yy = np.indices(self.img.shape)
+        self.pix = np.vstack((xx.flatten(), yy.flatten())).T
+
+        self.x0, self.y0 = np.array(self.img.shape)/2.
+
+        self.cdelt = cdelt
+        self.width = width/np.abs(self.cdelt).max()/3600.
+        self.height = height/np.abs(self.cdelt).max()/3600.
+        self.angle = angle
+
+        self.rect_center = (self.x0, self.y0)-np.dot(rot2D(self.angle), (self.width/2, self.height/2))
+        self.rect = Rectangle(self.rect_center, self.width, self.height, alpha=0.8, ec='grey', fc='none')
+        self.ax.add_patch(self.rect)
+
+        self.fig.canvas.mpl_connect('button_press_event', self.on_press)
+        self.fig.canvas.mpl_connect('button_release_event', self.on_release)
+        self.fig.canvas.mpl_connect('motion_notify_event', self.on_move)
+        self.fig.canvas.mpl_connect('close_event', self.on_close)
+        self.x0, self.y0 = self.rect.xy
+        self.pressevent = None
+        plt.show()
+
+    def on_close(self, event=None) -> None:
+        if not hasattr(self, 'mask'):
+            self.mask = np.zeros(self.img.shape[:2], dtype=bool)
+        self.selected = True
+
+    def on_press(self, event):
+        if event.inaxes != self.ax:
+            return
+
+        if not self.rect.contains(event)[0]:
+            return
+
+        self.pressevent = event
+
+    def on_release(self, event):
+        self.pressevent = None
+        self.x0, self.y0 = self.rect.xy
+        self.update_mask()
+
+    def on_move(self, event):
+        if self.pressevent is None or event.inaxes != self.pressevent.inaxes:
+            return
+
+        dx = event.xdata - self.pressevent.xdata
+        dy = event.ydata - self.pressevent.ydata
+        self.rect.xy = self.x0 + dx, self.y0 + dy
+        self.fig.canvas.draw_idle()
+
+    def update_width(self, width):
+        self.width = width/np.abs(self.cdelt).max()/3600
+        self.rect.set_width(self.width)
+        self.fig.canvas.draw_idle()
+
+    def update_height(self, height):
+        self.height = height/np.abs(self.cdelt).max()/3600
+        self.rect.set_height(self.height)
+        self.fig.canvas.draw_idle()
+
+    def update_angle(self, angle):
+        self.angle = angle
+        self.rect.set_angle(self.angle)
+        self.fig.canvas.draw_idle()
+
+    def update_mask(self):
+        if hasattr(self, 'displayed'):
+            try:
+                self.displayed.remove()
+            except ValueError:
+                return
+        self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='equal', cmap='inferno', alpha=self.mask_alpha)
+        array = self.displayed.get_array().data
+
+        self.mask = np.zeros(array.shape, dtype=bool)
+        for p in self.pix:
+            self.mask[tuple(p)] = (np.abs(np.dot(rot2D(-self.angle), p-self.rect.get_center()[::-1])) < (self.height/2., self.width/2.)).all()
+        if hasattr(self, 'cont'):
+            for coll in self.cont.collections:
+                try:
+                    coll.remove()
+                except AttributeError:
+                    return
+        self.cont = self.ax.contour(self.mask.astype(float), levels=[0.5], colors='white', linewidths=1)
+        if not self.embedded:
+            self.displayed.set_data(array)
+            self.fig.canvas.draw_idle()
+        else:
+            self.on_close()
+
+
 class aperture(object):
     def __init__(self, img, cdelt=np.array([1., 1.]), radius=1., fig=None, ax=None):
         """
@@ -1621,7 +1745,7 @@ class aperture(object):
         if hasattr(self, 'displayed'):
             try:
                 self.displayed.remove()
-            except AttributeError:
+            except ValueError:
                 return
         self.displayed = self.ax.imshow(self.img, vmin=self.vmin, vmax=self.vmax, aspect='equal', cmap='inferno', alpha=self.mask_alpha)
         array = self.displayed.get_array().data
@@ -1682,15 +1806,15 @@ class pol_map(object):
         self.pol_int()
 
         # Set axes for sliders (SNRp_cut, SNRi_cut)
-        ax_I_cut = self.fig.add_axes([0.125, 0.080, 0.35, 0.01])
-        ax_P_cut = self.fig.add_axes([0.125, 0.055, 0.35, 0.01])
-        ax_vec_sc = self.fig.add_axes([0.300, 0.030, 0.175, 0.01])
-        ax_snr_reset = self.fig.add_axes([0.125, 0.020, 0.05, 0.02])
+        ax_I_cut = self.fig.add_axes([0.120, 0.080, 0.230, 0.01])
+        ax_P_cut = self.fig.add_axes([0.120, 0.055, 0.230, 0.01])
+        ax_vec_sc = self.fig.add_axes([0.240, 0.030, 0.110, 0.01])
+        ax_snr_reset = self.fig.add_axes([0.080, 0.020, 0.05, 0.02])
         SNRi_max = np.max(self.I[self.IQU_cov[0, 0] > 0.]/np.sqrt(self.IQU_cov[0, 0][self.IQU_cov[0, 0] > 0.]))
         SNRp_max = np.max(self.P[self.s_P > 0.]/self.s_P[self.s_P > 0.])
         s_I_cut = Slider(ax_I_cut, r"$SNR^{I}_{cut}$", 1., int(SNRi_max*0.95), valstep=1, valinit=self.SNRi_cut)
         s_P_cut = Slider(ax_P_cut, r"$SNR^{P}_{cut}$", 1., int(SNRp_max*0.95), valstep=1, valinit=self.SNRp_cut)
-        s_vec_sc = Slider(ax_vec_sc, r"Vectors scale", 1., 10., valstep=1, valinit=self.vec_scale)
+        s_vec_sc = Slider(ax_vec_sc, r"Vectors scale", 1., 6., valstep=1, valinit=self.vec_scale)
         b_snr_reset = Button(ax_snr_reset, "Reset")
         b_snr_reset.label.set_fontsize(8)
 
@@ -1722,10 +1846,51 @@ class pol_map(object):
         s_vec_sc.on_changed(update_vecsc)
         b_snr_reset.on_clicked(reset_snr)
 
+        # Set axe for ROI selection
+        ax_select = self.fig.add_axes([0.375, 0.070, 0.05, 0.02])
+        ax_roi_reset = self.fig.add_axes([0.430, 0.070, 0.05, 0.02])
+        b_select = Button(ax_select, "Select")
+        b_select.label.set_fontsize(8)
+        self.selected = False
+        b_roi_reset = Button(ax_roi_reset, "Reset")
+        b_roi_reset.label.set_fontsize(8)
+
+        def select_roi(event):
+            if self.data is None:
+                self.data = self.Stokes[0].data
+            if self.selected:
+                self.selected = False
+                self.region = deepcopy(self.select_instance.mask.astype(bool))
+                self.select_instance.displayed.remove()
+                for coll in self.select_instance.cont.collections:
+                    coll.remove()
+                self.select_instance.lasso.set_active(False)
+                self.set_data_mask(deepcopy(self.region))
+                self.pol_int()
+            else:
+                self.selected = True
+                self.region = None
+                self.select_instance = image_lasso_selector(self.data, fig=self.fig, ax=self.ax)
+                self.select_instance.lasso.set_active(True)
+                k = 0
+                while not self.select_instance.selected and k < 60:
+                    self.fig.canvas.start_event_loop(timeout=1)
+                    k += 1
+                select_roi(event)
+            self.fig.canvas.draw_idle()
+
+        def reset_roi(event):
+            self.region = None
+            self.pol_int()
+            self.fig.canvas.draw_idle()
+
+        b_select.on_clicked(select_roi)
+        b_roi_reset.on_clicked(reset_roi)
+
         # Set axe for Aperture selection
-        ax_aper = self.fig.add_axes([0.55, 0.040, 0.05, 0.02])
-        ax_aper_reset = self.fig.add_axes([0.605, 0.040, 0.05, 0.02])
-        ax_aper_radius = self.fig.add_axes([0.55, 0.020, 0.10, 0.01])
+        ax_aper = self.fig.add_axes([0.375, 0.040, 0.05, 0.02])
+        ax_aper_reset = self.fig.add_axes([0.430, 0.040, 0.05, 0.02])
+        ax_aper_radius = self.fig.add_axes([0.375, 0.020, 0.10, 0.01])
         self.selected = False
         b_aper = Button(ax_aper, "Aperture")
         b_aper.label.set_fontsize(8)
@@ -1776,46 +1941,98 @@ class pol_map(object):
         b_aper_reset.on_clicked(reset_aperture)
         s_aper_radius.on_changed(update_aperture)
 
-        # Set axe for ROI selection
-        ax_select = self.fig.add_axes([0.55, 0.070, 0.05, 0.02])
-        ax_roi_reset = self.fig.add_axes([0.605, 0.070, 0.05, 0.02])
-        b_select = Button(ax_select, "Select")
-        b_select.label.set_fontsize(8)
+        # Set axe for Slit selection
+        ax_slit = self.fig.add_axes([0.55, 0.080, 0.05, 0.02])
+        ax_slit_reset = self.fig.add_axes([0.605, 0.080, 0.05, 0.02])
+        ax_slit_width = self.fig.add_axes([0.55, 0.060, 0.10, 0.01])
+        ax_slit_height = self.fig.add_axes([0.55, 0.040, 0.10, 0.01])
+        ax_slit_angle = self.fig.add_axes([0.55, 0.020, 0.10, 0.01])
         self.selected = False
-        b_roi_reset = Button(ax_roi_reset, "Reset")
-        b_roi_reset.label.set_fontsize(8)
+        b_slit = Button(ax_slit, "Slit")
+        b_slit.label.set_fontsize(8)
+        b_slit_reset = Button(ax_slit_reset, "Reset")
+        b_slit_reset.label.set_fontsize(8)
+        s_slit_width = Slider(ax_slit_width, r"$W_{slit}$", np.ceil(self.wcs.wcs.cdelt.max()/1.33*3.6e5)/1e2, 7., valstep=1e-2, valinit=1.)
+        s_slit_height = Slider(ax_slit_height, r"$H_{slit}$", np.ceil(self.wcs.wcs.cdelt.max()/1.33*3.6e5)/1e2, 7., valstep=1e-2, valinit=1.)
+        s_slit_angle = Slider(ax_slit_angle, r"$\theta_{slit}$", 0., 90., valstep=1., valinit=0.)
 
-        def select_roi(event):
+        def select_slit(event):
             if self.data is None:
                 self.data = self.Stokes[0].data
             if self.selected:
                 self.selected = False
+                self.select_instance.update_mask()
                 self.region = deepcopy(self.select_instance.mask.astype(bool))
                 self.select_instance.displayed.remove()
-                for coll in self.select_instance.cont.collections:
+                for coll in self.select_instance.cont.collections[:]:
                     coll.remove()
-                self.select_instance.lasso.set_active(False)
+                self.select_instance.rect.set_visible(False)
                 self.set_data_mask(deepcopy(self.region))
                 self.pol_int()
             else:
                 self.selected = True
                 self.region = None
-                self.select_instance = image_lasso_selector(self.data, fig=self.fig, ax=self.ax)
-                self.select_instance.lasso.set_active(True)
-                k = 0
-                while not self.select_instance.selected and k < 60:
-                    self.fig.canvas.start_event_loop(timeout=1)
-                    k += 1
-                select_roi(event)
+                self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                            width=s_slit_width.val, height=s_slit_height.val, angle=s_slit_angle.val)
+                self.select_instance.rect.set_visible(True)
+
             self.fig.canvas.draw_idle()
 
-        def reset_roi(event):
+        def update_slit_w(val):
+            if hasattr(self, 'select_instance'):
+                if hasattr(self.select_instance, 'width'):
+                    self.select_instance.update_width(val)
+                else:
+                    self.selected = True
+                    self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                                width=val, height=s_slit_height.val, angle=s_slit_angle.val)
+            else:
+                self.selected = True
+                self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                            width=val, height=s_slit_height.val, angle=s_slit_angle.val)
+            self.fig.canvas.draw_idle()
+
+        def update_slit_h(val):
+            if hasattr(self, 'select_instance'):
+                if hasattr(self.select_instance, 'height'):
+                    self.select_instance.update_height(val)
+                else:
+                    self.selected = True
+                    self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                                width=s_slit_width.val, height=val, angle=s_slit_angle.val)
+            else:
+                self.selected = True
+                self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                            width=s_slit_width.val, height=val, angle=s_slit_angle.val)
+            self.fig.canvas.draw_idle()
+
+        def update_slit_a(val):
+            if hasattr(self, 'select_instance'):
+                if hasattr(self.select_instance, 'angle'):
+                    self.select_instance.update_angle(val)
+                else:
+                    self.selected = True
+                    self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                                width=s_slit_width.val, height=s_slit_height.val, angle=val)
+            else:
+                self.selected = True
+                self.select_instance = slit(self.data, fig=self.fig, ax=self.ax, cdelt=self.wcs.wcs.cdelt,
+                                            width=s_slit_width.val, height=s_slit_height.val, angle=val)
+            self.fig.canvas.draw_idle()
+
+        def reset_slit(event):
             self.region = None
+            s_slit_width.reset()
+            s_slit_height.reset()
+            s_slit_angle.reset()
             self.pol_int()
             self.fig.canvas.draw_idle()
 
-        b_select.on_clicked(select_roi)
-        b_roi_reset.on_clicked(reset_roi)
+        b_slit.on_clicked(select_slit)
+        b_slit_reset.on_clicked(reset_slit)
+        s_slit_width.on_changed(update_slit_w)
+        s_slit_height.on_changed(update_slit_h)
+        s_slit_angle.on_changed(update_slit_a)
 
         # Set axe for crop Stokes
         ax_crop = self.fig.add_axes([0.70, 0.070, 0.05, 0.02])

@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-# -*- coding:utf-8 -*-
 """
 Library function for simplified fits handling.
 
