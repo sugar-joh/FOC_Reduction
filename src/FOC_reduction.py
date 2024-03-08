@@ -22,10 +22,10 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         # from lib.deconvolve import from_file_psf
         psf = 'gaussian'  # Can be user-defined as well
         # psf = from_file_psf(data_folder+psf_file)
-        psf_FWHM = 0.15
+        psf_FWHM = 0.015
         psf_scale = 'arcsec'
-        psf_shape = (25, 25)
-        iterations = 5
+        psf_shape = (11, 11)
+        iterations = 3
         algo = "richardson"
 
     # Initial crop
@@ -33,7 +33,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 1.00
+    subtract_error = 1.20
+    display_bkg = False
     display_error = False
 
     # Data binning
@@ -44,13 +45,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Alignement
     align_center = 'center'          # If None will not align the images
-    display_bkg = False
     display_align = False
     display_data = False
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           # If None, no smoothing is done
+    smoothing_FWHM = 0.2           # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
@@ -58,8 +58,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     rotate_stokes = True
 
     # Final crop
-    crop = False                    # Crop to desired ROI
-    interactive = False             # Whether to output to intercative analysis tool
+    crop = True                     # Crop to desired ROI
+    interactive = True              # Whether to output to intercative analysis tool
 
     #  Polarization map output
     SNRp_cut = 3.    # P measurments with SNR>3
@@ -90,7 +90,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         plots_folder = "."
     if not path_exists(plots_folder):
         system("mkdir -p {0:s} ".format(plots_folder))
-    infiles = [p[1] for p in prod]
+    infiles = [p[1] for p in prod]  # if p[1] not in ['x2rp0202t_c0f.fits', 'x2rp0302t_c0f.fits']]
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target, "FOC"])
@@ -102,6 +102,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     if smoothing_FWHM is not None:
         figtype += "_"+"".join(["".join([s[0] for s in smoothing_function.split("_")]),
                                "{0:.2f}".format(smoothing_FWHM), smoothing_scale])    # additionnal informations
+    if deconvolve:
+        figtype += "_deconv"
     if align_center is None:
         figtype += "_not_aligned"
 
@@ -115,20 +117,25 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     #  Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
-    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([figname, "errors"]), plots_folder=plots_folder, return_background=True)
+    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([
+                                                                      figname, "errors"]), plots_folder=plots_folder, return_background=True)
 
     if display_bkg:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "bkg"]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
+        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "bkg"]), plots_folder=plots_folder)
 
     #  Align and rescale images with oversampling.
-    data_array, error_array, headers, data_mask = proj_red.align_data( data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
+    data_array, error_array, headers, data_mask = proj_red.align_data(
+        data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
 
     if display_align:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, str(align_center)]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
+        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, str(align_center)]), plots_folder=plots_folder)
 
     #  Rebin data to desired pixel size.
     if rebin:
-        data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array( data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
+        data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(
+            data_array, error_array, headers, pxsize=pxsize, scale=px_scale, operation=rebin_operation, data_mask=data_mask)
 
     # Rotate data to have North up
     if rotate_data:
@@ -138,10 +145,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Plot array for checking output
     if display_data and px_scale.lower() not in ['full', 'integrate']:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "rebin"]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
+        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "rebin"]), plots_folder=plots_folder)
 
     background = np.array([np.array(bkg).reshape(1, 1) for bkg in background])
-    background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1'] == head['filtnam1'] for h in headers], dtype=bool)].mean()) ** 2/np.sum([h['filtnam1'] == head['filtnam1'] for h in headers]))).reshape(1, 1) for bkg, head in zip(background, headers)])
+    background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1'] == head['filtnam1'] for h in headers], dtype=bool)].mean())
+                                ** 2/np.sum([h['filtnam1'] == head['filtnam1'] for h in headers]))).reshape(1, 1) for bkg, head in zip(background, headers)])
 
     # Step 2:
     # Compute Stokes I, Q, U with smoothed polarized images
@@ -149,13 +158,16 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
-    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(1, 1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
+    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(
+        data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
+    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(
+        1, 1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
 
     # Step 3:
     # Rotate images to have North up
     if rotate_stokes:
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, SNRi_cut=None)
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(
+            I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, SNRi_cut=None)
         I_bkg, Q_bkg, U_bkg, S_cov_bkg, _, _ = proj_red.rotate_Stokes(I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1, 1), headers, SNRi_cut=None)
 
     # Compute polarimetric parameters (polarisation degree and angle).
@@ -164,7 +176,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Step 4:
     # Save image to FITS.
-    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P, headers, data_mask, "_".join([figname, figtype]), data_folder=data_folder, return_hdul=True)
+    Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P,
+                                        headers, data_mask, "_".join([figname, figtype]), data_folder=data_folder, return_hdul=True)
     data_mask = Stokes_test[-1].data.astype(bool)
 
     # Step 5:
@@ -176,11 +189,13 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         stokescrop.writeto("/".join([data_folder, "_".join([figname, figtype+".fits"])]))
         Stokes_test, data_mask, headers = stokescrop.hdul_crop, stokescrop.data_mask, [dataset.header for dataset in stokescrop.hdul_crop]
 
-    print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'], np.sqrt(Stokes_test[3].data[0, 0][data_mask].sum())*headers[0]['photflam'], 2, out=int)))
+    print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
+        Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'], np.sqrt(Stokes_test[3].data[0, 0][data_mask].sum())*headers[0]['photflam'], 2, out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100., np.ceil(headers[0]['p_int_err']*1000.)/10.))
     print("PA_int = {0:.1f} ±t {1:.1f} °".format(headers[0]['pa_int'], np.ceil(headers[0]['pa_int_err']*10.)/10.))
     #  Background values
-    print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(I_bkg[0, 0]*headers[0]['photflam'], np.sqrt(S_cov_bkg[0, 0][0, 0])*headers[0]['photflam'], 2, out=int)))
+    print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
+        I_bkg[0, 0]*headers[0]['photflam'], np.sqrt(S_cov_bkg[0, 0][0, 0])*headers[0]['photflam'], 2, out=int)))
     print("P_bkg = {0:.1f} ± {1:.1f} %".format(debiased_P_bkg[0, 0]*100., np.ceil(s_P_bkg[0, 0]*1000.)/10.))
     print("PA_bkg = {0:.1f} ± {1:.1f} °".format(PA_bkg[0, 0], np.ceil(s_PA_bkg[0, 0]*10.)/10.))
     #  Plot polarisation map (Background is either total Flux, Polarization degree or Polarization degree error).

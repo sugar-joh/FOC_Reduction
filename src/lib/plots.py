@@ -146,7 +146,7 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
         # im = axe.imshow(convert*data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
         data[data*convert < vmin*10.] = vmin*10./convert
         im = axe.imshow(convert*data, norm=LogNorm(vmin, vmax), origin='lower', cmap='gray')
-        if not (rectangle is None):
+        if rectangle is not None:
             x, y, width, height, angle, color = rectangle[i]
             axe.add_patch(Rectangle((x, y), width, height, angle=angle,
                                     edgecolor=color, fill=False))
@@ -519,7 +519,7 @@ class align_maps(object):
 
         self.map_convert, self.map_unit = (float(self.map_header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(
             self.map_header.keys()) else (1., self.map_header['bunit'] if 'BUNIT' in list(self.map_header.keys()) else "Arbitray Units")
-        self.other_convert, self.other_unit = (float(self.other_map[0].header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(
+        self.other_convert, self.other_unit = (float(self.other_header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(
             self.other_header.keys()) else (1., self.other_header['bunit'] if 'BUNIT' in list(self.other_header.keys()) else "Arbitray Units")
         self.map_observer = "/".join([self.map_header['telescop'], self.map_header['instrume']]
                                      ) if "INSTRUME" in list(self.map_header.keys()) else self.map_header['telescop']
@@ -1003,7 +1003,7 @@ class overplot_pol(align_maps):
 
         # Display Stokes I as contours
         if levels is None:
-            levels = np.logspace(np.log(3)/np.log(10), 2., 5)/100.*np.max(stkI[stkI > 0.])*self.map_convert
+            levels = np.array([2., 5., 10., 20., 90.])/100.*np.max(stkI[stkI > 0.])*self.map_convert
         cont_stkI = self.ax_overplot.contour(stkI*self.map_convert, levels=levels, colors='grey', alpha=0.75,
                                              transform=self.ax_overplot.get_transform(self.wcs_UV))
         # self.ax_overplot.clabel(cont_stkI, inline=True, fontsize=5)
@@ -1027,7 +1027,7 @@ class overplot_pol(align_maps):
         self.cr_other, = self.ax_overplot.plot(*(self.other_wcs.celestial.wcs.crpix-(1., 1.)), 'g+')
 
         if "PHOTPLAM" in list(self.other_header.keys()):
-            self.legend_title = r"{0:s} image at $\lambda$ = {1:.0f} $\AA$".format(self.other_map_observer, float(self.other_header['photplam']))
+            self.legend_title = r"{0:s} image at $\lambda$ = {1:.0f} $\AA$".format(self.other_observer, float(self.other_header['photplam']))
         elif "CRVAL3" in list(self.other_header.keys()):
             self.legend_title = "{0:s} image at {1:.2f} GHz".format(self.other_observer, float(self.other_header['crval3'])*1e-9)
         else:
@@ -1884,9 +1884,7 @@ class pol_map(object):
         def submit_save(expression):
             ax_text_save.set(visible=False)
             if expression != '':
-                plt.rcParams.update({'font.size': 15})
-                save_fig = plt.figure(figsize=(15, 15))
-                save_ax = save_fig.add_subplot(111, projection=self.wcs)
+                save_fig, save_ax = plt.subplots(figsize=(12, 10), layout='tight', subplot_kw=dict(projection=self.wcs))
                 self.ax_cosmetics(ax=save_ax)
                 self.display(fig=save_fig, ax=save_ax)
                 self.pol_vector(fig=save_fig, ax=save_ax)
@@ -1901,7 +1899,6 @@ class pol_map(object):
             ax_vec_sc.set(visible=True)
             ax_save.set(visible=True)
             ax_dump.set(visible=True)
-            plt.rcParams.update({'font.size': 10})
             self.fig.canvas.draw_idle()
 
         text_save.on_submit(submit_save)
@@ -2104,7 +2101,7 @@ class pol_map(object):
             else:
                 vmin, vmax = flux_lim
             norm = LogNorm(vmin, vmax)
-            label = r"$F_{\lambda} \cdot P$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
+            label = r"$P \cdot F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]"
         elif self.display_selection.lower() in ['pol_deg']:
             self.data = self.P*100.
             vmin, vmax = 0., np.max(self.data[self.P > self.s_P])
@@ -2139,7 +2136,9 @@ class pol_map(object):
                 self.im = ax.imshow(self.data, norm=norm, aspect='equal', cmap='inferno')
             else:
                 self.im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
+            plt.rcParams.update({'font.size': 14})
             self.cbar = fig.colorbar(self.im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=label)
+            plt.rcParams.update({'font.size': 10})
             fig.canvas.draw_idle()
             return self.im
         else:
@@ -2149,8 +2148,11 @@ class pol_map(object):
                 im = ax.imshow(self.data, vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno')
             ax.set_xlim(0, self.data.shape[1])
             ax.set_ylim(0, self.data.shape[0])
-            plt.colorbar(im, pad=0.025, aspect=80, label=label)
+            plt.rcParams.update({'font.size': 14})
+            fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=label)
+            plt.rcParams.update({'font.size': 10})
             fig.canvas.draw_idle()
+            return im
 
     def pol_vector(self, fig=None, ax=None):
         P_cut = np.ones(self.P.shape)*np.nan
