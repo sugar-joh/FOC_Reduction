@@ -14,7 +14,7 @@ from os.path import join as path_join
 from astropy.io import fits
 from astropy.wcs import WCS
 from lib.convex_hull import clean_ROI
-from lib.plots import princ_angle
+from lib.utils import princ_angle
 
 
 def get_obs_data(infiles, data_folder="", compute_flux=False):

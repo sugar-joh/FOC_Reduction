@@ -54,51 +54,8 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
-
-
-def rot2D(ang):
-    """
-    Return the 2D rotation matrix of given angle in degrees
-    """
-    alpha = np.pi*ang/180
-    return np.array([[np.cos(alpha), np.sin(alpha)], [-np.sin(alpha), np.cos(alpha)]])
-
-
-def princ_angle(ang):
-    """
-    Return the principal angle in the 0° to 360° quadrant.
-    """
-    if not isinstance(ang, np.ndarray):
-        A = np.array([ang])
-    else:
-        A = np.array(ang)
-    while np.any(A < 0.):
-        A[A < 0.] = A[A < 0.]+360.
-    while np.any(A >= 180.):
-        A[A >= 180.] = A[A >= 180.]-180.
-    if type(ang) is type(A):
-        return A
-    else:
-        return A[0]
-
-
-def sci_not(v, err, rnd=1, out=str):
-    """
-    Return the scientifque error notation as a string.
-    """
-    power = - int(('%E' % v)[-3:])+1
-    output = [r"({0}".format(round(v*10**power, rnd)), round(v*10**power, rnd)]
-    if isinstance(err, list):
-        for error in err:
-            output[0] += r" $\pm$ {0}".format(round(error*10**power, rnd))
-            output.append(round(error*10**power, rnd))
-    else:
-        output[0] += r" $\pm$ {0}".format(round(err*10**power, rnd))
-        output.append(round(err*10**power, rnd))
-    if out == str:
-        return output[0]+r")e{0}".format(-power)
-    else:
-        return *output[1:], -power
+from lib.fits import save_Stokes
+from lib.utils import rot2D, princ_angle, sci_not
 
 
 def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=None,
@@ -685,14 +642,14 @@ class align_maps(object):
         new_head = deepcopy(self.map_header)
         new_head.update(self.map_wcs.to_header())
         new_hdul = fits.HDUList(fits.PrimaryHDU(self.map_data, new_head))
-        new_hdul.writeto("_".join([path[:-5], suffix])+".fits")
+        new_hdul.writeto("_".join([path[:-5], suffix])+".fits", overwrite=True)
         return 0
 
     def write_other_to(self, path="other_map.fits", suffix="aligned", data_dir="."):
         new_head = deepcopy(self.other_header)
         new_head.update(self.other_wcs.to_header())
         new_hdul = fits.HDUList(fits.PrimaryHDU(self.other_data, new_head))
-        new_hdul.writeto("_".join([path[:-5], suffix])+".fits")
+        new_hdul.writeto("_".join([path[:-5], suffix])+".fits", overwrite=True)
         return 0
 
     def write_to(self, path1="map.fits", path2="other_map.fits", suffix="aligned", data_dir="."):
@@ -1383,7 +1340,7 @@ class crop_map(object):
         self.fig.canvas.mpl_connect('close_event', self.on_close)
         plt.show()
 
-    def writeto(self, filename):
+    def write_to(self, filename):
         self.hdul_crop.writeto(filename, overwrite=True)
 
 
@@ -1480,6 +1437,9 @@ class crop_Stokes(crop_map):
     @property
     def data_mask(self):
         return self.hdul_crop[-1].data.astype(int)
+
+    def write_to(self, filename):
+        save_Stokes(self.hdul_crop['I_stokes'], self.hdul_crop['Q_stokes'], self.hdul_crop['U_stokes'], self.hdul_crop['IQU_cov_matrix'], self.hdul_crop['Pol_deg'], self.hdul_crop['Pol_deg_debiased'], self.hdul_crop['Pol_deg_err'], self.hdul_crop['Pol_deg_err_Poisson_noise'], self.hdul_crop['Pol_ang'], self.hdul_crop['Pol_ang_err'], self.hdul_crop['Pol_ang_err_Poisson_noise'], [hdu.header for hdu in self.hdul_crop], self.hdul_crop['data_mask'], filename, data_folder="", return_hdul=False)
 
 
 class image_lasso_selector(object):
