@@ -33,13 +33,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 1.20
+    subtract_error = 1.00
     display_bkg = False
-    display_error = False
 
     # Data binning
     rebin = True
-    pxsize = 0.10
+    pxsize = 0.05
     px_scale = 'arcsec'         # pixel, arcsec or full
     rebin_operation = 'sum'     # sum or average
 
@@ -50,7 +49,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.2           # If None, no smoothing is done
+    smoothing_FWHM = 0.10          # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
@@ -90,7 +89,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         plots_folder = "."
     if not path_exists(plots_folder):
         system("mkdir -p {0:s} ".format(plots_folder))
-    infiles = [p[1] for p in prod]  # if p[1] not in ['x2rp0202t_c0f.fits', 'x2rp0302t_c0f.fits']]
+    infiles = [p[1] for p in prod]
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target, "FOC"])
@@ -117,12 +116,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     #  Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
-    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_error, savename="_".join([
+    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_bkg, savename="_".join([
                                                                       figname, "errors"]), plots_folder=plots_folder, return_background=True)
-
-    if display_bkg:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
-        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "bkg"]), plots_folder=plots_folder)
 
     #  Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(

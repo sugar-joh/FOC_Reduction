@@ -157,9 +157,9 @@ def bkg_estimate(img, bins=None, chi2=None, coeff=None):
     hist, bin_edges = np.histogram(img[img > 0], bins=bins[-1])
     binning = bin_centers(bin_edges)
     peak = binning[np.argmax(hist)]
-    bins_fwhm = binning[hist > hist.max()/2.]
-    fwhm = bins_fwhm[-1]-bins_fwhm[0]
-    p0 = [hist.max(), peak, fwhm, 1e-3, 1e-3, 1e-3, 1e-3]
+    bins_stdev = binning[hist > hist.max()/2.]
+    stdev = bins_stdev[-1]-bins_stdev[0]
+    p0 = [hist.max(), peak, stdev, 1e-3, 1e-3, 1e-3, 1e-3]
     try:
         popt, pcov = curve_fit(gausspol, binning, hist, p0=p0)
     except RuntimeError:
@@ -231,7 +231,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         weights = 1/chi2**2
         weights /= weights.sum()
 
-        bkg = np.sum(weights*coeff[:, 1])*subtract_error if subtract_error > 0 else np.sum(weights*coeff[:, 1])
+        bkg = np.sum(weights*(coeff[:, 1]+np.abs(coeff[:, 2])*subtract_error))
 
         error_bkg[i] *= bkg
 
@@ -332,12 +332,12 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         # bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
 
         # Fit a gaussian to the log-intensity histogram
-        bins_fwhm = binning[-1][hist > hist.max()/2.]
-        fwhm = bins_fwhm[-1]-bins_fwhm[0]
-        p0 = [hist.max(), binning[-1][np.argmax(hist)], fwhm, 1e-3, 1e-3, 1e-3, 1e-3]
+        bins_stdev = binning[-1][hist > hist.max()/2.]
+        stdev = bins_stdev[-1]-bins_stdev[0]
+        p0 = [hist.max(), binning[-1][np.argmax(hist)], stdev, 1e-3, 1e-3, 1e-3, 1e-3]
         popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
         coeff.append(popt)
-        bkg = popt[1]*subtract_error if subtract_error > 0 else popt[1]
+        bkg = popt[1]+np.abs(popt[2])*subtract_error
 
         error_bkg[i] *= bkg
 

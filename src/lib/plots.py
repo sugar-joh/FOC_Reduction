@@ -1584,7 +1584,7 @@ class slit(object):
         self.angle = angle
 
         self.rect_center = (self.x0, self.y0)-np.dot(rot2D(self.angle), (self.width/2, self.height/2))
-        self.rect = Rectangle(self.rect_center, self.width, self.height, alpha=0.8, ec='grey', fc='none')
+        self.rect = Rectangle(self.rect_center, self.width, self.height, angle=self.angle, alpha=0.8, ec='grey', fc='none')
         self.ax.add_patch(self.rect)
 
         self.fig.canvas.mpl_connect('button_press_event', self.on_press)
