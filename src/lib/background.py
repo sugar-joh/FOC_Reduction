@@ -240,7 +240,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         # Substract background
         if subtract_error > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
 
         std_bkg[i] = image[np.abs(image-bkg)/bkg < 1.].std()
         background[i] = bkg
@@ -327,10 +327,6 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         histograms.append(hist)
         binning.append(np.exp(bin_centers(bin_edges)))
 
-        # Take the background as the count-rate with the maximum number of pixels
-        # hist_max = binning[-1][np.argmax(hist)]
-        # bkg = np.sqrt(np.sum(image[np.abs(image-hist_max)/hist_max<0.5]**2)/image[np.abs(image-hist_max)/hist_max<0.5].size)
-
         # Fit a gaussian to the log-intensity histogram
         bins_stdev = binning[-1][hist > hist.max()/2.]
         stdev = bins_stdev[-1]-bins_stdev[0]
@@ -346,7 +342,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         # Substract background
         if subtract_error > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] < 0.)] = 0.
+            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
 
         std_bkg[i] = image[np.abs(image-bkg)/bkg < 1.].std()
         background[i] = bkg
@@ -443,7 +439,7 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15, 15), subtract_error=True
         # Substract background
         if subtract_error > 0.:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 0.01*bkg)] = 0.01*bkg
+            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
 
         std_bkg[i] = image[np.abs(image-bkg)/bkg < 1.].std()
         background[i] = bkg

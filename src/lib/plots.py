@@ -1438,9 +1438,6 @@ class crop_Stokes(crop_map):
     def data_mask(self):
         return self.hdul_crop[-1].data.astype(int)
 
-    def write_to(self, filename):
-        save_Stokes(self.hdul_crop['I_stokes'], self.hdul_crop['Q_stokes'], self.hdul_crop['U_stokes'], self.hdul_crop['IQU_cov_matrix'], self.hdul_crop['Pol_deg'], self.hdul_crop['Pol_deg_debiased'], self.hdul_crop['Pol_deg_err'], self.hdul_crop['Pol_deg_err_Poisson_noise'], self.hdul_crop['Pol_ang'], self.hdul_crop['Pol_ang_err'], self.hdul_crop['Pol_ang_err_Poisson_noise'], [hdu.header for hdu in self.hdul_crop], self.hdul_crop['data_mask'], filename, data_folder="", return_hdul=False)
-
 
 class image_lasso_selector(object):
     def __init__(self, img, fig=None, ax=None):

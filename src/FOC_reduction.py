@@ -33,7 +33,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 1.00
+    subtract_error = 0.50
     display_bkg = False
 
     # Data binning
@@ -181,13 +181,13 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         figtype += "_crop"
         stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test), norm=LogNorm())
         stokescrop.crop()
-        stokescrop.writeto("/".join([data_folder, "_".join([figname, figtype+".fits"])]))
+        stokescrop.write_to("/".join([data_folder, "_".join([figname, figtype+".fits"])]))
         Stokes_test, data_mask, headers = stokescrop.hdul_crop, stokescrop.data_mask, [dataset.header for dataset in stokescrop.hdul_crop]
 
     print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
         Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'], np.sqrt(Stokes_test[3].data[0, 0][data_mask].sum())*headers[0]['photflam'], 2, out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100., np.ceil(headers[0]['p_int_err']*1000.)/10.))
-    print("PA_int = {0:.1f} ±t {1:.1f} °".format(headers[0]['pa_int'], np.ceil(headers[0]['pa_int_err']*10.)/10.))
+    print("PA_int = {0:.1f} ± {1:.1f} °".format(headers[0]['pa_int'], np.ceil(headers[0]['pa_int_err']*10.)/10.))
     #  Background values
     print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
         I_bkg[0, 0]*headers[0]['photflam'], np.sqrt(S_cov_bkg[0, 0][0, 0])*headers[0]['photflam'], 2, out=int)))

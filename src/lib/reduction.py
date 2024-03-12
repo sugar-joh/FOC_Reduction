@@ -164,7 +164,7 @@ def bin_ndarray(ndarray, new_shape, operation='sum'):
      [342 350 358 366 374]]
 
     """
-    if not operation.lower() in ['sum', 'mean', 'average', 'avg']:
+    if operation.lower() not in ['sum', 'mean', 'average', 'avg']:
         raise ValueError("Operation not supported.")
     if ndarray.ndim != len(new_shape):
         raise ValueError("Shape mismatch: {} -> {}".format(ndarray.shape,
