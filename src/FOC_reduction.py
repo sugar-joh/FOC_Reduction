@@ -14,7 +14,7 @@ from lib.query import retrieve_products, path_exists, system
 from matplotlib.colors import LogNorm
 
 
-def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=0, interactive=0):
+def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -22,9 +22,9 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         # from lib.deconvolve import from_file_psf
         psf = 'gaussian'  # Can be user-defined as well
         # psf = from_file_psf(data_folder+psf_file)
-        psf_FWHM = 0.015
+        psf_FWHM = 0.028
         psf_scale = 'arcsec'
-        psf_shape = (11, 11)
+        psf_shape = (513, 513)
         iterations = 3
         algo = "richardson"
 
@@ -49,16 +49,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10          # If None, no smoothing is done
+    smoothing_FWHM = 0.10           # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
     rotate_data = False             # rotation to North convention can give erroneous results
     rotate_stokes = True
-
-    # Final crop
-    crop = True                     # Crop to desired ROI
-    interactive = True              # Whether to output to intercative analysis tool
 
     #  Polarization map output
     SNRp_cut = 3.    # P measurments with SNR>3
@@ -231,9 +227,8 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--files', metavar='path', required=False, nargs='*', help='the full or relative path to the data products', default=None)
     parser.add_argument('-o', '--output_dir', metavar='directory_path', required=False,
                         help='output directory path for the data products', type=str, default="./data")
-    parser.add_argument('-c', '--crop', metavar='crop_boolean', required=False, help='whether to crop the analysis region', type=int, default=0)
-    parser.add_argument('-i', '--interactive', metavar='interactive_boolean', required=False,
-                        help='whether to output to the interactive analysis tool', type=int, default=0)
+    parser.add_argument('-c', '--crop', required=False, help='whether to crop the analysis region', default=False, action='store_true')
+    parser.add_argument('-i', '--interactive', required=False, help='whether to output to the interactive analysis tool', default=False, action='store_true')
     args = parser.parse_args()
     exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files,
                     output_dir=args.output_dir, crop=args.crop, interactive=args.interactive)
