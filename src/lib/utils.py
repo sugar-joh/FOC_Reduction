@@ -10,7 +10,8 @@ def rot2D(ang):
 
 def princ_angle(ang):
     """
-    Return the principal angle in the 0° to 360° quadrant.
+    Return the principal angle in the 0° to 180° quadrant as PA is always
+    defined at p/m 180°.
     """
     if not isinstance(ang, np.ndarray):
         A = np.array([ang])

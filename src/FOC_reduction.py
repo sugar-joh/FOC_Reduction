@@ -11,10 +11,11 @@ import lib.fits as proj_fits        # Functions to handle fits files
 import lib.reduction as proj_red    # Functions used in reduction pipeline
 import lib.plots as proj_plots      # Functions for plotting data
 from lib.query import retrieve_products, path_exists, system
+from lib.utils import sci_not, princ_angle
 from matplotlib.colors import LogNorm
 
 
-def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=0, interactive=0):
+def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -34,7 +35,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
     subtract_error = 0.50
-    display_bkg = False
+    display_bkg = True
 
     # Data binning
     rebin = True
@@ -56,13 +57,9 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     rotate_data = False             # rotation to North convention can give erroneous results
     rotate_stokes = True
 
-    # Final crop
-    crop = True                     # Crop to desired ROI
-    interactive = True              # Whether to output to intercative analysis tool
-
     #  Polarization map output
     SNRp_cut = 3.    # P measurments with SNR>3
-    SNRi_cut = 30.   # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    SNRi_cut = 3.    # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     flux_lim = None    # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
     vec_scale = 3
     step_vec = 1    # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
@@ -93,6 +90,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
 
     figname = "_".join([target, "FOC"])
+    figtype = ""
     if rebin:
         if px_scale not in ['full']:
             figtype = "".join(["b", "{0:.2f}".format(pxsize), px_scale])    # additionnal informations
@@ -124,8 +122,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
 
     if display_align:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
-        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, str(align_center)]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, savename="_".join([figname, str(align_center)]), plots_folder=plots_folder, norm=LogNorm(
+            vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam']))
 
     #  Rebin data to desired pixel size.
     if rebin:
@@ -140,8 +138,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Plot array for checking output
     if display_data and px_scale.lower() not in ['full', 'integrate']:
-        proj_plots.plot_obs(data_array, headers, vmin=data_array[data_array > 0.].min(
-        )*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam'], savename="_".join([figname, "rebin"]), plots_folder=plots_folder)
+        proj_plots.plot_obs(data_array, headers, savename="_".join([figname, "rebin"]), plots_folder=plots_folder, norm=LogNorm(
+            vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam']))
 
     background = np.array([np.array(bkg).reshape(1, 1) for bkg in background])
     background_error = np.array([np.array(np.sqrt((bkg-background[np.array([h['filtnam1'] == head['filtnam1'] for h in headers], dtype=bool)].mean())
@@ -171,51 +169,52 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Step 4:
     # Save image to FITS.
+    figname = "_".join([figname, figtype]) if figtype != "" else figname
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P,
-                                        headers, data_mask, "_".join([figname, figtype]), data_folder=data_folder, return_hdul=True)
+                                        headers, data_mask, figname, data_folder=data_folder, return_hdul=True)
     data_mask = Stokes_test[-1].data.astype(bool)
 
     # Step 5:
     # crop to desired region of interest (roi)
     if crop:
-        figtype += "_crop"
+        figname += "_crop"
         stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test), norm=LogNorm())
         stokescrop.crop()
-        stokescrop.write_to("/".join([data_folder, "_".join([figname, figtype+".fits"])]))
+        stokescrop.write_to("/".join([data_folder, figname+".fits"]))
         Stokes_test, data_mask, headers = stokescrop.hdul_crop, stokescrop.data_mask, [dataset.header for dataset in stokescrop.hdul_crop]
 
-    print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
+    print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *sci_not(
         Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'], np.sqrt(Stokes_test[3].data[0, 0][data_mask].sum())*headers[0]['photflam'], 2, out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100., np.ceil(headers[0]['p_int_err']*1000.)/10.))
-    print("PA_int = {0:.1f} ± {1:.1f} °".format(headers[0]['pa_int'], np.ceil(headers[0]['pa_int_err']*10.)/10.))
+    print("PA_int = {0:.1f} ± {1:.1f} °".format(princ_angle(headers[0]['pa_int']), princ_angle(np.ceil(headers[0]['pa_int_err']*10.)/10.)))
     #  Background values
-    print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *proj_plots.sci_not(
+    print("F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *sci_not(
         I_bkg[0, 0]*headers[0]['photflam'], np.sqrt(S_cov_bkg[0, 0][0, 0])*headers[0]['photflam'], 2, out=int)))
     print("P_bkg = {0:.1f} ± {1:.1f} %".format(debiased_P_bkg[0, 0]*100., np.ceil(s_P_bkg[0, 0]*1000.)/10.))
-    print("PA_bkg = {0:.1f} ± {1:.1f} °".format(PA_bkg[0, 0], np.ceil(s_PA_bkg[0, 0]*10.)/10.))
+    print("PA_bkg = {0:.1f} ± {1:.1f} °".format(princ_angle(PA_bkg[0, 0]), princ_angle(np.ceil(s_PA_bkg[0, 0]*10.)/10.)))
     #  Plot polarisation map (Background is either total Flux, Polarization degree or Polarization degree error).
     if px_scale.lower() not in ['full', 'integrate'] and not interactive:
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim,
-                                    step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname, figtype]), plots_folder=plots_folder)
+                                    step_vec=step_vec, vec_scale=vec_scale, savename="_".join([figname]), plots_folder=plots_folder)
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "I"]), plots_folder=plots_folder, display='Intensity')
+                                    vec_scale=vec_scale, savename="_".join([figname, "I"]), plots_folder=plots_folder, display='Intensity')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "P_flux"]), plots_folder=plots_folder, display='Pol_Flux')
+                                    vec_scale=vec_scale, savename="_".join([figname, "P_flux"]), plots_folder=plots_folder, display='Pol_Flux')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "P"]), plots_folder=plots_folder, display='Pol_deg')
+                                    vec_scale=vec_scale, savename="_".join([figname, "P"]), plots_folder=plots_folder, display='Pol_deg')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "PA"]), plots_folder=plots_folder, display='Pol_ang')
+                                    vec_scale=vec_scale, savename="_".join([figname, "PA"]), plots_folder=plots_folder, display='Pol_ang')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "I_err"]), plots_folder=plots_folder, display='I_err')
+                                    vec_scale=vec_scale, savename="_".join([figname, "I_err"]), plots_folder=plots_folder, display='I_err')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "P_err"]), plots_folder=plots_folder, display='Pol_deg_err')
+                                    vec_scale=vec_scale, savename="_".join([figname, "P_err"]), plots_folder=plots_folder, display='Pol_deg_err')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "SNRi"]), plots_folder=plots_folder, display='SNRi')
+                                    vec_scale=vec_scale, savename="_".join([figname, "SNRi"]), plots_folder=plots_folder, display='SNRi')
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim, step_vec=step_vec,
-                                    vec_scale=vec_scale, savename="_".join([figname, figtype, "SNRp"]), plots_folder=plots_folder, display='SNRp')
+                                    vec_scale=vec_scale, savename="_".join([figname, "SNRp"]), plots_folder=plots_folder, display='SNRp')
     elif not interactive:
         proj_plots.polarisation_map(deepcopy(Stokes_test), data_mask, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut,
-                                    savename="_".join([figname, figtype]), plots_folder=plots_folder, display='integrate')
+                                    savename=figname, plots_folder=plots_folder, display='integrate')
     elif px_scale.lower() not in ['full', 'integrate']:
         proj_plots.pol_map(Stokes_test, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
 
@@ -231,9 +230,8 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--files', metavar='path', required=False, nargs='*', help='the full or relative path to the data products', default=None)
     parser.add_argument('-o', '--output_dir', metavar='directory_path', required=False,
                         help='output directory path for the data products', type=str, default="./data")
-    parser.add_argument('-c', '--crop', metavar='crop_boolean', required=False, help='whether to crop the analysis region', type=int, default=0)
-    parser.add_argument('-i', '--interactive', metavar='interactive_boolean', required=False,
-                        help='whether to output to the interactive analysis tool', type=int, default=0)
+    parser.add_argument('-c', '--crop', action='store_true', required=False, help='whether to crop the analysis region')
+    parser.add_argument('-i', '--interactive', action='store_true', required=False, help='whether to output to the interactive analysis tool')
     args = parser.parse_args()
     exitcode = main(target=args.target, proposal_id=args.proposal_id, infiles=args.files,
                     output_dir=args.output_dir, crop=args.crop, interactive=args.interactive)

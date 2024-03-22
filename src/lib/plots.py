@@ -58,8 +58,7 @@ from lib.fits import save_Stokes
 from lib.utils import rot2D, princ_angle, sci_not
 
 
-def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=None,
-             savename=None, plots_folder=""):
+def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
     """
     Plots raw observation imagery with some information on the instrument and
     filters.
@@ -70,10 +69,6 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
         single observation with multiple polarizers of an instrument
     headers : header list
         List of headers corresponding to the images in data_array
-    shape : array-like of length 2, optional
-        Shape of the display, with shape = [#row, #columns]. If None, defaults
-        to the optimal square.
-        Defaults to None.
     vmin : float, optional
         Min pixel value that should be displayed.
         Defaults to 0.
@@ -94,41 +89,49 @@ def plot_obs(data_array, headers, shape=None, vmin=None, vmax=None, rectangle=No
         Defaults to current folder.
     """
     plt.rcParams.update({'font.size': 10})
-    if shape is None:
-        shape = np.array([np.ceil(np.sqrt(data_array.shape[0])).astype(int), ]*2)
+    nb_obs = np.max([np.sum([head['filtnam1'] == curr_pol for head in headers]) for curr_pol in ['POL0', 'POL60', 'POL120']])
+    shape = np.array((3, nb_obs))
     fig, ax = plt.subplots(shape[0], shape[1], figsize=(10, 10), dpi=200,
                            sharex=True, sharey=True)
-
-    for i, (axe, data, head) in enumerate(zip(ax.flatten(), data_array, headers)):
+    r_pol = dict(pol0=0, pol60=1, pol120=2)
+    c_pol = dict(pol0=0, pol60=0, pol120=0)
+    for i, (data, head) in enumerate(zip(data_array, headers)):
         instr = head['instrume']
         rootname = head['rootname']
         exptime = head['exptime']
         filt = head['filtnam1']
         convert = head['photflam']
+        r_ax, c_ax = r_pol[filt.lower()], c_pol[filt.lower()]
+        c_pol[filt.lower()] += 1
         # plots
-        if vmin is None or vmax is None:
-            vmin, vmax = convert*data[data > 0.].min()/10., convert*data[data > 0.].max()
-        # im = axe.imshow(convert*data, vmin=vmin, vmax=vmax, origin='lower', cmap='gray')
+        vmin, vmax = convert*data[data > 0.].min()/10., convert*data[data > 0.].max()
+        for key, value in [["cmap", [["cmap", "gray"]]], ["norm", [["norm", LogNorm(vmin, vmax)]]]]:
+            try:
+                _ = kwargs[key]
+            except KeyError:
+                for key_i, val_i in value:
+                    kwargs[key_i] = val_i
+        # im = ax[r_ax][c_ax].imshow(convert*data, origin='lower', **kwargs)
         data[data*convert < vmin*10.] = vmin*10./convert
-        im = axe.imshow(convert*data, norm=LogNorm(vmin, vmax), origin='lower', cmap='gray')
+        im = ax[r_ax][c_ax].imshow(convert*data, origin='lower', **kwargs)
         if rectangle is not None:
             x, y, width, height, angle, color = rectangle[i]
-            axe.add_patch(Rectangle((x, y), width, height, angle=angle,
-                                    edgecolor=color, fill=False))
+            ax[r_ax][c_ax].add_patch(Rectangle((x, y), width, height, angle=angle,
+                                               edgecolor=color, fill=False))
         # position of centroid
-        axe.plot([data.shape[1]/2, data.shape[1]/2], [0, data.shape[0]-1], '--', lw=1,
-                 color='grey', alpha=0.5)
-        axe.plot([0, data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
-                 color='grey', alpha=0.5)
-        axe.annotate(instr+":"+rootname, color='white', fontsize=5, xy=(0.01, 1.00),
-                     xycoords='axes fraction', verticalalignment='top',
-                     horizontalalignment='left')
-        axe.annotate(filt, color='white', fontsize=10, xy=(0.01, 0.01),
-                     xycoords='axes fraction', verticalalignment='bottom',
-                     horizontalalignment='left')
-        axe.annotate(exptime, color='white', fontsize=5, xy=(1.00, 0.01),
-                     xycoords='axes fraction', verticalalignment='bottom',
-                     horizontalalignment='right')
+        ax[r_ax][c_ax].plot([data.shape[1]/2, data.shape[1]/2], [0, data.shape[0]-1], '--', lw=1,
+                            color='grey', alpha=0.5)
+        ax[r_ax][c_ax].plot([0, data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
+                            color='grey', alpha=0.5)
+        ax[r_ax][c_ax].annotate(instr+":"+rootname, color='white', fontsize=5, xy=(0.01, 1.00),
+                                xycoords='axes fraction', verticalalignment='top',
+                                horizontalalignment='left')
+        ax[r_ax][c_ax].annotate(filt, color='white', fontsize=10, xy=(0.01, 0.01),
+                                xycoords='axes fraction', verticalalignment='bottom',
+                                horizontalalignment='left')
+        ax[r_ax][c_ax].annotate(exptime, color='white', fontsize=5, xy=(1.00, 0.01),
+                                xycoords='axes fraction', verticalalignment='bottom',
+                                horizontalalignment='right')
 
     fig.subplots_adjust(hspace=0.01, wspace=0.01, right=1.02)
     fig.colorbar(im, ax=ax[:, :], location='right', shrink=0.75, aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
@@ -306,7 +309,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
             vmin, vmax = flux_lim
         im = ax.imshow(stkI.data*convert_flux, norm=LogNorm(vmin, vmax), aspect='equal', cmap='inferno', alpha=1.)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
-        levelsI = np.array([2., 5., 10., 20., 50., 90.])/100.*vmax
+        levelsI = np.array([0.8, 2., 5., 10., 20., 50.])/100.*vmax
         print("Total flux contour levels : ", levelsI)
         ax.contour(stkI.data*convert_flux, levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['pol_flux']:
@@ -391,9 +394,8 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA$]")
 
     # Get integrated values from header
-    n_pix = stkI.data[data_mask].size
     I_diluted = stkI.data[data_mask].sum()
-    I_diluted_err = np.sqrt(n_pix)*np.sqrt(np.sum(stk_cov.data[0, 0][data_mask]))
+    I_diluted_err = np.sqrt(np.sum(stk_cov.data[0, 0][data_mask]))
 
     P_diluted = Stokes[0].header['P_int']
     P_diluted_err = Stokes[0].header['P_int_err']
@@ -730,12 +732,10 @@ class overplot_radio(align_maps):
 
         # Display other map as contours
         if levels is None:
-            levels = np.logspace(np.log(3)/np.log(10), 2., 5)/100.*other_data[other_data > 0.].max()
+            levels = np.logspace(0., 1.9, 5)/100.*other_data[other_data > 0.].max()
         other_cont = self.ax_overplot.contour(
             other_data*self.other_convert, transform=self.ax_overplot.get_transform(self.other_wcs.celestial), levels=levels*self.other_convert, colors='grey')
         self.ax_overplot.clabel(other_cont, inline=True, fontsize=5)
-        other_proxy = Rectangle((0, 0), 1, 1, fc='w', ec=other_cont.collections[0].get_edgecolor()[0], label=r"{0:s} contour".format(self.other_observer))
-        self.ax_overplot.add_patch(other_proxy)
 
         self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
         self.ax_overplot.set_ylabel(label="Declination (J2000)", labelpad=-1)
@@ -761,6 +761,8 @@ class overplot_radio(align_maps):
         handles, labels = self.ax_overplot.get_legend_handles_labels()
         handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
+        labels.append("{0:s} contour".format(self.other_observer))
+        handles.append(Rectangle((0, 0), 1, 1, fill=False, lw=2, ec=other_cont.collections[0].get_edgecolor()[0]))
         self.legend = self.ax_overplot.legend(handles=handles, labels=labels, bbox_to_anchor=(
             0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
 
@@ -854,9 +856,6 @@ class overplot_chandra(align_maps):
             levels *= other_data.max()/self.other_data.max()
         other_cont = self.ax_overplot.contour(other_data*self.other_convert, transform=self.ax_overplot.get_transform(other_wcs), levels=levels, colors='grey')
         self.ax_overplot.clabel(other_cont, inline=True, fontsize=8)
-        other_proxy = Rectangle((0, 0), 1., 1., fc='w', ec=other_cont.collections[0].get_edgecolor()[
-                                0], lw=2, label=r"{0:s} contour in counts".format(self.other_observer))
-        self.ax_overplot.add_patch(other_proxy)
 
         self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
         self.ax_overplot.set_ylabel(label="Declination (J2000)", labelpad=-1)
@@ -881,6 +880,8 @@ class overplot_chandra(align_maps):
         handles, labels = self.ax_overplot.get_legend_handles_labels()
         handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
+        labels.append("{0:s} contour in counts".format(self.other_observer))
+        handles.append(Rectangle((0, 0), 1, 1, fill=False, lw=2, ec=other_cont.collections[0].get_edgecolor()[0]))
         self.legend = self.ax_overplot.legend(handles=handles, labels=labels, bbox_to_anchor=(
             0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
 
@@ -972,8 +973,6 @@ class overplot_pol(align_maps):
         cont_stkI = self.ax_overplot.contour(stkI*self.map_convert, levels=levels, colors='grey', alpha=0.75,
                                              transform=self.ax_overplot.get_transform(self.wcs_UV))
         # self.ax_overplot.clabel(cont_stkI, inline=True, fontsize=5)
-        cont_proxy = Rectangle((0, 0), 1, 1, fc='w', ec=cont_stkI.collections[0].get_edgecolor()[0], label="{0:s} Stokes I contour".format(self.map_observer))
-        self.ax_overplot.add_patch(cont_proxy)
 
         # Display pixel scale and North direction
         fontprops = fm.FontProperties(size=16)
@@ -1001,6 +1000,8 @@ class overplot_pol(align_maps):
         handles, labels = self.ax_overplot.get_legend_handles_labels()
         handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
+        labels.append("{0:s} Stokes I contour".format(self.map_observer))
+        handles.append(Rectangle((0, 0), 1, 1, fill=False, ec=cont_stkI.collections[0].get_edgecolor()[0]))
         self.legend = self.ax_overplot.legend(handles=handles, labels=labels, bbox_to_anchor=(
             0., 1.02, 1., .102), loc='lower left', mode="expand", borderaxespad=0.)
 
@@ -2351,10 +2352,9 @@ class pol_map(object):
 
     def pol_int(self, fig=None, ax=None):
         if self.region is None:
-            n_pix = self.I.size
             s_I = np.sqrt(self.IQU_cov[0, 0])
             I_reg = self.I.sum()
-            I_reg_err = np.sqrt(n_pix)*np.sqrt(np.sum(s_I**2))
+            I_reg_err = np.sqrt(np.sum(s_I**2))
             P_reg = self.Stokes[0].header['P_int']
             P_reg_err = self.Stokes[0].header['P_int_err']
             PA_reg = self.Stokes[0].header['PA_int']
@@ -2386,7 +2386,6 @@ class pol_map(object):
                                      Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
 
         else:
-            n_pix = self.I[self.region].size
             s_I = np.sqrt(self.IQU_cov[0, 0])
             s_Q = np.sqrt(self.IQU_cov[1, 1])
             s_U = np.sqrt(self.IQU_cov[2, 2])
@@ -2442,15 +2441,19 @@ class pol_map(object):
                 ax = self.ax
             if hasattr(self, 'an_int'):
                 self.an_int.remove()
-            self.an_int = ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_reg*self.map_convert, I_reg_err*self.map_convert, 2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100., np.ceil(
-                P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg, np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 1.00), xycoords='axes fraction', path_effects=[pe.withStroke(linewidth=0.5, foreground='k')], verticalalignment='top', horizontalalignment='left')
+            self.str_int = r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_reg*self.map_convert, I_reg_err*self.map_convert, 2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100., np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg, np.ceil(PA_reg_err*10.)/10.)
+            self.str_cut = ""
+            # self.str_cut = "\n"+r"$F_{{\lambda}}^{{cut}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_cut*self.map_convert, I_cut_err*self.map_convert, 2))+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100., np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut, np.ceil(PA_cut_err*10.)/10.)
+            self.an_int = ax.annotate(self.str_int+self.str_cut, color='white', fontsize=12, xy=(0.01, 1.00), xycoords='axes fraction', path_effects=[pe.withStroke(linewidth=0.5, foreground='k')], verticalalignment='top', horizontalalignment='left')
             if self.region is not None:
                 self.cont = ax.contour(self.region.astype(float), levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
             return self.an_int
         else:
-            ax.annotate(r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_reg*self.map_convert, I_reg_err*self.map_convert, 2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100., np.ceil(P_reg_err*1000.)/10.) +
-                        "\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg, np.ceil(PA_reg_err*10.)/10.), color='white', fontsize=12, xy=(0.01, 1.00), xycoords='axes fraction', path_effects=[pe.withStroke(linewidth=0.5, foreground='k')], verticalalignment='top', horizontalalignment='left')
+            str_int = r"$F_{{\lambda}}^{{int}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_reg*self.map_convert, I_reg_err*self.map_convert, 2))+"\n"+r"$P^{{int}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_reg*100., np.ceil(P_reg_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{int}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_reg, np.ceil(PA_reg_err*10.)/10.)
+            str_cut = ""
+            # str_cut = "\n"+r"$F_{{\lambda}}^{{cut}}$({0:.0f} $\AA$) = {1} $ergs \cdot cm^{{-2}} \cdot s^{{-1}} \cdot \AA^{{-1}}$".format(self.pivot_wav, sci_not(I_cut*self.map_convert, I_cut_err*self.map_convert, 2))+"\n"+r"$P^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} %".format(P_cut*100., np.ceil(P_cut_err*1000.)/10.)+"\n"+r"$\theta_{{P}}^{{cut}}$ = {0:.1f} $\pm$ {1:.1f} °".format(PA_cut, np.ceil(PA_cut_err*10.)/10.)
+            ax.annotate(str_int+str_cut, color='white', fontsize=12, xy=(0.01, 1.00), xycoords='axes fraction', path_effects=[pe.withStroke(linewidth=0.5, foreground='k')], verticalalignment='top', horizontalalignment='left')
             if self.region is not None:
                 ax.contour(self.region.astype(float), levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
