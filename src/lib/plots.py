@@ -54,7 +54,6 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
-from lib.fits import save_Stokes
 from lib.utils import rot2D, princ_angle, sci_not
 
 
@@ -416,7 +415,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         X, Y = np.meshgrid(np.arange(stkI.data.shape[1]), np.arange(stkI.data.shape[0]))
         U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
-                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='w', edgecolor='k')
+                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='w', edgecolor='k')
         pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
@@ -448,7 +447,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     if savename is not None:
         if savename[-4:] not in ['.png', '.jpg', '.pdf']:
             savename += '.pdf'
-        fig.savefig(path_join(plots_folder, savename), bbox_inches='tight', dpi=300)
+        fig.savefig(path_join(plots_folder, savename), bbox_inches='tight', dpi=200)
 
     plt.show()
     return fig, ax

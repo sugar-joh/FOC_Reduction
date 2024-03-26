@@ -35,7 +35,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
     subtract_error = 0.50
-    display_bkg = True
+    display_bkg = False
 
     # Data binning
     rebin = True

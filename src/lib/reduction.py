@@ -1101,16 +1101,16 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         same_filt3 = np.array([filt3 == header['filtnam3'] for header in headers]).all()
         same_filt4 = np.array([filt4 == header['filtnam4'] for header in headers]).all()
         if (same_filt2 and same_filt3 and same_filt4):
-            transmit2, transmit3, transmit4 = globals["trans2"][filt2.lower()], globals["trans3"][filt3.lower()], globals["trans4"][filt4.lower()]
+            transmit2, transmit3, transmit4 = globals()["trans2"][filt2.lower()], globals()["trans3"][filt3.lower()], globals()["trans4"][filt4.lower()]
         else:
             print("WARNING : All images in data_array are not from the same \
                     band filter, the limiting transmittance will be taken.")
-            transmit2 = np.min([globals["trans2"][header['filtnam2'].lower()] for header in headers])
-            transmit3 = np.min([globals["trans3"][header['filtnam3'].lower()] for header in headers])
-            transmit4 = np.min([globals["trans4"][header['filtnam4'].lower()] for header in headers])
+            transmit2 = np.min([globals()["trans2"][header['filtnam2'].lower()] for header in headers])
+            transmit3 = np.min([globals()["trans3"][header['filtnam3'].lower()] for header in headers])
+            transmit4 = np.min([globals()["trans4"][header['filtnam4'].lower()] for header in headers])
         if transmitcorr:
             transmit *= transmit2*transmit3*transmit4
-        pol_eff = np.array([globals["pol_efficiency"]['pol0'], globals["pol_efficiency"]['pol60'], globals["pol_efficiency"]['pol120']])
+        pol_eff = np.array([globals()["pol_efficiency"]['pol0'], globals()["pol_efficiency"]['pol60'], globals()["pol_efficiency"]['pol120']])
 
         # Calculating correction factor
         corr = np.array([1.0*h['photflam']/h['exptime'] for h in pol_headers])*pol_headers[0]['exptime']/pol_headers[0]['photflam']
@@ -1122,11 +1122,11 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         coeff_stokes = np.zeros((3, 3))
         # Coefficients linking each polarizer flux to each Stokes parameter
         for i in range(3):
-            coeff_stokes[0, i] = pol_eff[(i+1) % 3]*pol_eff[(i+2) % 3]*np.sin(-2.*globals["theta"][(i+1) % 3]+2.*globals["theta"][(i+2) % 3])*2./transmit[i]
-            coeff_stokes[1, i] = (-pol_eff[(i+1) % 3]*np.sin(2.*globals["theta"][(i+1) % 3]) +
-                                  pol_eff[(i+2) % 3]*np.sin(2.*globals["theta"][(i+2) % 3]))*2./transmit[i]
-            coeff_stokes[2, i] = (pol_eff[(i+1) % 3]*np.cos(2.*globals["theta"][(i+1) % 3]) -
-                                  pol_eff[(i+2) % 3]*np.cos(2.*globals["theta"][(i+2) % 3]))*2./transmit[i]
+            coeff_stokes[0, i] = pol_eff[(i+1) % 3]*pol_eff[(i+2) % 3]*np.sin(-2.*globals()["theta"][(i+1) % 3]+2.*globals()["theta"][(i+2) % 3])*2./transmit[i]
+            coeff_stokes[1, i] = (-pol_eff[(i+1) % 3]*np.sin(2.*globals()["theta"][(i+1) % 3]) +
+                                  pol_eff[(i+2) % 3]*np.sin(2.*globals()["theta"][(i+2) % 3]))*2./transmit[i]
+            coeff_stokes[2, i] = (pol_eff[(i+1) % 3]*np.cos(2.*globals()["theta"][(i+1) % 3]) -
+                                  pol_eff[(i+2) % 3]*np.cos(2.*globals()["theta"][(i+2) % 3]))*2./transmit[i]
 
         # Normalization parameter for Stokes parameters computation
         A = (coeff_stokes[0, :]*transmit/2.).sum()
