@@ -172,7 +172,6 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     figname = "_".join([figname, figtype]) if figtype != "" else figname
     Stokes_test = proj_fits.save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P,
                                         headers, data_mask, figname, data_folder=data_folder, return_hdul=True)
-    data_mask = Stokes_test[-1].data.astype(bool)
 
     # Step 5:
     # crop to desired region of interest (roi)
@@ -181,8 +180,9 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_test), norm=LogNorm())
         stokescrop.crop()
         stokescrop.write_to("/".join([data_folder, figname+".fits"]))
-        Stokes_test, data_mask, headers = stokescrop.hdul_crop, stokescrop.data_mask, [dataset.header for dataset in stokescrop.hdul_crop]
+        Stokes_test, headers = stokescrop.hdul_crop, [dataset.header for dataset in stokescrop.hdul_crop]
 
+    data_mask = Stokes_test['data_mask'].data.astype(bool)
     print("F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(headers[0]['photplam'], *sci_not(
         Stokes_test[0].data[data_mask].sum()*headers[0]['photflam'], np.sqrt(Stokes_test[3].data[0, 0][data_mask].sum())*headers[0]['photflam'], 2, out=int)))
     print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]['p_int']*100., np.ceil(headers[0]['p_int_err']*1000.)/10.))

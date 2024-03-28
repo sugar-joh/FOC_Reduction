@@ -1408,16 +1408,16 @@ class crop_Stokes(crop_map):
                 self.rect_selector = RectangleSelector(self.ax, self.onselect_crop,
                                                        button=[1])
         # Update integrated values
-        mask = np.logical_and(self.hdul_crop[-1].data.astype(bool), self.hdul_crop[0].data > 0)
-        I_diluted = self.hdul_crop[0].data[mask].sum()
-        Q_diluted = self.hdul_crop[1].data[mask].sum()
-        U_diluted = self.hdul_crop[2].data[mask].sum()
-        I_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0, 0][mask]))
-        Q_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[1, 1][mask]))
-        U_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[2, 2][mask]))
-        IQ_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0, 1][mask]**2))
-        IU_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[0, 2][mask]**2))
-        QU_diluted_err = np.sqrt(np.sum(self.hdul_crop[3].data[1, 2][mask]**2))
+        mask = np.logical_and(self.hdul_crop['data_mask'].data.astype(bool), self.hdul_crop[0].data > 0)
+        I_diluted = self.hdul_crop['i_stokes'].data[mask].sum()
+        Q_diluted = self.hdul_crop['q_stokes'].data[mask].sum()
+        U_diluted = self.hdul_crop['u_stokes'].data[mask].sum()
+        I_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[0, 0][mask]))
+        Q_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[1, 1][mask]))
+        U_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[2, 2][mask]))
+        IQ_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[0, 1][mask]**2))
+        IU_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[0, 2][mask]**2))
+        QU_diluted_err = np.sqrt(np.sum(self.hdul_crop['iqu_cov_matrix'].data[1, 2][mask]**2))
 
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
         P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
@@ -1436,7 +1436,7 @@ class crop_Stokes(crop_map):
 
     @property
     def data_mask(self):
-        return self.hdul_crop[-1].data.astype(int)
+        return self.hdul_crop['data_mask'].data.astype(int)
 
 
 class image_lasso_selector(object):
@@ -2341,12 +2341,12 @@ class pol_map(object):
             if hasattr(self, 'quiver'):
                 self.quiver.remove()
             self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                                    headlength=0., headaxislength=0., width=0.15, linewidth=0.5, color='white', edgecolor='black')
+                                    headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='white', edgecolor='black')
             fig.canvas.draw_idle()
             return self.quiver
         else:
             ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                      headlength=0., headaxislength=0., width=0.15, linewidth=0.5, color='white', edgecolor='black')
+                      headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='white', edgecolor='black')
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):
@@ -2380,9 +2380,8 @@ class pol_map(object):
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) +
                                 ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = princ_angle(np.degrees((1./2.)*np.arctan2(U_cut, Q_cut)))
-            PA_cut_err = princ_angle(np.degrees((1./(2.*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2 *
-                                     Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)))
+            PA_cut = princ_angle((90./np.pi)*np.arctan2(U_cut, Q_cut))
+            PA_cut_err = (90./(np.pi*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)
 
         else:
             s_I = np.sqrt(self.IQU_cov[0, 0])
@@ -2424,7 +2423,7 @@ class pol_map(object):
             P_cut_err = np.sqrt((Q_cut**2*Q_cut_err**2 + U_cut**2*U_cut_err**2 + 2.*Q_cut*U_cut*QU_cut_err)/(Q_cut**2 + U_cut**2) +
                                 ((Q_cut/I_cut)**2 + (U_cut/I_cut)**2)*I_cut_err**2 - 2.*(Q_cut/I_cut)*IQ_cut_err - 2.*(U_cut/I_cut)*IU_cut_err)/I_cut
 
-            PA_cut = 360.-princ_angle((90./np.pi)*np.arctan2(U_cut, Q_cut))
+            PA_cut = princ_angle((90./np.pi)*np.arctan2(U_cut, Q_cut))
             PA_cut_err = (90./(np.pi*(Q_cut**2+U_cut**2)))*np.sqrt(U_cut**2*Q_cut_err**2 + Q_cut**2*U_cut_err**2 - 2.*Q_cut*U_cut*QU_cut_err)
 
         if hasattr(self, 'cont'):

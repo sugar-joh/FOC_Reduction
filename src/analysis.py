@@ -7,7 +7,7 @@ options = "hf:p:i:l:"
 long_options = ["help", "fits=", "snrp=", "snri=", "lim="]
 
 fits_path = None
-SNRp_cut, SNRi_cut = 3, 30
+SNRp_cut, SNRi_cut = 3, 3
 flux_lim = None
 out_txt = None
 
