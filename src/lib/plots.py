@@ -471,13 +471,13 @@ class align_maps(object):
         self.map_data = fits.getdata(self.map_path)
         self.other_data = fits.getdata(self.other_path)
 
-        self.map_wcs = deepcopy(WCS(self.map_header)).celestial
+        self.map_wcs = WCS(self.map_header).celestial.deepcopy()
         if len(self.map_data.shape) == 4:
             self.map_data = self.map_data[0, 0]
         elif len(self.map_data.shape) == 3:
             self.map_data = self.map_data[0]
 
-        self.other_wcs = deepcopy(WCS(self.other_header)).celestial
+        self.other_wcs = WCS(self.other_header).celestial.deepcopy()
         if len(self.other_data.shape) == 4:
             self.other_data = self.other_data[0, 0]
         elif len(self.other_data.shape) == 3:
@@ -797,7 +797,7 @@ class overplot_chandra(align_maps):
         pang = self.Stokes_UV['POL_ANG'].data
 
         other_data = deepcopy(self.other_data)
-        other_wcs = deepcopy(self.other_wcs)
+        other_wcs = self.other_wcs.deepcopy()
         if zoom != 1:
             other_data = sc_zoom(other_data, zoom)
             other_wcs.wcs.crpix *= zoom
@@ -1044,8 +1044,8 @@ class align_pol(object):
         maps = np.array(maps)[order]
         self.ref_map, self.other_maps = maps[0], maps[1:]
 
-        self.wcs = WCS(self.ref_map[0].header)
-        self.wcs_other = np.array([WCS(map[0].header) for map in self.other_maps])
+        self.wcs = WCS(self.ref_map[0].header).celestial.deepcopy()
+        self.wcs_other = np.array([WCS(map[0].header).celestial.deepcopy() for map in self.other_maps])
 
         self.aligned = np.zeros(self.other_maps.shape[0], dtype=bool)
 
@@ -1175,7 +1175,7 @@ class crop_map(object):
         self.cropped = False
         self.hdul = hdul
         self.header = deepcopy(self.hdul[0].header)
-        self.wcs = WCS(self.header).deepcopy()
+        self.wcs = WCS(self.header).celestial.deepcopy()
 
         self.data = deepcopy(self.hdul[0].data)
         try:
@@ -2179,7 +2179,7 @@ class pol_map(object):
 
     @property
     def wcs(self):
-        return WCS(self.Stokes[0].header).celestial
+        return WCS(self.Stokes[0].header).celestial.deepcopy()
 
     @property
     def I(self):

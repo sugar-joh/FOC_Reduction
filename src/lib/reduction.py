@@ -269,7 +269,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
         crop_array[i] = image[v_array[0]:v_array[1], v_array[2]:v_array[3]]
         crop_error_array[i] = error_array[i][v_array[0]:v_array[1], v_array[2]:v_array[3]]
         # Update CRPIX value in the associated header
-        curr_wcs = deepcopy(WCS(crop_headers[i]))
+        curr_wcs = WCS(crop_headers[i]).celestial.deepcopy()
         curr_wcs.wcs.crpix[:2] = curr_wcs.wcs.crpix[:2] - np.array([v_array[2], v_array[0]])
         crop_headers[i].update(curr_wcs.to_header())
         crop_headers[i]['naxis1'], crop_headers[i]['naxis2'] = crop_array[i].shape
@@ -371,7 +371,7 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
         pxsize = np.zeros((data_array.shape[0], 2))
         for i, header in enumerate(headers):
             # Get current pixel size
-            w = WCS(header).deepcopy()
+            w = WCS(header).celestial.deepcopy()
             pxsize[i] = np.round(w.wcs.cdelt/3600., 15)
         if (pxsize != pxsize[0]).any():
             raise ValueError("Not all images in array have same pixel size")
@@ -559,7 +559,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale, operation='sum'
         Dxy_arr = np.ones((data_array.shape[0], 2))
         for i, (image, error, header) in enumerate(list(zip(data_array, error_array, headers))):
             # Get current pixel size
-            w = WCS(header).deepcopy()
+            w = WCS(header).celestial.deepcopy()
             new_header = deepcopy(header)
 
             # Compute binning ratio
@@ -575,7 +575,7 @@ def rebin_array(data_array, error_array, headers, pxsize, scale, operation='sum'
 
         for i, (image, error, header) in enumerate(list(zip(data_array, error_array, headers))):
             # Get current pixel size
-            w = WCS(header).deepcopy()
+            w = WCS(header).celestial.deepcopy()
             new_header = deepcopy(header)
 
             Dxy = image.shape/new_shape
@@ -759,7 +759,7 @@ def align_data(data_array, headers, error_array=None, background=None, upsample_
     errors = np.array(errors)
 
     # Update headers CRPIX value
-    headers_wcs = [deepcopy(WCS(header)) for header in headers]
+    headers_wcs = [WCS(header).celestial.deepcopy() for header in headers]
     new_crpix = np.array([wcs.wcs.crpix for wcs in headers_wcs]) + shifts[:, ::-1] + res_shift[::-1]
     for i in range(len(headers_wcs)):
         headers_wcs[i].wcs.crpix = new_crpix[0]
@@ -814,7 +814,7 @@ def smooth_data(data_array, error_array, data_mask, headers, FWHM=1., scale='pix
         pxsize = np.zeros((data_array.shape[0], 2))
         for i, header in enumerate(headers):
             # Get current pixel size
-            w = WCS(header).deepcopy()
+            w = WCS(header).celestial.deepcopy()
             pxsize[i] = np.round(w.wcs.cdelt*3600., 4)
         if (pxsize != pxsize[0]).any():
             raise ValueError("Not all images in array have same pixel size")
@@ -1447,7 +1447,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     for header in headers:
         new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
-        new_wcs = WCS(header).deepcopy()
+        new_wcs = WCS(header).celestial.deepcopy()
 
         new_wcs.wcs.pc = np.dot(mrot, new_wcs.wcs.pc)
         new_wcs.wcs.crpix = np.dot(mrot, new_wcs.wcs.crpix - old_center[::-1]) + new_center[::-1]
@@ -1560,7 +1560,7 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
         new_header = deepcopy(header)
         new_header['orientat'] = header['orientat'] + ang
 
-        new_wcs = WCS(header).deepcopy()
+        new_wcs = WCS(header).celestial.deepcopy()
 
         new_wcs.wcs.pc[:2, :2] = np.dot(mrot, new_wcs.wcs.pc[:2, :2])
         new_wcs.wcs.crpix[:2] = np.dot(mrot, new_wcs.wcs.crpix[:2] - old_center[::-1]) + new_center[::-1]

@@ -50,13 +50,13 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
     # force WCS to convention PCi_ja unitary, cdelt in deg
     for header in headers:
-        new_wcs = WCS(header).deepcopy()
+        new_wcs = WCS(header).celestial.deepcopy()
         if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt[:2] == np.array([1., 1.])).all():
             # Update WCS with relevant information
             if new_wcs.wcs.has_cd():
-                old_cd = new_wcs.wcs.cd[:2, :2]
+                old_cd = new_wcs.wcs.cd
                 del new_wcs.wcs.cd
-                keys = list(new_wcs.to_header().keys())+['CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
+                keys = list(new_wcs.to_header().keys())+['CD1_1', 'CD1_2', 'CD1_3', 'CD2_1', 'CD2_2', 'CD2_3', 'CD3_1', 'CD3_2', 'CD3_3']
                 for key in keys:
                     header.remove(key, ignore_missing=True)
                 new_cdelt = np.linalg.eig(old_cd)[0]
@@ -71,7 +71,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
     # force WCS for POL60 to have same pixel size as POL0 and POL120
     is_pol60 = np.array([head['filtnam1'].lower() == 'pol60' for head in headers], dtype=bool)
-    cdelt = np.round(np.array([WCS(head).wcs.cdelt for head in headers]), 14)
+    cdelt = np.round(np.array([WCS(head).wcs.cdelt[:2] for head in headers]), 14)
     if np.unique(cdelt[np.logical_not(is_pol60)], axis=0).size != 2:
         print(np.unique(cdelt[np.logical_not(is_pol60)], axis=0))
         raise ValueError("Not all images have same pixel size")
