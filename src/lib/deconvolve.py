@@ -551,7 +551,7 @@ def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
         norm_deconv = one_step_gradient(image=norm_image, psf=psf,
                                         iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
     elif algo.lower() in ['conjgrad', 'conj_grad', 'conjugate gradient']:
-        norm_deconv = conj_grad(image=norm_image, psf=psf, alpha=alpha,
+        norm_deconv = conjgrad(image=norm_image, psf=psf, alpha=alpha,
                                 error=error, iterations=iterations)
     else:  # Defaults to Richardson-Lucy
         norm_deconv = richardson_lucy(image=norm_image, psf=psf,

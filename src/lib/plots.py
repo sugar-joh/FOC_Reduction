@@ -102,6 +102,10 @@ def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder=""
         convert = head['photflam']
         r_ax, c_ax = r_pol[filt.lower()], c_pol[filt.lower()]
         c_pol[filt.lower()] += 1
+        if shape[1] != 1:
+            ax_curr = ax[r_ax][c_ax]
+        else:
+            ax_curr = ax[r_ax]
         # plots
         vmin, vmax = convert*data[data > 0.].min()/10., convert*data[data > 0.].max()
         for key, value in [["cmap", [["cmap", "gray"]]], ["norm", [["norm", LogNorm(vmin, vmax)]]]]:
@@ -112,28 +116,19 @@ def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder=""
                     kwargs[key_i] = val_i
         # im = ax[r_ax][c_ax].imshow(convert*data, origin='lower', **kwargs)
         data[data*convert < vmin*10.] = vmin*10./convert
-        im = ax[r_ax][c_ax].imshow(convert*data, origin='lower', **kwargs)
+        im = ax_curr.imshow(convert*data, origin='lower', **kwargs)
         if rectangle is not None:
             x, y, width, height, angle, color = rectangle[i]
-            ax[r_ax][c_ax].add_patch(Rectangle((x, y), width, height, angle=angle,
-                                               edgecolor=color, fill=False))
+            ax_curr.add_patch(Rectangle((x, y), width, height, angle=angle, edgecolor=color, fill=False))
         # position of centroid
-        ax[r_ax][c_ax].plot([data.shape[1]/2, data.shape[1]/2], [0, data.shape[0]-1], '--', lw=1,
-                            color='grey', alpha=0.5)
-        ax[r_ax][c_ax].plot([0, data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1,
-                            color='grey', alpha=0.5)
-        ax[r_ax][c_ax].annotate(instr+":"+rootname, color='white', fontsize=5, xy=(0.01, 1.00),
-                                xycoords='axes fraction', verticalalignment='top',
-                                horizontalalignment='left')
-        ax[r_ax][c_ax].annotate(filt, color='white', fontsize=10, xy=(0.01, 0.01),
-                                xycoords='axes fraction', verticalalignment='bottom',
-                                horizontalalignment='left')
-        ax[r_ax][c_ax].annotate(exptime, color='white', fontsize=5, xy=(1.00, 0.01),
-                                xycoords='axes fraction', verticalalignment='bottom',
-                                horizontalalignment='right')
+        ax_curr.plot([data.shape[1]/2, data.shape[1]/2], [0, data.shape[0]-1], '--', lw=1, color='grey', alpha=0.5)
+        ax_curr.plot([0, data.shape[1]-1], [data.shape[1]/2, data.shape[1]/2], '--', lw=1, color='grey', alpha=0.5)
+        ax_curr.annotate(instr+":"+rootname, color='white', fontsize=5, xy=(0.01, 1.00), xycoords='axes fraction', verticalalignment='top', horizontalalignment='left')
+        ax_curr.annotate(filt, color='white', fontsize=10, xy=(0.01, 0.01), xycoords='axes fraction', verticalalignment='bottom', horizontalalignment='left')
+        ax_curr.annotate(exptime, color='white', fontsize=5, xy=(1.00, 0.01), xycoords='axes fraction', verticalalignment='bottom', horizontalalignment='right')
 
     fig.subplots_adjust(hspace=0.01, wspace=0.01, right=1.02)
-    fig.colorbar(im, ax=ax[:, :], location='right', shrink=0.75, aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+    fig.colorbar(im, ax=ax, location='right', shrink=0.75, aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
     if not (savename is None):
         # fig.suptitle(savename)

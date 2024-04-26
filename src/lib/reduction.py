@@ -326,7 +326,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
 
 
 def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
-                     shape=(9, 9), iterations=20, algo='richardson'):
+                     shape=None, iterations=20, algo='richardson'):
     """
     Homogeneously deconvolve a data array using Richardson-Lucy iterative algorithm.
     ----------
@@ -379,6 +379,8 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
 
     # Define Point-Spread-Function kernel
     if psf.lower() in ['gauss', 'gaussian']:
+        if shape is None:
+            shape = np.min(data_array[0].shape)-2, np.min(data_array[0].shape)-2
         kernel = gaussian_psf(FWHM=FWHM, shape=shape)
     elif isinstance(psf, np.ndarray) and (len(psf.shape) == 2):
         kernel = psf
@@ -388,7 +390,7 @@ def deconvolve_array(data_array, headers, psf='gaussian', FWHM=1., scale='px',
     # Deconvolve images in the array using given PSF
     deconv_array = np.zeros(data_array.shape)
     for i, image in enumerate(data_array):
-        deconv_array[i] = deconvolve_im(image, kernel, iterations=iterations, clip=True, filter_epsilon=None, algo='richardson')
+        deconv_array[i] = deconvolve_im(image, kernel, iterations=iterations, clip=True, filter_epsilon=None, algo=algo)
 
     return deconv_array
 

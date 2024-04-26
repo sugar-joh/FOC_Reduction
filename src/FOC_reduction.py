@@ -18,14 +18,14 @@ from matplotlib.colors import LogNorm
 def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
-    deconvolve = False
+    deconvolve = True
     if deconvolve:
         # from lib.deconvolve import from_file_psf
         psf = 'gaussian'  # Can be user-defined as well
         # psf = from_file_psf(data_folder+psf_file)
-        psf_FWHM = 0.028
-        psf_scale = 'arcsec'
-        psf_shape = (513, 513)
+        psf_FWHM = 3.1
+        psf_scale = 'px'
+        psf_shape = None  # (151, 151)
         iterations = 3
         algo = "richardson"
 
@@ -33,19 +33,19 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     display_crop = False
 
     # Background estimation
-    error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.50
-    display_bkg = False
+    error_sub_type = 'sturges'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
+    subtract_error = 0.25
+    display_bkg = True
 
     # Data binning
     rebin = True
-    pxsize = 0.05
+    pxsize = 0.10
     px_scale = 'arcsec'         # pixel, arcsec or full
     rebin_operation = 'sum'     # sum or average
 
     # Alignement
     align_center = 'center'          # If None will not align the images
-    display_align = False
+    display_align = True
     display_data = False
 
     # Smoothing
