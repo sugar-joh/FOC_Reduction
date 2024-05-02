@@ -952,6 +952,10 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None, scale=
         err60_array = error_array[is_pol60]
         err120_array = error_array[is_pol120]
 
+        # For a single observation, combination amount to a weighted gaussian
+        if np.max([is_pol0.sum(), is_pol60.sum(), is_pol120.sum()]) == 1 and smoothing.lower() in ['combine', 'combining']:
+            smoothing = 'weighted_gaussian'
+
         if (FWHM is not None) and (smoothing.lower() in ['combine', 'combining']):
             # Smooth by combining each polarizer images
             pol0, err0 = smooth_data(pol0_array, err0_array, data_mask, headers0, FWHM=FWHM, scale=scale, smoothing=smoothing)

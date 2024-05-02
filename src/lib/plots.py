@@ -200,7 +200,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
-def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=30.,
+def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=3.,
                      flux_lim=None, step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
     """
     Plots polarisation map from Stokes HDUList.
@@ -673,7 +673,7 @@ class overplot_radio(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=3., vec_scale=2, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -780,7 +780,7 @@ class overplot_radio(align_maps):
 
         self.fig_overplot.canvas.draw()
 
-    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs) -> None:
+    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=3., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
         self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, savename=savename, **kwargs)
@@ -793,7 +793,7 @@ class overplot_chandra(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2, zoom=1, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=3., vec_scale=2, zoom=1, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -899,7 +899,7 @@ class overplot_chandra(align_maps):
 
         self.fig_overplot.canvas.draw()
 
-    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., zoom=1, savename=None, **kwargs) -> None:
+    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=3., zoom=1, savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
         self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, zoom=zoom, savename=savename, **kwargs)
@@ -912,7 +912,7 @@ class overplot_pol(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3., SNRi_cut=3., vec_scale=2., savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -1019,7 +1019,7 @@ class overplot_pol(align_maps):
 
         self.fig_overplot.canvas.draw()
 
-    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=30., vec_scale=2., savename=None, **kwargs) -> None:
+    def plot(self, levels=None, SNRp_cut=3., SNRi_cut=3., vec_scale=2., savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
         self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
@@ -1059,7 +1059,7 @@ class align_pol(object):
 
         self.kwargs = kwargs
 
-    def single_plot(self, curr_map, wcs, v_lim=None, ax_lim=None, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+    def single_plot(self, curr_map, wcs, v_lim=None, ax_lim=None, SNRp_cut=3., SNRi_cut=3., savename=None, **kwargs):
         # Get data
         stkI = curr_map['I_STOKES'].data
         stk_cov = curr_map['IQU_COV_MATRIX'].data
@@ -1150,7 +1150,7 @@ class align_pol(object):
             self.wcs, self.wcs_other[i] = curr_align.align()
             self.aligned[i] = curr_align.aligned
 
-    def plot(self, SNRp_cut=3., SNRi_cut=30., savename=None, **kwargs):
+    def plot(self, SNRp_cut=3., SNRi_cut=3., savename=None, **kwargs):
         while not self.aligned.all():
             self.align()
         eps = 1e-35
@@ -1737,7 +1737,7 @@ class pol_map(object):
     Class to interactively study polarisation maps.
     """
 
-    def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=30., flux_lim=None, selection=None):
+    def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=3., flux_lim=None, selection=None):
 
         if isinstance(Stokes, str):
             Stokes = fits.open(Stokes)

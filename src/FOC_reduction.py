@@ -35,11 +35,11 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
     subtract_error = 0.50
-    display_bkg = False
+    display_bkg = True
 
     # Data binning
     rebin = True
-    pxsize = 0.10
+    pxsize = 0.05
     px_scale = 'arcsec'         # pixel, arcsec or full
     rebin_operation = 'sum'     # sum or average
 
@@ -50,7 +50,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.20           # If None, no smoothing is done
+    smoothing_FWHM = 0.075          # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
@@ -58,7 +58,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     rotate_stokes = True
 
     #  Polarization map output
-    SNRp_cut = 3.    # P measurments with SNR>3
+    SNRp_cut = 5.    # P measurments with SNR>3
     SNRi_cut = 3.    # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     flux_lim = None    # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
     vec_scale = 3
@@ -78,7 +78,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         target, products = retrieve_products(target, proposal_id, output_dir=output_dir)
         prod = products.pop()
         for prods in products:
-            main(target=target, infiles=["/".join(pr) for pr in prods], output_dir=output_dir)
+            main(target=target, infiles=["/".join(pr) for pr in prods], output_dir=output_dir, crop=crop, interactive=interactive)
     data_folder = prod[0][0]
     try:
         plots_folder = data_folder.replace("data", "plots")
