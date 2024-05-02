@@ -276,7 +276,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
 
     if display:
         plt.rcParams.update({'font.size': 15})
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = plt.subplots(figsize=(10, 10), layout='constrained')
         convert_flux = headers[0]['photflam']
         data = deepcopy(data_array[0]*convert_flux)
         data[data <= data[data > 0.].min()] = data[data > 0.].min()
@@ -301,16 +301,13 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
                     xycoords='axes fraction')
         ax.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
                     xycoords='axes fraction')
-        ax.set(  # title="Location of cropped image.",
-            xlabel='pixel offset',
-            ylabel='pixel offset')
+        ax.set(title="Location of cropped image.", xlabel='pixel offset', ylabel='pixel offset')
 
-        fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
-        cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        # fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
+        # cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
+        fig.colorbar(im, ax=ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         if savename is not None:
-            # fig.suptitle(savename+'_'+filt+'_crop_region')
             fig.savefig("/".join([plots_folder, savename+'_'+filt+'_crop_region.png']),
                         bbox_inches='tight')
             plot_obs(data_array, headers, vmin=convert_flux*data_array[data_array > 0.].mean()/5.,
@@ -1406,7 +1403,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         for i, head in enumerate(headers):
             ang[i] = -head['orientat']
         ang = ang.mean()
-    alpha = np.radians(ang)
+    alpha = np.pi/180.*ang
     mrot = np.array([[1., 0., 0.],
                     [0., np.cos(2.*alpha), np.sin(2.*alpha)],
                     [0, -np.sin(2.*alpha), np.cos(2.*alpha)]])

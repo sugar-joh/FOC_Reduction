@@ -18,7 +18,7 @@ from matplotlib.colors import LogNorm
 def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
-    deconvolve = True
+    deconvolve = False
     if deconvolve:
         # from lib.deconvolve import from_file_psf
         psf = 'gaussian'  # Can be user-defined as well
@@ -33,9 +33,9 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     display_crop = False
 
     # Background estimation
-    error_sub_type = 'sturges'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.25
-    display_bkg = True
+    error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
+    subtract_error = 0.50
+    display_bkg = False
 
     # Data binning
     rebin = True
@@ -45,12 +45,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Alignement
     align_center = 'center'          # If None will not align the images
-    display_align = True
+    display_align = False
     display_data = False
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.10           # If None, no smoothing is done
+    smoothing_FWHM = 0.20           # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
