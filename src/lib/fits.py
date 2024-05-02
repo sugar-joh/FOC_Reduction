@@ -67,7 +67,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             new_wcs.wcs.cdelt = new_cdelt
             for key, val in new_wcs.to_header().items():
                 header[key] = val
-        header['orientat'] = princ_angle(float(header['orientat']))
+        # header['orientat'] = princ_angle(float(header['orientat']))
 
     # force WCS for POL60 to have same pixel size as POL0 and POL120
     is_pol60 = np.array([head['filtnam1'].lower() == 'pol60' for head in headers], dtype=bool)
