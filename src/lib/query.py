@@ -18,19 +18,19 @@ def divide_proposal(products):
     """
     for pid in np.unique(products['Proposal ID']):
         obs = products[products['Proposal ID'] == pid].copy()
-        close_date = np.unique(np.array([TimeDelta(np.abs(obs['Start'][0].unix-date.unix), format='sec')
-                               < 7.*u.d for date in obs['Start']], dtype=bool), axis=0)
-        if len(close_date) > 1:
-            for date in close_date:
-                products['Proposal ID'][np.any([products['Dataset'] == dataset for dataset in obs['Dataset'][date]], axis=0)
-                                        ] = "_".join([obs['Proposal ID'][date][0], str(obs['Start'][date][0])[:10]])
-    for pid in np.unique(products['Proposal ID']):
-        obs = products[products['Proposal ID'] == pid].copy()
         same_filt = np.unique(np.array(np.sum([obs['Filters'][:, 1:] == filt[1:] for filt in obs['Filters']], axis=2) < 3, dtype=bool), axis=0)
         if len(same_filt) > 1:
             for filt in same_filt:
                 products['Proposal ID'][np.any([products['Dataset'] == dataset for dataset in obs['Dataset'][filt]], axis=0)] = "_".join(
                     [obs['Proposal ID'][filt][0], "_".join([fi for fi in obs['Filters'][filt][0][1:] if fi[:-1] != "CLEAR"])])
+    for pid in np.unique(products['Proposal ID']):
+        obs = products[products['Proposal ID'] == pid].copy()
+        close_date = np.unique([[np.abs(TimeDelta(obs['Start'][i].unix-date.unix, format='sec'))
+                               < 7.*u.d for i in range(len(obs))] for date in obs['Start']], axis=0)
+        if len(close_date) > 1:
+            for date in close_date:
+                products['Proposal ID'][np.any([products['Dataset'] == dataset for dataset in obs['Dataset'][date]], axis=0)
+                                        ] = "_".join([obs['Proposal ID'][date][0], str(obs['Start'][date][0])[:10]])
     return products
 
 
@@ -147,8 +147,6 @@ def get_product_list(target=None, proposal_id=None):
     for prod in products:
         prod['target_name'] = observations['target_name'][observations['obsid'] == prod['obsID']][0]
     tab = unique(products, ['target_name', 'proposal_id'])
-    if len(tab) > 1 and np.all(tab['target_name'] == tab['target_name'][0]):
-        target = tab['target_name'][0]
 
     products["Obs"] = [np.argmax(np.logical_and(tab['proposal_id'] == data['proposal_id'], tab['target_name'] == data['target_name']))+1 for data in products]
     return target, products
