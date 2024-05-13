@@ -442,11 +442,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_type=No
     Returns:
     data_array : numpy.ndarray
         Array containing the data to study minus the background.
-    headers : header list
-        Updated headers associated with the images in data_array.
     error_array : numpy.ndarray
         Array containing the background values associated to the images in
         data_array.
+    headers : header list
+        Updated headers associated with the images in data_array.
     background : numpy.ndarray
         Array containing the pixel background value for each image in
         data_array.

@@ -270,7 +270,7 @@ def del_aligned(s, Omega):
 
 
 # Implement Graham algorithm
-def convex_hull(A):
+def convex_hull(H):
     """
     Implement Graham algorithm to find the convex hull of a given list of
     points, handling aligned points.
@@ -283,17 +283,20 @@ def convex_hull(A):
         List of points defining the convex hull of the input list A.
     """
     S = empty_stack()
-    Omega = min_lexico(A)
-    sort_angles_distances(Omega, A)
-    A = del_aligned(A, Omega)
-    stack(S, A[0])
-    stack(S, A[1])
-    stack(S, A[2])
-    for i in range(3, len(A)):
-        while pseudo_angle(stack_sub_top(S), stack_top(S), A[i]) <= 0:
-            unstack(S)
-        stack(S, A[i])
-    return S
+    Omega = min_lexico(H)
+    sort_angles_distances(Omega, H)
+    A = del_aligned(H, Omega)
+    if len(A) < 3:
+        return H
+    else:
+        stack(S, A[0])
+        stack(S, A[1])
+        stack(S, A[2])
+        for i in range(3, len(A)):
+            while pseudo_angle(stack_sub_top(S), stack_top(S), A[i]) <= 0:
+                unstack(S)
+            stack(S, A[i])
+        return S
 
 
 def image_hull(image, step=5, null_val=0., inside=True):
@@ -328,25 +331,24 @@ def image_hull(image, step=5, null_val=0., inside=True):
     H = []
     shape = np.array(image.shape)
     row, col = np.indices(shape)
-    for i in range(0, shape[0], step):
-        r = row[i, :][image[i, :] > null_val]
-        c = col[i, :][image[i, :] > null_val]
-        if len(r) > 1 and len(c) > 1:
-            H.append((r[0], c[0]))
-            H.append((r[-1], c[-1]))
-    for j in range(0, shape[1], step):
-        r = row[:, j][image[:, j] > null_val]
-        c = col[:, j][image[:, j] > null_val]
-        if len(r) > 1 and len(c) > 1:
-            if not ((r[0], c[0]) in H):
-                H.append((r[0], c[0]))
-            if not ((r[-1], c[-1]) in H):
-                H.append((r[-1], c[-1]))
+    for i in range(0, int(min(shape)/2), step):
+        r1, r2 = row[i, :][image[i, :] > null_val], row[-i, :][image[-i, :] > null_val]
+        c1, c2 = col[i, :][image[i, :] > null_val], col[-i, :][image[-i, :] > null_val]
+        if r1.shape[0] > 1:
+            H.append((r1[0], c1[0]))
+            H.append((r1[-1], c1[-1]))
+        if r2.shape[0] > 1:
+            H.append((r2[0], c2[0]))
+            H.append((r2[-1], c2[-1]))
     S = np.array(convex_hull(H))
 
     x_min, y_min = S[:, 0] < S[:, 0].mean(), S[:, 1] < S[:, 1].mean()
     x_max, y_max = S[:, 0] > S[:, 0].mean(), S[:, 1] > S[:, 1].mean()
     # Get the 4 extrema
+    # S0 = S[x_min*y_min][np.argmin(S[x_min*y_min][:, 0])]
+    # S1 = S[x_min*y_max][np.argmax(S[x_min*y_max][:, 1])]
+    # S2 = S[x_max*y_min][np.argmin(S[x_max*y_min][:, 1])]
+    # S3 = S[x_max*y_max][np.argmax(S[x_max*y_max][:, 0])]
     S0 = S[x_min*y_min][np.abs(0-S[x_min*y_min].sum(axis=1)).min() == np.abs(0-S[x_min*y_min].sum(axis=1))][0]
     S1 = S[x_min*y_max][np.abs(shape[1]-S[x_min*y_max].sum(axis=1)).min() == np.abs(shape[1]-S[x_min*y_max].sum(axis=1))][0]
     S2 = S[x_max*y_min][np.abs(shape[0]-S[x_max*y_min].sum(axis=1)).min() == np.abs(shape[0]-S[x_max*y_min].sum(axis=1))][0]
