@@ -308,8 +308,8 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
         fig.colorbar(im, ax=ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         if savename is not None:
-            fig.savefig("/".join([plots_folder, savename+'_'+filt+'_crop_region.png']),
-                        bbox_inches='tight')
+            fig.savefig("/".join([plots_folder, savename+'_'+filt+'_crop_region.pdf']),
+                        bbox_inches='tight', dpi=200)
             plot_obs(data_array, headers, vmin=convert_flux*data_array[data_array > 0.].mean()/5.,
                      vmax=convert_flux*data_array[data_array > 0.].max(), rectangle=[rectangle,]*len(headers),
                      savename=savename+'_crop_region', plots_folder=plots_folder)
@@ -1228,10 +1228,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         QU_diluted_err = np.sqrt(np.sum(Stokes_cov[1, 2][mask]**2))
 
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
+                                                                                                                                                        2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
         PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted, Q_diluted))
-        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err **
+                                                                             2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarisation degree')
@@ -1487,10 +1489,12 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     QU_diluted_err = np.sqrt(np.sum(new_Stokes_cov[1, 2][mask]**2))
 
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
+                                                                                                                                                    2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
     PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted, Q_diluted))
-    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err **
+                                                                         2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:
         header['P_int'] = (P_diluted, 'Integrated polarisation degree')
