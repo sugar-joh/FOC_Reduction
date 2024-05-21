@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 # -*- coding:utf-8 -*-
 """
 Main script where are progressively added the steps for the FOC pipeline reduction.
@@ -7,10 +7,11 @@ Main script where are progressively added the steps for the FOC pipeline reducti
 # Project libraries
 import numpy as np
 from copy import deepcopy
+from os import system
+from os.path import exists as path_exists
 import lib.fits as proj_fits        # Functions to handle fits files
 import lib.reduction as proj_red    # Functions used in reduction pipeline
 import lib.plots as proj_plots      # Functions for plotting data
-from lib.query import retrieve_products, path_exists, system
 from lib.utils import sci_not, princ_angle
 from matplotlib.colors import LogNorm
 
@@ -26,20 +27,20 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         psf_FWHM = 3.1
         psf_scale = 'px'
         psf_shape = None  # (151, 151)
-        iterations = 3
-        algo = "richardson"
+        iterations = 1
+        algo = "conjgrad"
 
     # Initial crop
     display_crop = False
 
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.50
+    subtract_error = 0.01
     display_bkg = True
 
     # Data binning
     rebin = True
-    pxsize = 0.05
+    pxsize = 0.10
     px_scale = 'arcsec'         # pixel, arcsec or full
     rebin_operation = 'sum'     # sum or average
 
@@ -50,7 +51,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.075          # If None, no smoothing is done
+    smoothing_FWHM = 0.200          # If None, no smoothing is done
     smoothing_scale = 'arcsec'      # pixel or arcsec
 
     # Rotation
@@ -58,10 +59,10 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     rotate_stokes = True
 
     #  Polarization map output
-    SNRp_cut = 5.    # P measurments with SNR>3
+    SNRp_cut = 3.    # P measurments with SNR>3
     SNRi_cut = 3.    # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     flux_lim = None    # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    vec_scale = 3
+    vec_scale = 5
     step_vec = 1    # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
 
     # Pipeline start
@@ -75,6 +76,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         if target is None:
             target = input("Target name:\n>")
     else:
+        from lib.query import retrieve_products
         target, products = retrieve_products(target, proposal_id, output_dir=output_dir)
         prod = products.pop()
         for prods in products:
@@ -107,6 +109,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     #  Crop data to remove outside blank margins.
     data_array, error_array, headers = proj_red.crop_array(data_array, headers, step=5, null_val=0.,
                                                            inside=True, display=display_crop, savename=figname, plots_folder=plots_folder)
+    data_mask = np.ones(data_array[0].shape, dtype=bool)
 
     #  Deconvolve data using Richardson-Lucy iterative algorithm with a gaussian PSF of given FWHM.
     if deconvolve:
@@ -114,8 +117,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     #  Estimate error from data background, estimated from sub-image of desired sub_shape.
     background = None
-    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, sub_type=error_sub_type, subtract_error=subtract_error, display=display_bkg, savename="_".join([
-                                                                      figname, "errors"]), plots_folder=plots_folder, return_background=True)
+    data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, data_mask=data_mask, sub_type=error_sub_type, subtract_error=subtract_error, display=display_bkg, savename="_".join([figname, "errors"]), plots_folder=plots_folder, return_background=True)
 
     #  Align and rescale images with oversampling.
     data_array, error_array, headers, data_mask = proj_red.align_data(
