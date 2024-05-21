@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Library functions for displaying  informations using matplotlib
 
@@ -54,7 +55,7 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
-from lib.utils import rot2D, princ_angle, sci_not
+from utils import rot2D, princ_angle, sci_not
 
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
@@ -423,7 +424,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
-                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='w', edgecolor='k')
+                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='w', edgecolor='k')
         pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
@@ -734,7 +735,7 @@ class overplot_radio(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -853,7 +854,7 @@ class overplot_chandra(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -971,8 +972,8 @@ class overplot_pol(align_maps):
         px_scale = self.other_wcs.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=px_scale/self.vec_scale, scale_units='xy', pivot='mid',
-                                         headwidth=0., headlength=0., headaxislength=0., width=0.1/px_scale, linewidth=0.5, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarisation map".format(self.map_observer))
+        self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale, scale_units='xy', pivot='mid',
+                                         headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarisation map".format(self.map_observer))
 
         # Display Stokes I as contours
         if levels is None:
@@ -1128,7 +1129,7 @@ class align_pol(object):
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy',
-                  angles='uv', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, color='w')
+                  angles='uv', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='w')
         pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         ax.add_artist(pol_sc)
 
@@ -2349,12 +2350,12 @@ class pol_map(object):
             if hasattr(self, 'quiver'):
                 self.quiver.remove()
             self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                                    headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='white', edgecolor='black')
+                                    headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black')
             fig.canvas.draw_idle()
             return self.quiver
         else:
             ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                      headlength=0., headaxislength=0., width=0.2, linewidth=0.3, color='white', edgecolor='black')
+                      headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black')
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):
@@ -2463,3 +2464,21 @@ class pol_map(object):
             if self.region is not None:
                 ax.contour(self.region.astype(float), levels=[0.5], colors='white', linewidths=0.8)
             fig.canvas.draw_idle()
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Interactively plot the pipeline products')
+    parser.add_argument('-f', '--file', metavar='path', required=False, help='the full or relative path to the data product', type=str, default=None)
+    parser.add_argument('-p', '--snrp', metavar='snrp_cut', required=False, help='the cut in signal-to-noise for the polarisation degree', type=float, default=3.)
+    parser.add_argument('-i', '--snri', metavar='snri_cut', required=False, help='the cut in signal-to-noise for the intensity', type=float, default=3.)
+    parser.add_argument('-l', '--lim', metavar='flux_lim', nargs=2, required=False, help='limits for the intensity map', default=None)
+    args = parser.parse_args()
+
+    if args.file is not None:
+        Stokes_UV = fits.open(args.file, mode='readonly')
+        p = pol_map(Stokes_UV, SNRp_cut=args.snrp, SNRi_cut=args.snri, flux_lim=args.lim)
+
+    else:
+        print("python3 plots.py -f <path_to_reduced_fits> -p <SNRp_cut> -i <SNRi_cut> -l <flux_lim>")
