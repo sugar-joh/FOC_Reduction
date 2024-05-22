@@ -55,7 +55,10 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
-from utils import rot2D, princ_angle, sci_not
+try:
+    from utils import rot2D, princ_angle, sci_not
+except ModuleNotFoundError:
+    from lib.utils import rot2D, princ_angle, sci_not
 
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
