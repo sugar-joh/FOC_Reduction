@@ -17,7 +17,7 @@ import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
 from datetime import datetime
-from lib.plots import plot_obs
+from .plots import plot_obs
 from scipy.optimize import curve_fit
 
 

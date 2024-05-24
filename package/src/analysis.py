@@ -30,7 +30,7 @@ except get_error as err:
 
 if fits_path is not None:
     from astropy.io import fits
-    from src.lib.plots import pol_map
+    from lib.plots import pol_map
 
     Stokes_UV = fits.open(fits_path)
     p = pol_map(Stokes_UV, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)

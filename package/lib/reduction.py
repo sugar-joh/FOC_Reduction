@@ -49,12 +49,12 @@ from scipy.signal import fftconvolve
 from astropy.wcs import WCS
 from astropy import log
 import warnings
-from lib.deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
-from lib.convex_hull import image_hull, clean_ROI
-from lib.background import bkg_fit, bkg_hist, bkg_mini
-from lib.plots import plot_obs
-from lib.utils import princ_angle
-from lib.cross_correlation import phase_cross_correlation
+from .deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
+from .convex_hull import image_hull, clean_ROI
+from .background import bkg_fit, bkg_hist, bkg_mini
+from .plots import plot_obs
+from .utils import princ_angle
+from .cross_correlation import phase_cross_correlation
 log.setLevel('ERROR')
 
 

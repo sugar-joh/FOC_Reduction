@@ -56,9 +56,9 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord
 from scipy.ndimage import zoom as sc_zoom
 try:
+    from .utils import rot2D, princ_angle, sci_not
+except ImportError:
     from utils import rot2D, princ_angle, sci_not
-except ModuleNotFoundError:
-    from lib.utils import rot2D, princ_angle, sci_not
 
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
@@ -975,8 +975,8 @@ class overplot_pol(align_maps):
         px_scale = self.other_wcs.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
-        self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale, scale_units='xy', pivot='mid',
-                                         headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarisation map".format(self.map_observer))
+        self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=px_scale/self.vec_scale, scale_units='xy', pivot='mid',
+                                         headwidth=0., headlength=0., headaxislength=0., width=2.0, linewidth=1.0, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarisation map".format(self.map_observer))
 
         # Display Stokes I as contours
         if levels is None:
