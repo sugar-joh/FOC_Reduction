@@ -16,7 +16,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
-from datetime import datetime
+from datetime import datetime, timedelta
+from astropy.time import Time
 from lib.plots import plot_obs
 from scipy.optimize import curve_fit
 
@@ -38,10 +39,9 @@ def bin_centers(edges):
 def display_bkg(data, background, std_bkg, headers, histograms=None, binning=None, coeff=None, rectangle=None, savename=None, plots_folder="./"):
     plt.rcParams.update({'font.size': 15})
     convert_flux = np.array([head['photflam'] for head in headers])
-    date_time = np.array([headers[i]['date-obs']+';'+headers[i]['time-obs']
-                          for i in range(len(headers))])
-    date_time = np.array([datetime.strptime(d, '%Y-%m-%d;%H:%M:%S')
-                          for d in date_time])
+    date_time = np.array([Time((headers[i]['expstart']+headers[i]['expend'])/2., format='mjd', precision=0).iso for i in range(len(headers))])
+    date_time = np.array([datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date_time])
+    date_err = np.array([timedelta(seconds=headers[i]['exptime']/2.) for i in range(len(headers))])
     filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
     dict_filt = {"POL0": 'r', "POL60": 'g', "POL120": 'b'}
     c_filt = np.array([dict_filt[f] for f in filt])
@@ -49,17 +49,17 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     fig, ax = plt.subplots(figsize=(10, 6), constrained_layout=True)
     for f in np.unique(filt):
         mask = [fil == f for fil in filt]
-        ax.scatter(date_time[mask], background[mask]*convert_flux[mask],
-                   color=dict_filt[f], label="{0:s}".format(f))
-    ax.errorbar(date_time, background*convert_flux,
-                yerr=std_bkg*convert_flux, fmt='+k',
+        ax.scatter(date_time[mask], background[mask]*convert_flux[mask], color=dict_filt[f],
+                   label="{0:s}".format(f))
+    ax.errorbar(date_time, background*convert_flux, xerr=date_err, yerr=std_bkg*convert_flux, fmt='+k',
                 markersize=0, ecolor=c_filt)
     # Date handling
     locator = mdates.AutoDateLocator()
     formatter = mdates.ConciseDateFormatter(locator)
     ax.xaxis.set_major_locator(locator)
     ax.xaxis.set_major_formatter(formatter)
-    ax.set_ylim(bottom=0.)
+    # ax.set_ylim(bottom=0.)
+    ax.set_yscale('log')
     ax.set_xlabel("Observation date and time")
     ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     plt.legend()
