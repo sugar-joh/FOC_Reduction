@@ -49,12 +49,12 @@ from scipy.signal import fftconvolve
 from astropy.wcs import WCS
 from astropy import log
 import warnings
-from lib.deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
-from lib.convex_hull import image_hull, clean_ROI
-from lib.background import bkg_fit, bkg_hist, bkg_mini
-from lib.plots import plot_obs
-from lib.utils import princ_angle
-from lib.cross_correlation import phase_cross_correlation
+from .deconvolve import deconvolve_im, gaussian_psf, gaussian2d, zeropad
+from .convex_hull import image_hull, clean_ROI
+from .background import bkg_fit, bkg_hist, bkg_mini
+from .plots import plot_obs
+from .utils import princ_angle
+from .cross_correlation import phase_cross_correlation
 log.setLevel('ERROR')
 
 
@@ -276,7 +276,7 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
 
     if display:
         plt.rcParams.update({'font.size': 15})
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = plt.subplots(figsize=(10, 10), layout='constrained')
         convert_flux = headers[0]['photflam']
         data = deepcopy(data_array[0]*convert_flux)
         data[data <= data[data > 0.].min()] = data[data > 0.].min()
@@ -301,18 +301,15 @@ def crop_array(data_array, headers, error_array=None, data_mask=None, step=5, nu
                     xycoords='axes fraction')
         ax.annotate(str(exptime)+" s", color='white', fontsize=10, xy=(0.80, 0.02),
                     xycoords='axes fraction')
-        ax.set(  # title="Location of cropped image.",
-            xlabel='pixel offset',
-            ylabel='pixel offset')
+        ax.set(title="Location of cropped image.", xlabel='pixel offset', ylabel='pixel offset')
 
-        fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
-        cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
-        fig.colorbar(im, cax=cbar_ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        # fig.subplots_adjust(hspace=0, wspace=0, right=0.85)
+        # cbar_ax = fig.add_axes([0.9, 0.12, 0.02, 0.75])
+        fig.colorbar(im, ax=ax, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
         if savename is not None:
-            # fig.suptitle(savename+'_'+filt+'_crop_region')
-            fig.savefig("/".join([plots_folder, savename+'_'+filt+'_crop_region.png']),
-                        bbox_inches='tight')
+            fig.savefig("/".join([plots_folder, savename+'_'+filt+'_crop_region.pdf']),
+                        bbox_inches='tight', dpi=200)
             plot_obs(data_array, headers, vmin=convert_flux*data_array[data_array > 0.].mean()/5.,
                      vmax=convert_flux*data_array[data_array > 0.].max(), rectangle=[rectangle,]*len(headers),
                      savename=savename+'_crop_region', plots_folder=plots_folder)
@@ -445,11 +442,11 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_type=No
     Returns:
     data_array : numpy.ndarray
         Array containing the data to study minus the background.
-    headers : header list
-        Updated headers associated with the images in data_array.
     error_array : numpy.ndarray
         Array containing the background values associated to the images in
         data_array.
+    headers : header list
+        Updated headers associated with the images in data_array.
     background : numpy.ndarray
         Array containing the pixel background value for each image in
         data_array.
@@ -955,6 +952,10 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None, scale=
         err60_array = error_array[is_pol60]
         err120_array = error_array[is_pol120]
 
+        # For a single observation, combination amount to a weighted gaussian
+        if np.max([is_pol0.sum(), is_pol60.sum(), is_pol120.sum()]) == 1 and smoothing.lower() in ['combine', 'combining']:
+            smoothing = 'weighted_gaussian'
+
         if (FWHM is not None) and (smoothing.lower() in ['combine', 'combining']):
             # Smooth by combining each polarizer images
             pol0, err0 = smooth_data(pol0_array, err0_array, data_mask, headers0, FWHM=FWHM, scale=scale, smoothing=smoothing)
@@ -1227,10 +1228,12 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         QU_diluted_err = np.sqrt(np.sum(Stokes_cov[1, 2][mask]**2))
 
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
+                                                                                                                                                        2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
         PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted, Q_diluted))
-        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err **
+                                                                             2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarisation degree')
@@ -1406,7 +1409,7 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         for i, head in enumerate(headers):
             ang[i] = -head['orientat']
         ang = ang.mean()
-    alpha = np.radians(ang)
+    alpha = np.pi/180.*ang
     mrot = np.array([[1., 0., 0.],
                     [0., np.cos(2.*alpha), np.sin(2.*alpha)],
                     [0, -np.sin(2.*alpha), np.cos(2.*alpha)]])
@@ -1486,10 +1489,12 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
     QU_diluted_err = np.sqrt(np.sum(new_Stokes_cov[1, 2][mask]**2))
 
     P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+    P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
+                                                                                                                                                    2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
     PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted, Q_diluted))
-    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+    PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err **
+                                                                         2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:
         header['P_int'] = (P_diluted, 'Integrated polarisation degree')

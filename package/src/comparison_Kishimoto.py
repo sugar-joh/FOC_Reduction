@@ -1,8 +1,8 @@
-# !/usr/bin/env python
-from lib.background import gauss, bin_centers
-from lib.deconvolve import zeropad
-from lib.reduction import align_data
-from lib.plots import princ_angle
+#!/usr/bin/python
+from src.lib.background import gauss, bin_centers
+from src.lib.deconvolve import zeropad
+from src.lib.reduction import align_data
+from src.lib.plots import princ_angle
 from matplotlib.colors import LogNorm
 from os.path import join as path_join
 from astropy.io import fits

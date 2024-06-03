@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 from getopt import getopt, error as get_error
 from sys import argv
 

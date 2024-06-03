@@ -80,7 +80,8 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
                       label=headers[i]['filtnam1']+' (Obs '+str(filt_obs[headers[i]['filtnam1']])+')')
             ax_h.plot([background[i]*convert_flux[i], background[i]*convert_flux[i]], [hist.min(), hist.max()], 'x--', color="C{0:d}".format(i), alpha=0.8)
             if not (coeff is None):
-                ax_h.plot(bins*convert_flux[i], gausspol(bins, *coeff[i]), '--', color="C{0:d}".format(i), alpha=0.8)
+                # ax_h.plot(bins*convert_flux[i], gausspol(bins, *coeff[i]), '--', color="C{0:d}".format(i), alpha=0.8)
+                ax_h.plot(bins*convert_flux[i], gauss(bins, *coeff[i]), '--', color="C{0:d}".format(i), alpha=0.8)
         ax_h.set_xscale('log')
         ax_h.set_ylim([0., np.max([hist.max() for hist in histograms])])
         ax_h.set_xlim([np.min(background*convert_flux)*1e-2, np.max(background*convert_flux)*1e2])
@@ -159,12 +160,15 @@ def bkg_estimate(img, bins=None, chi2=None, coeff=None):
     peak = binning[np.argmax(hist)]
     bins_stdev = binning[hist > hist.max()/2.]
     stdev = bins_stdev[-1]-bins_stdev[0]
-    p0 = [hist.max(), peak, stdev, 1e-3, 1e-3, 1e-3, 1e-3]
+    # p0 = [hist.max(), peak, stdev, 1e-3, 1e-3, 1e-3, 1e-3]
+    p0 = [hist.max(), peak, stdev]
     try:
-        popt, pcov = curve_fit(gausspol, binning, hist, p0=p0)
+        # popt, pcov = curve_fit(gausspol, binning, hist, p0=p0)
+        popt, pcov = curve_fit(gauss, binning, hist, p0=p0)
     except RuntimeError:
         popt = p0
-    chi2.append(np.sum((hist - gausspol(binning, *popt))**2)/hist.size)
+    # chi2.append(np.sum((hist - gausspol(binning, *popt))**2)/hist.size)
+    chi2.append(np.sum((hist - gauss(binning, *popt))**2)/hist.size)
     coeff.append(popt)
     return bins, chi2, coeff
 
@@ -330,8 +334,10 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         # Fit a gaussian to the log-intensity histogram
         bins_stdev = binning[-1][hist > hist.max()/2.]
         stdev = bins_stdev[-1]-bins_stdev[0]
-        p0 = [hist.max(), binning[-1][np.argmax(hist)], stdev, 1e-3, 1e-3, 1e-3, 1e-3]
-        popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
+        # p0 = [hist.max(), binning[-1][np.argmax(hist)], stdev, 1e-3, 1e-3, 1e-3, 1e-3]
+        p0 = [hist.max(), binning[-1][np.argmax(hist)], stdev]
+        # popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
+        popt, pcov = curve_fit(gauss, binning[-1], hist, p0=p0)
         coeff.append(popt)
         bkg = popt[1]+np.abs(popt[2])*subtract_error
 
