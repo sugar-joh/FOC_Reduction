@@ -144,10 +144,10 @@ def save_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, P, debiased_P, s_P,
     header['targname'] = (ref_header['targname'], 'Target name')
     header['orientat'] = (ref_header['orientat'], 'Angle between North and the y-axis of the image')
     header['filename'] = (filename, 'Original filename')
-    header['P_int'] = (ref_header['P_int'], 'Integrated polarisation degree')
-    header['P_int_err'] = (ref_header['P_int_err'], 'Integrated polarisation degree error')
-    header['PA_int'] = (ref_header['PA_int'], 'Integrated polarisation angle')
-    header['PA_int_err'] = (ref_header['PA_int_err'], 'Integrated polarisation angle error')
+    header['P_int'] = (ref_header['P_int'], 'Integrated polarization degree')
+    header['P_int_err'] = (ref_header['P_int_err'], 'Integrated polarization degree error')
+    header['PA_int'] = (ref_header['PA_int'], 'Integrated polarization angle')
+    header['PA_int_err'] = (ref_header['PA_int_err'], 'Integrated polarization angle error')
 
     # Crop Data to mask
     if data_mask.shape != (1, 1):

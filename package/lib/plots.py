@@ -9,8 +9,8 @@ prototypes :
     - plot_Stokes(Stokes, savename, plots_folder)
         Plot the I/Q/U maps from the Stokes HDUList.
 
-    - polarisation_map(Stokes, data_mask, rectangle, SNRp_cut, SNRi_cut, step_vec, savename, plots_folder, display) -> fig, ax
-        Plots polarisation map of polarimetric parameters saved in an HDUList.
+    - polarization_map(Stokes, data_mask, rectangle, SNRp_cut, SNRi_cut, step_vec, savename, plots_folder, display) -> fig, ax
+        Plots polarization map of polarimetric parameters saved in an HDUList.
 
     class align_maps(map, other_map, **kwargs)
         Class to interactively align maps with different WCS.
@@ -22,13 +22,13 @@ prototypes :
         Class inherited from align_maps to overplot chandra data as contours.
 
     class overplot_pol(align_maps)
-        Class inherited from align_maps to overplot UV polarisation vectors on other maps.
+        Class inherited from align_maps to overplot UV polarization vectors on other maps.
 
     class crop_map(hdul, fig, ax)
         Class to interactively crop a region of interest of a HDUList.
 
     class crop_Stokes(crop_map)
-        Class inherited from crop_map to work on polarisation maps.
+        Class inherited from crop_map to work on polarization maps.
 
     class image_lasso_selector(img, fig, ax)
         Class to interactively select part of a map to work on.
@@ -37,7 +37,7 @@ prototypes :
         Class to interactively simulate aperture integration.
 
     class pol_map(Stokes, SNRp_cut, SNRi_cut, selection)
-        Class to interactively study polarisation maps making use of the cropping and selecting tools.
+        Class to interactively study polarization maps making use of the cropping and selecting tools.
 """
 
 from copy import deepcopy
@@ -204,10 +204,10 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
-def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=3.,
+def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=3.,
                      flux_lim=None, step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
     """
-    Plots polarisation map from Stokes HDUList.
+    Plots polarization map from Stokes HDUList.
     ----------
     Inputs:
     Stokes : astropy.io.fits.hdu.hdulist.HDUList
@@ -230,12 +230,12 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         Defaults to None, limits are computed on the background value and the
         maximum value in the cut.
     step_vec : int, optional
-        Number of steps between each displayed polarisation vector.
+        Number of steps between each displayed polarization vector.
         If step_vec = 2, every other vector will be displayed.
         Defaults to 1
     vec_scale : float, optional
-        Pixel length of displayed 100% polarisation vector.
-        If vec_scale = 2, a vector of 50% polarisation will be 1 pixel wide.
+        Pixel length of displayed 100% polarization vector.
+        If vec_scale = 2, a vector of 50% polarization will be 1 pixel wide.
         Defaults to 2.
     savename : str, optional
         Name of the figure the map should be saved to. If None, the map won't
@@ -246,8 +246,8 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         be saved. Not used if savename is None.
         Defaults to current folder.
     display : str, optional
-        Choose the map to display between intensity (default), polarisation
-        degree ('p', 'pol', 'pol_deg') or polarisation degree error ('s_p',
+        Choose the map to display between intensity (default), polarization
+        degree ('p', 'pol', 'pol_deg') or polarization degree error ('s_p',
         'pol_err', 'pol_deg_err').
         Defaults to None (intensity).
     ----------
@@ -295,12 +295,12 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
     poldata[np.logical_not(mask)] = np.nan
     pangdata[np.logical_not(mask)] = np.nan
 
-    # Look for pixel of max polarisation
+    # Look for pixel of max polarization
     if np.isfinite(pol).any():
         p_max = np.max(pol[np.isfinite(pol)])
         x_max, y_max = np.unravel_index(np.argmax(pol == p_max), pol.shape)
     else:
-        print("No pixel with polarisation information above requested SNR.")
+        print("No pixel with polarization information above requested SNR.")
 
     # Plot the map
     plt.rcParams.update({'font.size': 10})
@@ -325,7 +325,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         print("Total flux contour levels : ", levelsI)
         ax.contour(stkI*convert_flux, levels=levelsI, colors='grey', linewidths=0.5)
     elif display.lower() in ['pol_flux']:
-        # Display polarisation flux
+        # Display polarization flux
         display = 'pf'
         if flux_lim is None:
             if mask.sum() > 0.:
@@ -340,19 +340,19 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         print("Polarized flux contour levels : ", levelsPf)
         ax.contour(stkI*convert_flux*pol, levels=levelsPf, colors='grey', linewidths=0.5)
     elif display.lower() in ['p', 'pol', 'pol_deg']:
-        # Display polarisation degree map
+        # Display polarization degree map
         display = 'p'
         vmin, vmax = 0., 100.
         im = ax.imshow(pol*100., vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$P$ [%]")
     elif display.lower() in ['pa', 'pang', 'pol_ang']:
-        # Display polarisation degree map
+        # Display polarization degree map
         display = 'pa'
         vmin, vmax = 0., 180.
         im = ax.imshow(princ_angle(pang), vmin=vmin, vmax=vmax, aspect='equal', cmap='inferno', alpha=1.)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$\theta_P$ [°]")
     elif display.lower() in ['s_p', 'pol_err', 'pol_deg_err']:
-        # Display polarisation degree error map
+        # Display polarization degree error map
         display = 's_p'
         if (SNRp > SNRp_cut).any():
             vmin, vmax = 0., np.max([pol_err[SNRp > SNRp_cut].max(), 1.])*100.
@@ -384,7 +384,7 @@ def polarisation_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
             im = ax.imshow(SNRi, aspect='equal', cmap='inferno', alpha=1.)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$I_{Stokes}/\sigma_{I}$")
     elif display.lower() in ['snrp']:
-        # Display polarisation degree signal-to-noise map
+        # Display polarization degree signal-to-noise map
         display = 'snrp'
         vmin, vmax = 0., np.max(SNRp[np.isfinite(SNRp)])
         if vmax*0.99 > SNRp_cut:
@@ -710,7 +710,7 @@ class overplot_radio(align_maps):
         self.fig_overplot, self.ax_overplot = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection=self.wcs_UV))
         self.fig_overplot.subplots_adjust(hspace=0, wspace=0, bottom=0.1, left=0.1, top=0.8, right=1)
 
-        # Display UV intensity map with polarisation vectors
+        # Display UV intensity map with polarization vectors
         vmin, vmax = stkI[np.isfinite(stkI)].max()/1e3*self.map_convert, stkI[np.isfinite(stkI)].max()*self.map_convert
         for key, value in [["cmap", [["cmap", "inferno"]]], ["norm", [["norm", LogNorm(vmin, vmax)]]]]:
             try:
@@ -728,7 +728,7 @@ class overplot_radio(align_maps):
         self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=50, shrink=0.75, pad=0.025,
                                                label=r"$F_{{\lambda}}$ [{0:s}]".format(self.map_unit))
 
-        # Display full size polarisation vectors
+        # Display full size polarization vectors
         if vec_scale is None:
             self.vec_scale = 2.
             pol[np.isfinite(pol)] = 1./2.
@@ -738,7 +738,7 @@ class overplot_radio(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -750,7 +750,7 @@ class overplot_radio(align_maps):
 
         self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
         self.ax_overplot.set_ylabel(label="Declination (J2000)", labelpad=-1)
-        self.fig_overplot.suptitle("{0:s} polarisation map of {1:s} overplotted with {2:s} {3:.2f}GHz map in {4:s}.".format(
+        self.fig_overplot.suptitle("{0:s} polarization map of {1:s} overplotted with {2:s} {3:.2f}GHz map in {4:s}.".format(
             self.map_observer, obj, self.other_observer, other_freq*1e-9, self.other_unit), wrap=True)
 
         # Display pixel scale and North direction
@@ -770,7 +770,7 @@ class overplot_radio(align_maps):
         self.cr_other, = self.ax_overplot.plot(*(self.other_wcs.celestial.wcs.crpix-(1., 1.)), 'g+', transform=self.ax_overplot.get_transform(self.other_wcs))
 
         handles, labels = self.ax_overplot.get_legend_handles_labels()
-        handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
+        handles[np.argmax([li == "{0:s} polarization map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
         labels.append("{0:s} contour".format(self.other_observer))
         handles.append(Rectangle((0, 0), 1, 1, fill=False, lw=2, ec=other_cont.collections[0].get_edgecolor()[0]))
@@ -829,7 +829,7 @@ class overplot_chandra(align_maps):
         self.fig_overplot, self.ax_overplot = plt.subplots(figsize=(11, 10), subplot_kw=dict(projection=self.wcs_UV))
         self.fig_overplot.subplots_adjust(hspace=0, wspace=0, bottom=0.1, left=0.1, top=0.8, right=1)
 
-        # Display UV intensity map with polarisation vectors
+        # Display UV intensity map with polarization vectors
         vmin, vmax = stkI[np.isfinite(stkI)].max()/1e3*self.map_convert, stkI[np.isfinite(stkI)].max()*self.map_convert
         for key, value in [["cmap", [["cmap", "inferno"]]], ["norm", [["norm", LogNorm(vmin, vmax)]]]]:
             try:
@@ -847,7 +847,7 @@ class overplot_chandra(align_maps):
         self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=50, shrink=0.75, pad=0.025,
                                                label=r"$F_{{\lambda}}$ [{0:s}]".format(self.map_unit))
 
-        # Display full size polarisation vectors
+        # Display full size polarization vectors
         if vec_scale is None:
             self.vec_scale = 2.
             pol[np.isfinite(pol)] = 1./2.
@@ -857,7 +857,7 @@ class overplot_chandra(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarisation map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -870,7 +870,7 @@ class overplot_chandra(align_maps):
 
         self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
         self.ax_overplot.set_ylabel(label="Declination (J2000)", labelpad=-1)
-        self.fig_overplot.suptitle("{0:s} polarisation map of {1:s} overplotted\nwith {2:s} contour in counts.".format(
+        self.fig_overplot.suptitle("{0:s} polarization map of {1:s} overplotted\nwith {2:s} contour in counts.".format(
             self.map_observer, obj, self.other_observer), wrap=True)
 
         # Display pixel scale and North direction
@@ -889,7 +889,7 @@ class overplot_chandra(align_maps):
         self.cr_map, = self.ax_overplot.plot(*(self.map_wcs.celestial.wcs.crpix-(1., 1.)), 'r+')
         self.cr_other, = self.ax_overplot.plot(*(other_wcs.celestial.wcs.crpix-(1., 1.)), 'g+', transform=self.ax_overplot.get_transform(other_wcs))
         handles, labels = self.ax_overplot.get_legend_handles_labels()
-        handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
+        handles[np.argmax([li == "{0:s} polarization map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
         labels.append("{0:s} contour in counts".format(self.other_observer))
         handles.append(Rectangle((0, 0), 1, 1, fill=False, lw=2, ec=other_cont.collections[0].get_edgecolor()[0]))
@@ -944,7 +944,7 @@ class overplot_pol(align_maps):
 
         self.ax_overplot.set_xlabel(label="Right Ascension (J2000)")
         self.ax_overplot.set_ylabel(label="Declination (J2000)", labelpad=-1)
-        self.fig_overplot.suptitle("{0:s} observation from {1:s} overplotted with polarisation vectors and Stokes I contours from {2:s}".format(
+        self.fig_overplot.suptitle("{0:s} observation from {1:s} overplotted with polarization vectors and Stokes I contours from {2:s}".format(
             obj, self.other_observer, self.map_observer), wrap=True)
 
         # Display "other" intensity map
@@ -965,7 +965,7 @@ class overplot_pol(align_maps):
         self.cbar = self.fig_overplot.colorbar(self.im, ax=self.ax_overplot, aspect=80, shrink=0.75, pad=0.025,
                                                label=r"$F_{{\lambda}}$ [{0:s}]".format(self.other_unit))
 
-        # Display full size polarisation vectors
+        # Display full size polarization vectors
         if vec_scale is None:
             self.vec_scale = 2.
             pol[np.isfinite(pol)] = 1./2.
@@ -976,7 +976,7 @@ class overplot_pol(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=px_scale/self.vec_scale, scale_units='xy', pivot='mid',
-                                         headwidth=0., headlength=0., headaxislength=0., width=2.0, linewidth=1.0, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarisation map".format(self.map_observer))
+                                         headwidth=0., headlength=0., headaxislength=0., width=2.0, linewidth=1.0, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarization map".format(self.map_observer))
 
         # Display Stokes I as contours
         if levels is None:
@@ -1009,7 +1009,7 @@ class overplot_pol(align_maps):
             self.legend_title = r"{0:s} image".format(self.other_observer)
 
         handles, labels = self.ax_overplot.get_legend_handles_labels()
-        handles[np.argmax([li == "{0:s} polarisation map".format(self.map_observer) for li in labels])
+        handles[np.argmax([li == "{0:s} polarization map".format(self.map_observer) for li in labels])
                 ] = FancyArrowPatch((0, 0), (0, 1), arrowstyle='-', fc='w', ec='k', lw=2)
         labels.append("{0:s} Stokes I contour".format(self.map_observer))
         handles.append(Rectangle((0, 0), 1, 1, fill=False, ec=cont_stkI.collections[0].get_edgecolor()[0]))
@@ -1358,7 +1358,7 @@ class crop_map(object):
 
 class crop_Stokes(crop_map):
     """
-    Class to interactively crop a polarisation map to desired Region of Interest.
+    Class to interactively crop a polarization map to desired Region of Interest.
     Inherit from crop_map.
     """
 
@@ -1440,10 +1440,10 @@ class crop_Stokes(crop_map):
                                                                              2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for dataset in self.hdul_crop:
-            dataset.header['P_int'] = (P_diluted, 'Integrated polarisation degree')
-            dataset.header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarisation degree error')
-            dataset.header['PA_int'] = (PA_diluted, 'Integrated polarisation angle')
-            dataset.header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarisation angle error')
+            dataset.header['P_int'] = (P_diluted, 'Integrated polarization degree')
+            dataset.header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
+            dataset.header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+            dataset.header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
         self.fig.canvas.draw_idle()
 
     @property
@@ -1738,7 +1738,7 @@ class aperture(object):
 
 class pol_map(object):
     """
-    Class to interactively study polarisation maps.
+    Class to interactively study polarization maps.
     """
 
     def __init__(self, Stokes, SNRp_cut=3., SNRi_cut=3., flux_lim=None, selection=None):
@@ -1769,7 +1769,7 @@ class pol_map(object):
 
         # Display selected data (Default to total flux)
         self.display()
-        # Display polarisation vectors in SNR_cut
+        # Display polarization vectors in SNR_cut
         self.pol_vector()
         # Display integrated values in ROI
         self.pol_int()
@@ -2474,7 +2474,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Interactively plot the pipeline products')
     parser.add_argument('-f', '--file', metavar='path', required=False, help='the full or relative path to the data product', type=str, default=None)
-    parser.add_argument('-p', '--snrp', metavar='snrp_cut', required=False, help='the cut in signal-to-noise for the polarisation degree', type=float, default=3.)
+    parser.add_argument('-p', '--snrp', metavar='snrp_cut', required=False, help='the cut in signal-to-noise for the polarization degree', type=float, default=3.)
     parser.add_argument('-i', '--snri', metavar='snri_cut', required=False, help='the cut in signal-to-noise for the intensity', type=float, default=3.)
     parser.add_argument('-l', '--lim', metavar='flux_lim', nargs=2, required=False, help='limits for the intensity map', default=None)
     args = parser.parse_args()

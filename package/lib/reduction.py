@@ -30,7 +30,7 @@ prototypes :
         Compute Stokes parameters I, Q and U and their respective correlated errors from data_array.
 
     - compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers) -> P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P
-        Compute polarisation degree (in %) and angle (in degree) and their respective errors.
+        Compute polarization degree (in %) and angle (in degree) and their respective errors.
 
     - rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, ang, SNRi_cut) -> I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers
         Rotate I, Q, U given an angle in degrees using scipy functions.
@@ -466,7 +466,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_type=No
         mask = zeropad(mask_c, data[0].shape).astype(bool)
     background = np.zeros((data.shape[0]))
 
-    # wavelength dependence of the polariser filters
+    # wavelength dependence of the polarizer filters
     # estimated to less than 1%
     err_wav = data*0.01
     # difference in PSFs through each polarizers
@@ -963,7 +963,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None, scale=
             pol120, err120 = smooth_data(pol120_array, err120_array, data_mask, headers120, FWHM=FWHM, scale=scale, smoothing=smoothing)
 
         else:
-            # Sum on each polarisation filter.
+            # Sum on each polarization filter.
             pol0_t = np.sum([header['exptime'] for header in headers0])
             pol60_t = np.sum([header['exptime'] for header in headers60])
             pol120_t = np.sum([header['exptime'] for header in headers120])
@@ -1070,10 +1070,10 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         total intensity
     Q_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        vertical/horizontal linear polarisation intensity
+        vertical/horizontal linear polarization intensity
     U_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        +45/-45deg linear polarisation intensity
+        +45/-45deg linear polarization intensity
     Stokes_cov : numpy.ndarray
         Covariance matrix of the Stokes parameters I, Q, U.
     """
@@ -1236,17 +1236,17 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
                                                                              2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
-            header['P_int'] = (P_diluted, 'Integrated polarisation degree')
-            header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarisation degree error')
-            header['PA_int'] = (PA_diluted, 'Integrated polarisation angle')
-            header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarisation angle error')
+            header['P_int'] = (P_diluted, 'Integrated polarization degree')
+            header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
+            header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+            header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
 
     return I_stokes, Q_stokes, U_stokes, Stokes_cov
 
 
 def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     """
-    Compute the polarisation degree (in %) and angle (in deg) and their
+    Compute the polarization degree (in %) and angle (in deg) and their
     respective errors from given Stokes parameters.
     ----------
     Inputs:
@@ -1255,10 +1255,10 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
         total intensity
     Q_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        vertical/horizontal linear polarisation intensity
+        vertical/horizontal linear polarization intensity
     U_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        +45/-45deg linear polarisation intensity
+        +45/-45deg linear polarization intensity
     Stokes_cov : numpy.ndarray
         Covariance matrix of the Stokes parameters I, Q, U.
     headers : header list
@@ -1266,21 +1266,21 @@ def compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers):
     ----------
     Returns:
     P : numpy.ndarray
-        Image (2D floats) containing the polarisation degree (in %).
+        Image (2D floats) containing the polarization degree (in %).
     debiased_P : numpy.ndarray
-        Image (2D floats) containing the debiased polarisation degree (in %).
+        Image (2D floats) containing the debiased polarization degree (in %).
     s_P : numpy.ndarray
-        Image (2D floats) containing the error on the polarisation degree.
+        Image (2D floats) containing the error on the polarization degree.
     s_P_P : numpy.ndarray
         Image (2D floats) containing the Poisson noise error on the
-        polarisation degree.
+        polarization degree.
     PA : numpy.ndarray
-        Image (2D floats) containing the polarisation angle.
+        Image (2D floats) containing the polarization angle.
     s_PA : numpy.ndarray
-        Image (2D floats) containing the error on the polarisation angle.
+        Image (2D floats) containing the error on the polarization angle.
     s_PA_P : numpy.ndarray
         Image (2D floats) containing the Poisson noise error on the
-        polarisation angle.
+        polarization angle.
     new_headers : header list
         Updated list of headers corresponding to the reduced images accounting
         for the new orientation angle.
@@ -1354,10 +1354,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         total intensity
     Q_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        vertical/horizontal linear polarisation intensity
+        vertical/horizontal linear polarization intensity
     U_stokes : numpy.ndarray
         Image (2D floats) containing the Stokes parameters accounting for
-        +45/-45deg linear polarisation intensity
+        +45/-45deg linear polarization intensity
     Stokes_cov : numpy.ndarray
         Covariance matrix of the Stokes parameters I, Q, U.
     data_mask : numpy.ndarray
@@ -1379,10 +1379,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
         accounting for total intensity
     new_Q_stokes : numpy.ndarray
         Rotated mage (2D floats) containing the rotated Stokes parameters
-        accounting for vertical/horizontal linear polarisation intensity
+        accounting for vertical/horizontal linear polarization intensity
     new_U_stokes : numpy.ndarray
         Rotated image (2D floats) containing the rotated Stokes parameters
-        accounting for +45/-45deg linear polarisation intensity.
+        accounting for +45/-45deg linear polarization intensity.
     new_Stokes_cov : numpy.ndarray
         Updated covariance matrix of the Stokes parameters I, Q, U.
     new_headers : header list
@@ -1497,10 +1497,10 @@ def rotate_Stokes(I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, 
                                                                          2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
     for header in new_headers:
-        header['P_int'] = (P_diluted, 'Integrated polarisation degree')
-        header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarisation degree error')
-        header['PA_int'] = (PA_diluted, 'Integrated polarisation angle')
-        header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarisation angle error')
+        header['P_int'] = (P_diluted, 'Integrated polarization degree')
+        header['P_int_err'] = (np.ceil(P_diluted_err*1000.)/1000., 'Integrated polarization degree error')
+        header['PA_int'] = (PA_diluted, 'Integrated polarization angle')
+        header['PA_int_err'] = (np.ceil(PA_diluted_err*10.)/10., 'Integrated polarization angle error')
 
     return new_I_stokes, new_Q_stokes, new_U_stokes, new_Stokes_cov, new_data_mask, new_headers
 
