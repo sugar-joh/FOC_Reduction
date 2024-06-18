@@ -35,24 +35,27 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Background estimation
     error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.50
+    subtract_error = 0.01
     display_bkg = True
 
     # Data binning
     rebin = True
-    pxsize = 0.10
-    px_scale = 'arcsec'         # pixel, arcsec or full
+    pxsize = 2
+    px_scale = 'px'         # pixel, arcsec or full
     rebin_operation = 'sum'     # sum or average
 
     # Alignement
     align_center = 'center'          # If None will not align the images
-    display_align = False
+    display_align = True
     display_data = False
+
+    # Transmittance correction
+    transmitcorr = True
 
     # Smoothing
     smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.150          # If None, no smoothing is done
-    smoothing_scale = 'arcsec'      # pixel or arcsec
+    smoothing_FWHM = None          # If None, no smoothing is done
+    smoothing_scale = 'px'      # pixel or arcsec
 
     # Rotation
     rotate_data = False             # rotation to North convention can give erroneous results
@@ -120,10 +123,11 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     data_array, error_array, headers, background = proj_red.get_error(data_array, headers, error_array, data_mask=data_mask, sub_type=error_sub_type, subtract_error=subtract_error, display=display_bkg, savename="_".join([figname, "errors"]), plots_folder=plots_folder, return_background=True)
 
     #  Align and rescale images with oversampling.
-    data_array, error_array, headers, data_mask = proj_red.align_data(
-        data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=False)
+    data_array, error_array, headers, data_mask, shifts, error_shifts = proj_red.align_data(
+        data_array, headers, error_array=error_array, background=background, upsample_factor=10, ref_center=align_center, return_shifts=True)
 
     if display_align:
+        print("Image shifts: {} \nShifts uncertainty: {}".format(shifts, error_shifts))
         proj_plots.plot_obs(data_array, headers, savename="_".join([figname, str(align_center)]), plots_folder=plots_folder, norm=LogNorm(
             vmin=data_array[data_array > 0.].min()*headers[0]['photflam'], vmax=data_array[data_array > 0.].max()*headers[0]['photflam']))
 
@@ -154,7 +158,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
     I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(
-        data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
+        data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=transmitcorr)
     I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(background, background_error, np.array(True).reshape(
         1, 1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False)
 

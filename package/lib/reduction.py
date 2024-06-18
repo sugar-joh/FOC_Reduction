@@ -1026,7 +1026,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None, scale=
     return polarizer_array, polarizer_cov, pol_headers
 
 
-def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale='pixel', smoothing='combine', transmitcorr=False):
+def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale='pixel', smoothing='combine', transmitcorr=True):
     """
     Compute the Stokes parameters I, Q and U for a given data_set
     ----------
@@ -1060,9 +1060,9 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         Defaults to 'combine'. Won't be used if FWHM is None.
     transmitcorr : bool, optional
         Weither the images should be transmittance corrected for each filter
-        along the line of sight. Latest calibrated data products (.c0f) does
+        along the line of sight. Latest calibrated data products (.c1f) does
         not require such correction.
-        Defaults to False.
+        Defaults to True.
     ----------
     Returns:
     I_stokes : numpy.ndarray
@@ -1132,8 +1132,8 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
                                   pol_eff[(i+2) % 3]*np.cos(2.*globals()["theta"][(i+2) % 3]))*2./transmit[i]
 
         # Normalization parameter for Stokes parameters computation
-        A = (coeff_stokes[0, :]*transmit/2.).sum()
-        coeff_stokes = coeff_stokes/A
+        N = (coeff_stokes[0, :]*transmit/2.).sum()
+        coeff_stokes = coeff_stokes/N
         I_stokes = np.zeros(pol_array[0].shape)
         Q_stokes = np.zeros(pol_array[0].shape)
         U_stokes = np.zeros(pol_array[0].shape)
@@ -1177,29 +1177,40 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         s_Q2_stat = np.sum([coeff_stokes[1, i]**2*sigma_flux[i]**2 for i in range(len(sigma_flux))], axis=0)
         s_U2_stat = np.sum([coeff_stokes[2, i]**2*sigma_flux[i]**2 for i in range(len(sigma_flux))], axis=0)
 
+        pol_flux_corr = np.array([pf*2./t for (pf, t) in zip(pol_flux, transmit)])
+        coeff_stokes_corr = np.array([cs*t/2. for (cs, t) in zip(coeff_stokes.T, transmit)]).T
         # Compute the derivative of each Stokes parameter with respect to the polarizer orientation
-        dI_dtheta1 = 2.*pol_eff[0]/A*(pol_eff[2]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0])*(pol_flux[1]-I_stokes) -
-                                      pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1])*(pol_flux[2]-I_stokes))
-        dI_dtheta2 = 2.*pol_eff[1]/A*(pol_eff[0]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1])*(pol_flux[2]-I_stokes) -
-                                      pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2])*(pol_flux[0]-I_stokes))
-        dI_dtheta3 = 2.*pol_eff[2]/A*(pol_eff[1]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2])*(pol_flux[0]-I_stokes) -
-                                      pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0])*(pol_flux[1]-I_stokes))
+        dI_dtheta1 = 2.*pol_eff[0]/N*(pol_eff[2]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0])*(pol_flux_corr[1]-I_stokes) -
+                                      pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1])*(pol_flux_corr[2]-I_stokes) +
+                                      coeff_stokes_corr[0, 0]*(np.sin(2.*globals()["theta"][0])*Q_stokes-np.cos(2*globals()["theta"][0])*U_stokes))
+        dI_dtheta2 = 2.*pol_eff[1]/N*(pol_eff[0]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1])*(pol_flux_corr[2]-I_stokes) -
+                                      pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2])*(pol_flux_corr[0]-I_stokes) +
+                                      coeff_stokes_corr[0, 1]*(np.sin(2.*globals()["theta"][1])*Q_stokes-np.cos(2*globals()["theta"][1])*U_stokes))
+        dI_dtheta3 = 2.*pol_eff[2]/N*(pol_eff[1]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2])*(pol_flux_corr[0]-I_stokes) -
+                                      pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0])*(pol_flux_corr[1]-I_stokes) +
+                                      coeff_stokes_corr[0, 2]*(np.sin(2.*globals()["theta"][2])*Q_stokes-np.cos(2*globals()["theta"][2])*U_stokes))
         dI_dtheta = np.array([dI_dtheta1, dI_dtheta2, dI_dtheta3])
 
-        dQ_dtheta1 = 2.*pol_eff[0]/A*(np.cos(2.*globals()["theta"][0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*globals()
-                                      ["theta"][2]+2.*globals()["theta"][0]) - pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1]))*Q_stokes)
-        dQ_dtheta2 = 2.*pol_eff[1]/A*(np.cos(2.*globals()["theta"][1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*globals()
-                                      ["theta"][0]+2.*globals()["theta"][1]) - pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2]))*Q_stokes)
-        dQ_dtheta3 = 2.*pol_eff[2]/A*(np.cos(2.*globals()["theta"][2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*globals()
-                                      ["theta"][1]+2.*globals()["theta"][2]) - pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0]))*Q_stokes)
+        dQ_dtheta1 = 2.*pol_eff[0]/N*(np.cos(2.*globals()["theta"][0])*(pol_flux_corr[1]-pol_flux_corr[2]) - (pol_eff[2]*np.cos(-2.*globals()
+                                      ["theta"][2]+2.*globals()["theta"][0]) - pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1]))*Q_stokes +
+                                      coeff_stokes_corr[1, 0]*(np.sin(2.*globals()["theta"][0])*Q_stokes-np.cos(2*globals()["theta"][0])*U_stokes))
+        dQ_dtheta2 = 2.*pol_eff[1]/N*(np.cos(2.*globals()["theta"][1])*(pol_flux_corr[2]-pol_flux_corr[0]) - (pol_eff[0]*np.cos(-2.*globals()
+                                      ["theta"][0]+2.*globals()["theta"][1]) - pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2]))*Q_stokes +
+                                      coeff_stokes_corr[1, 1]*(np.sin(2.*globals()["theta"][1])*Q_stokes-np.cos(2*globals()["theta"][1])*U_stokes))
+        dQ_dtheta3 = 2.*pol_eff[2]/N*(np.cos(2.*globals()["theta"][2])*(pol_flux_corr[0]-pol_flux_corr[1]) - (pol_eff[1]*np.cos(-2.*globals()
+                                      ["theta"][1]+2.*globals()["theta"][2]) - pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0]))*Q_stokes +
+                                      coeff_stokes_corr[1, 2]*(np.sin(2.*globals()["theta"][2])*Q_stokes-np.cos(2*globals()["theta"][2])*U_stokes))
         dQ_dtheta = np.array([dQ_dtheta1, dQ_dtheta2, dQ_dtheta3])
 
-        dU_dtheta1 = 2.*pol_eff[0]/A*(np.sin(2.*globals()["theta"][0])*(pol_flux[1]-pol_flux[2]) - (pol_eff[2]*np.cos(-2.*globals()
-                                      ["theta"][2]+2.*globals()["theta"][0]) - pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1]))*U_stokes)
-        dU_dtheta2 = 2.*pol_eff[1]/A*(np.sin(2.*globals()["theta"][1])*(pol_flux[2]-pol_flux[0]) - (pol_eff[0]*np.cos(-2.*globals()
-                                      ["theta"][0]+2.*globals()["theta"][1]) - pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2]))*U_stokes)
-        dU_dtheta3 = 2.*pol_eff[2]/A*(np.sin(2.*globals()["theta"][2])*(pol_flux[0]-pol_flux[1]) - (pol_eff[1]*np.cos(-2.*globals()
-                                      ["theta"][1]+2.*globals()["theta"][2]) - pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0]))*U_stokes)
+        dU_dtheta1 = 2.*pol_eff[0]/N*(np.sin(2.*globals()["theta"][0])*(pol_flux_corr[1]-pol_flux_corr[2]) - (pol_eff[2]*np.cos(-2.*globals()
+                                      ["theta"][2]+2.*globals()["theta"][0]) - pol_eff[1]*np.cos(-2.*globals()["theta"][0]+2.*globals()["theta"][1]))*U_stokes +
+                                      coeff_stokes_corr[2, 0]*(np.sin(2.*globals()["theta"][0])*Q_stokes-np.cos(2*globals()["theta"][0])*U_stokes))
+        dU_dtheta2 = 2.*pol_eff[1]/N*(np.sin(2.*globals()["theta"][1])*(pol_flux_corr[2]-pol_flux_corr[0]) - (pol_eff[0]*np.cos(-2.*globals()
+                                      ["theta"][0]+2.*globals()["theta"][1]) - pol_eff[2]*np.cos(-2.*globals()["theta"][1]+2.*globals()["theta"][2]))*U_stokes +
+                                      coeff_stokes_corr[2, 1]*(np.sin(2.*globals()["theta"][1])*Q_stokes-np.cos(2*globals()["theta"][1])*U_stokes))
+        dU_dtheta3 = 2.*pol_eff[2]/N*(np.sin(2.*globals()["theta"][2])*(pol_flux_corr[0]-pol_flux_corr[1]) - (pol_eff[1]*np.cos(-2.*globals()
+                                      ["theta"][1]+2.*globals()["theta"][2]) - pol_eff[0]*np.cos(-2.*globals()["theta"][2]+2.*globals()["theta"][0]))*U_stokes +
+                                      coeff_stokes_corr[2, 2]*(np.sin(2.*globals()["theta"][2])*Q_stokes-np.cos(2*globals()["theta"][2])*U_stokes))
         dU_dtheta = np.array([dU_dtheta1, dU_dtheta2, dU_dtheta3])
 
         # Compute the uncertainty associated with the polarizers' orientation (see Kishimoto 1999)
@@ -1228,12 +1239,10 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         QU_diluted_err = np.sqrt(np.sum(Stokes_cov[1, 2][mask]**2))
 
         P_diluted = np.sqrt(Q_diluted**2+U_diluted**2)/I_diluted
-        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted **
-                                                                                                                                                        2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
+        P_diluted_err = (1./I_diluted)*np.sqrt((Q_diluted**2*Q_diluted_err**2 + U_diluted**2*U_diluted_err**2 + 2.*Q_diluted*U_diluted*QU_diluted_err)/(Q_diluted**2 + U_diluted**2) + ((Q_diluted/I_diluted)**2 + (U_diluted/I_diluted)**2)*I_diluted_err**2 - 2.*(Q_diluted/I_diluted)*IQ_diluted_err - 2.*(U_diluted/I_diluted)*IU_diluted_err)
 
         PA_diluted = princ_angle((90./np.pi)*np.arctan2(U_diluted, Q_diluted))
-        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err **
-                                                                             2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
+        PA_diluted_err = (90./(np.pi*(Q_diluted**2 + U_diluted**2)))*np.sqrt(U_diluted**2*Q_diluted_err**2 + Q_diluted**2*U_diluted_err**2 - 2.*Q_diluted*U_diluted*QU_diluted_err)
 
         for header in headers:
             header['P_int'] = (P_diluted, 'Integrated polarization degree')
