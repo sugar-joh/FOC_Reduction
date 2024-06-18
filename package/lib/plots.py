@@ -427,7 +427,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
-                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='w', edgecolor='k')
+                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
         pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
@@ -738,7 +738,7 @@ class overplot_radio(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -857,7 +857,7 @@ class overplot_chandra(align_maps):
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./self.vec_scale,
-                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
+                                         scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='white', edgecolor='black', label="{0:s} polarization map".format(self.map_observer))
         self.ax_overplot.autoscale(False)
 
         # Display other map as contours
@@ -972,11 +972,11 @@ class overplot_pol(align_maps):
         else:
             self.vec_scale = vec_scale
         step_vec = 1
-        px_scale = self.other_wcs.wcs.get_cdelt()[0]/self.wcs_UV.wcs.get_cdelt()[0]
+        px_scale = np.abs(self.wcs_UV.wcs.get_cdelt()[0]/self.other_wcs.wcs.get_cdelt()[0])
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         self.Q = self.ax_overplot.quiver(self.X[::step_vec, ::step_vec], self.Y[::step_vec, ::step_vec], self.U[::step_vec, ::step_vec], self.V[::step_vec, ::step_vec], units='xy', angles='uv', scale=px_scale/self.vec_scale, scale_units='xy', pivot='mid',
-                                         headwidth=0., headlength=0., headaxislength=0., width=2.0, linewidth=1.0, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarization map".format(self.map_observer))
+                                         headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='white', edgecolor='black', transform=self.ax_overplot.get_transform(self.wcs_UV), label="{0:s} polarization map".format(self.map_observer))
 
         # Display Stokes I as contours
         if levels is None:
@@ -1132,7 +1132,7 @@ class align_pol(object):
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = pol*np.cos(np.pi/2.+pang*np.pi/180.), pol*np.sin(np.pi/2.+pang*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy',
-                  angles='uv', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='w')
+                  angles='uv', scale=0.5, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w')
         pol_sc = AnchoredSizeBar(ax.transData, 2., r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
         ax.add_artist(pol_sc)
 
@@ -2353,12 +2353,12 @@ class pol_map(object):
             if hasattr(self, 'quiver'):
                 self.quiver.remove()
             self.quiver = ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                                    headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black')
+                                    headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='white', edgecolor='black')
             fig.canvas.draw_idle()
             return self.quiver
         else:
             ax.quiver(X, Y, XY_U, XY_V, units='xy', scale=1./self.vec_scale, scale_units='xy', pivot='mid', headwidth=0.,
-                      headlength=0., headaxislength=0., width=0.5, linewidth=0.8, color='white', edgecolor='black')
+                      headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='white', edgecolor='black')
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):

@@ -41,7 +41,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     convert_flux = np.array([head['photflam'] for head in headers])
     date_time = np.array([Time((headers[i]['expstart']+headers[i]['expend'])/2., format='mjd', precision=0).iso for i in range(len(headers))])
     date_time = np.array([datetime.strptime(d, '%Y-%m-%d %H:%M:%S') for d in date_time])
-    date_err = np.array([timedelta(seconds=headers[i]['exptime']) for i in range(len(headers))])
+    date_err = np.array([timedelta(seconds=headers[i]['exptime']/2.) for i in range(len(headers))])
     filt = np.array([headers[i]['filtnam1'] for i in range(len(headers))])
     dict_filt = {"POL0": 'r', "POL60": 'g', "POL120": 'b'}
     c_filt = np.array([dict_filt[f] for f in filt])
