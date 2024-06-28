@@ -60,6 +60,68 @@ try:
 except ImportError:
     from utils import rot2D, princ_angle, sci_not
 
+def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, wcs, convert, step_vec=1, vec_scale=2., adaptive_binning=False):
+    def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
+        shape = I_stokes.shape
+        
+        assert shape[0] == shape[1], "Only square images are supported"
+        assert shape[0] % 2 == 0, "Image size must be a power of 2"
+        
+        n = int(np.log2(shape[0]))
+        bin_map = np.zeros(shape)
+        bin_num = 0
+
+        for level in range(n):
+            grid_size = 2**level
+            temp_I = I_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+            temp_Q = Q_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+            temp_U = U_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+            temp_cov = Stokes_cov.reshape(3, 3, int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(3).sum(4)
+            temp_bin_map = bin_map.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+
+            temp_P = (temp_Q**2 + temp_U**2)**0.5 / temp_I
+            temp_P_err = (1 / temp_I) * np.sqrt((temp_Q**2 * temp_cov[1,1,:,:] + temp_U**2 * temp_cov[2,2,:,:] + 2. * temp_Q * temp_U * temp_cov[1,2,:,:]) / (temp_Q**2 + temp_U**2) + \
+                                                ((temp_Q / temp_I)**2 + (temp_U / temp_I)**2) * temp_cov[0,0,:,:] - \
+                                                    2. * (temp_Q / temp_I) * temp_cov[0,1,:,:] - \
+                                                    2. * (temp_U / temp_I) * temp_cov[0,2,:,:])
+
+            for i in range(int(shape[0]/grid_size)):
+                for j in range(int(shape[1]/grid_size)):
+                    if  (temp_P[i,j] / temp_P_err[i,j] > 3) and (temp_bin_map[i,j] == 0): # the default criterion is 3 sigma in P
+                        bin_num += 1
+                        bin_map[i*grid_size:(i+1)*grid_size,j*grid_size:(j+1)*grid_size] = bin_num
+        
+        return bin_map, bin_num
+    
+    if adaptive_binning:
+        bin_map, bin_num = adaptive_binning(stkI, stkQ, stkU, stk_cov)
+        
+        for i in range(1, bin_num+1):
+            bin = np.where(bin_map==i)
+            x_center, y_center = np.mean(bin, axis=1)
+
+            bin_I = np.sum(stkI[bin])
+            bin_Q = np.sum(stkQ[bin])
+            bin_U = np.sum(stkU[bin])
+            bin_cov = np.zeros((3,3))
+            for i in range(3):
+                for j in range(3):
+                    bin_cov[i,j] = np.sum(stk_cov[i,j][bin])
+
+            poldata = np.sqrt(bin_Q**2 + bin_U**2) / bin_I
+            pangdata = 0.5 * np.arctan2(bin_U, bin_Q)
+            pangdata_err = (1 / (2. *(bin_Q**2 + bin_U**2))) * \
+                        np.sqrt(bin_U**2 * bin_cov[1,1] + bin_Q**2 * bin_cov[2,2] - 2. * bin_Q * bin_U * bin_cov[1,2])
+
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata), poldata * np.sin(np.pi/2.+pangdata), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='white')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+3*pangdata_err), poldata * np.sin(np.pi/2.+pangdata+3*pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-3*pangdata_err), poldata * np.sin(np.pi/2.+pangdata-3*pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+
+    else:
+        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
+        ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
+        
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
     """
