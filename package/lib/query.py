@@ -10,6 +10,9 @@ from astropy.table import unique, Column
 from astropy.time import Time, TimeDelta
 import astropy.units as u
 import numpy as np
+from astroquery.exceptions import NoResultsWarning
+from warnings import filterwarnings
+filterwarnings("error", category=NoResultsWarning)
 
 
 def divide_proposal(products):
@@ -191,5 +194,6 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--output_dir', metavar='directory_path', required=False,
                         help='output directory path for the data products', type=str, default="./data")
     args = parser.parse_args()
+    print(args.target)
     prodpaths = retrieve_products(target=args.target, proposal_id=args.proposal_id)
     print(prodpaths)
