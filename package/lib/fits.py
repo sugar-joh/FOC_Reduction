@@ -36,11 +36,13 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
     headers : header list
         List of headers objects corresponding to each image in data_array.
     """
-    data_array, headers = [], []
+    data_array, headers, wcs_array = [], [], []
     for i in range(len(infiles)):
-        with fits.open(path_join(data_folder, infiles[i])) as f:
+        with fits.open(path_join(data_folder, infiles[i]), mode='update') as f:
             headers.append(f[0].header)
             data_array.append(f[0].data)
+            wcs_array.append(WCS(header=f[0].header, fobj=f).celestial)
+            f.flush()
     data_array = np.array(data_array, dtype=np.double)
 
     # Prevent negative count value in imported data
@@ -48,8 +50,8 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
         data_array[i][data_array[i] < 0.] = 0.
 
     # force WCS to convention PCi_ja unitary, cdelt in deg
-    for header in headers:
-        new_wcs = WCS(header).celestial.deepcopy()
+    for wcs, header in zip(wcs_array, headers):
+        new_wcs = wcs.deepcopy()
         if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt[:2] == np.array([1., 1.])).all():
             # Update WCS with relevant information
             if new_wcs.wcs.has_cd():
@@ -66,7 +68,10 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
             new_wcs.wcs.cdelt = new_cdelt
             for key, val in new_wcs.to_header().items():
                 header[key] = val
-        # header['orientat'] = princ_angle(float(header['orientat']))
+        try:
+            _ = header['ORIENTAT']
+        except KeyError:
+            header['ORIENTAT'] = -np.arccos(new_wcs.wcs.pc[0, 0])*180./np.pi
 
     # force WCS for POL60 to have same pixel size as POL0 and POL120
     is_pol60 = np.array([head['filtnam1'].lower() == 'pol60' for head in headers], dtype=bool)
