@@ -1588,35 +1588,3 @@ def rotate_data(data_array, error_array, data_mask, headers, ang):
     globals()['theta'] = globals()["theta"] - alpha
 
     return new_data_array, new_error_array, new_data_mask, new_headers
-
-def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
-    shape = I_stokes.shape
-    
-    assert shape[0] == shape[1], "Only square images are supported"
-    assert shape[0] % 2 == 0, "Image size must be a power of 2"
-    
-    n = int(np.log2(shape[0]))
-    bin_map = np.zeros(shape)
-    bin_num = 0
-
-    for level in range(n):
-        grid_size = 2**level
-        temp_I = I_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-        temp_Q = Q_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-        temp_U = U_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-        temp_cov = Stokes_cov.reshape(3, 3, int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(3).sum(4)
-        temp_bin_map = bin_map.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-
-        temp_P = (temp_Q**2 + temp_U**2)**0.5 / temp_I
-        temp_P_err = (1 / temp_I) * np.sqrt((temp_Q**2 * temp_cov[1,1,:,:] + temp_U**2 * temp_cov[2,2,:,:] + 2. * temp_Q * temp_U * temp_cov[1,2,:,:]) / (temp_Q**2 + temp_U**2) + \
-                                               ((temp_Q / temp_I)**2 + (temp_U / temp_I)**2) * temp_cov[0,0,:,:] - \
-                                                2. * (temp_Q / temp_I) * temp_cov[0,1,:,:] - \
-                                                2. * (temp_U / temp_I) * temp_cov[0,2,:,:])
-
-        for i in range(int(shape[0]/grid_size)):
-            for j in range(int(shape[1]/grid_size)):
-                if  (temp_P[i,j] / temp_P_err[i,j] > 3) and (temp_bin_map[i,j] == 0): # the default criterion is 3 sigma in P
-                    bin_num += 1
-                    bin_map[i*grid_size:(i+1)*grid_size,j*grid_size:(j+1)*grid_size] = bin_num
-    
-    return bin_map, bin_num
