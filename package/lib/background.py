@@ -63,15 +63,15 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     ax.set_xlabel("Observation date and time")
     ax.set_ylabel(r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
     plt.legend()
-    if not (savename is None):
+    if savename is not None:
         this_savename = deepcopy(savename)
-        if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename[-4:] not in [".png", ".jpg", ".pdf"]:
             this_savename += "_background_flux.pdf"
         else:
             this_savename = savename[:-4] + "_background_flux" + savename[-4:]
         fig.savefig(path_join(plots_folder, this_savename), bbox_inches="tight")
 
-    if not (histograms is None):
+    if histograms is not None:
         filt_obs = {"POL0": 0, "POL60": 0, "POL120": 0}
         fig_h, ax_h = plt.subplots(figsize=(10, 6), constrained_layout=True)
         for i, (hist, bins) in enumerate(zip(histograms, binning)):
@@ -85,7 +85,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
                 label=headers[i]["filtnam1"] + " (Obs " + str(filt_obs[headers[i]["filtnam1"]]) + ")",
             )
             ax_h.plot([background[i] * convert_flux[i], background[i] * convert_flux[i]], [hist.min(), hist.max()], "x--", color="C{0:d}".format(i), alpha=0.8)
-            if not (coeff is None):
+            if coeff is not None:
                 # ax_h.plot(bins*convert_flux[i], gausspol(bins, *coeff[i]), '--', color="C{0:d}".format(i), alpha=0.8)
                 ax_h.plot(bins * convert_flux[i], gauss(bins, *coeff[i]), "--", color="C{0:d}".format(i), alpha=0.8)
         ax_h.set_xscale("log")
@@ -95,9 +95,9 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
         ax_h.set_ylabel(r"Number of pixels in bin")
         ax_h.set_title("Histogram for each observation")
         plt.legend()
-        if not (savename is None):
+        if savename is not None:
             this_savename = deepcopy(savename)
-            if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+            if savename[-4:] not in [".png", ".jpg", ".pdf"]:
                 this_savename += "_histograms.pdf"
             else:
                 this_savename = savename[:-4] + "_histograms" + savename[-4:]
@@ -113,7 +113,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     # plots
     im2 = ax2.imshow(data0, norm=LogNorm(data0[data0 > 0.0].mean() / 10.0, data0.max()), origin="lower", cmap="gray")
     ax2.imshow(bkg_data0, origin="lower", cmap="Reds", alpha=0.5)
-    if not (rectangle is None):
+    if rectangle is not None:
         x, y, width, height, angle, color = rectangle[0]
         ax2.add_patch(Rectangle((x, y), width, height, edgecolor=color, fill=False, lw=2))
     ax2.annotate(
@@ -128,14 +128,14 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
     fig2.subplots_adjust(hspace=0, wspace=0, right=1.0)
     fig2.colorbar(im2, ax=ax2, location="right", aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
-    if not (savename is None):
+    if savename is not None:
         this_savename = deepcopy(savename)
-        if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename[-4:] not in [".png", ".jpg", ".pdf"]:
             this_savename += "_" + filt + "_background_location.pdf"
         else:
             this_savename = savename[:-4] + "_" + filt + "_background_location" + savename[-4:]
         fig2.savefig(path_join(plots_folder, this_savename), bbox_inches="tight")
-        if not (rectangle is None):
+        if rectangle is not None:
             plot_obs(
                 data,
                 headers,
@@ -145,7 +145,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
                 savename=savename + "_background_location",
                 plots_folder=plots_folder,
             )
-    elif not (rectangle is None):
+    elif rectangle is not None:
         plot_obs(data, headers, vmin=data[data > 0.0].min(), vmax=data[data > 0.0].max(), rectangle=rectangle)
 
     plt.show()
@@ -325,7 +325,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
     for i, image in enumerate(data):
         # Compute the Count-rate histogram for the image
         n_mask = np.logical_and(mask, image > 0.0)
-        if not (sub_type is None):
+        if sub_type is not None:
             if isinstance(sub_type, int):
                 n_bins = sub_type
             elif sub_type.lower() in ["sqrt"]:

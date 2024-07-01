@@ -41,7 +41,7 @@ def sci_not(v, err, rnd=1, out=str):
     else:
         output[0] += r" $\pm$ {0}".format(round(err * 10**power, rnd))
         output.append(round(err * 10**power, rnd))
-    if out == str:
+    if out is str:
         return output[0] + r")e{0}".format(-power)
     else:
         return *output[1:], -power

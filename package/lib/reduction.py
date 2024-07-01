@@ -1079,7 +1079,7 @@ def polarizer_avg(data_array, error_array, data_mask, headers, FWHM=None, scale=
             err120 = np.sqrt(np.sum(err120_array**2, axis=0)) / pol120_t
             polerr_array = np.array([err0, err60, err120])
 
-            if not (FWHM is None) and (smoothing.lower() in ["gaussian", "gauss", "weighted_gaussian", "weight_gauss"]):
+            if (FWHM is not None) and (smoothing.lower() in ["gaussian", "gauss", "weighted_gaussian", "weight_gauss"]):
                 # Smooth by convoluting with a gaussian each polX image.
                 pol_array, polerr_array = smooth_data(pol_array, polerr_array, data_mask, pol_headers, FWHM=FWHM, scale=scale, smoothing=smoothing)
                 pol0, pol60, pol120 = pol_array
@@ -1251,7 +1251,7 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
                 I_stokes[i, j], Q_stokes[i, j], U_stokes[i, j] = np.dot(coeff_stokes, pol_flux[:, i, j]).T
                 Stokes_cov[:, :, i, j] = np.dot(coeff_stokes, np.dot(pol_cov[:, :, i, j], coeff_stokes.T))
 
-        if not (FWHM is None) and (smoothing.lower() in ["weighted_gaussian_after", "weight_gauss_after", "gaussian_after", "gauss_after"]):
+        if (FWHM is not None) and (smoothing.lower() in ["weighted_gaussian_after", "weight_gauss_after", "gaussian_after", "gauss_after"]):
             smoothing = smoothing.lower()[:-6]
             Stokes_array = np.array([I_stokes, Q_stokes, U_stokes])
             Stokes_error = np.array([np.sqrt(Stokes_cov[i, i]) for i in range(3)])
