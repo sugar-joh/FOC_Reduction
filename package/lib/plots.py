@@ -144,9 +144,9 @@ def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder=""
     # fig.subplots_adjust(hspace=0.01, wspace=0.01, right=1.02)
     fig.colorbar(im, ax=ax, location="right", shrink=0.75, aspect=50, pad=0.025, label=r"Flux [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
 
-    if not (savename is None):
+    if savename is not None:
         # fig.suptitle(savename)
-        if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename[-4:] not in [".png", ".jpg", ".pdf"]:
             savename += ".pdf"
         fig.savefig(path_join(plots_folder, savename), bbox_inches="tight")
     plt.show()
@@ -199,9 +199,9 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     fig.colorbar(imU, ax=axU, aspect=50, shrink=0.50, pad=0.025, label="counts/sec")
     axU.set(xlabel="RA", ylabel="DEC", title=r"$U_{stokes}$")
 
-    if not (savename is None):
+    if savename is not None:
         # fig.suptitle(savename+"_IQU")
-        if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename[-4:] not in [".png", ".jpg", ".pdf"]:
             savename += "_IQU.pdf"
         else:
             savename = savename[:-4] + "_IQU" + savename[-4:]
@@ -516,7 +516,7 @@ def polarization_map(
         )
 
     # Display instrument FOV
-    if not (rectangle is None):
+    if rectangle is not None:
         x, y, width, height, angle, color = rectangle
         x, y = np.array([x, y]) - np.array(stkI.shape) / 2.0
         ax.add_patch(Rectangle((x, y), width, height, angle=angle, edgecolor=color, fill=False))
@@ -1026,8 +1026,8 @@ class overplot_radio(align_maps):
             handles=handles, labels=labels, bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc="lower left", mode="expand", borderaxespad=0.0
         )
 
-        if not (savename is None):
-            if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename is not None:
+            if savename[-4:] not in [".png", ".jpg", ".pdf"]:
                 savename += ".pdf"
             self.fig_overplot.savefig(savename, bbox_inches="tight", dpi=200)
 
@@ -1225,8 +1225,8 @@ class overplot_chandra(align_maps):
             handles=handles, labels=labels, bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc="lower left", mode="expand", borderaxespad=0.0
         )
 
-        if not (savename is None):
-            if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename is not None:
+            if savename[-4:] not in [".png", ".jpg", ".pdf"]:
                 savename += ".pdf"
             self.fig_overplot.savefig(savename, bbox_inches="tight", dpi=200)
 
@@ -1428,8 +1428,8 @@ class overplot_pol(align_maps):
             handles=handles, labels=labels, bbox_to_anchor=(0.0, 1.02, 1.0, 0.102), loc="lower left", mode="expand", borderaxespad=0.0
         )
 
-        if not (savename is None):
-            if not savename[-4:] in [".png", ".jpg", ".pdf"]:
+        if savename is not None:
+            if savename[-4:] not in [".png", ".jpg", ".pdf"]:
                 savename += ".pdf"
             self.fig_overplot.savefig(savename, bbox_inches="tight", dpi=200)
 
@@ -2237,7 +2237,7 @@ class pol_map(object):
     Class to interactively study polarization maps.
     """
 
-    def __init__(self, Stokes, SNRp_cut=3.0, SNRi_cut=3.0, step_vec=1, scale_vec=3.0, flux_lim=None, selection=None):
+    def __init__(self, Stokes, SNRp_cut=3.0, SNRi_cut=3.0, step_vec=1, scale_vec=3.0, flux_lim=None, selection=None, pa_err=False):
         if isinstance(Stokes, str):
             Stokes = fits.open(Stokes)
         self.Stokes = deepcopy(Stokes)
@@ -2251,6 +2251,7 @@ class pol_map(object):
         self.display_selection = selection
         self.step_vec = step_vec
         self.scale_vec = scale_vec
+        self.pa_err = pa_err
 
         # Get data
         self.targ = self.Stokes[0].header["targname"]
@@ -2579,7 +2580,7 @@ class pol_map(object):
                 self.pol_vector(fig=save_fig, ax=save_ax)
                 self.pol_int(fig=save_fig, ax=save_ax)
                 save_fig.suptitle(r"{0:s} with $SNR_{{p}} \geq$ {1:d} and $SNR_{{I}} \geq$ {2:d}".format(self.targ, int(self.SNRp), int(self.SNRi)))
-                if not expression[-4:] in [".png", ".jpg", ".pdf"]:
+                if expression[-4:] not in [".png", ".jpg", ".pdf"]:
                     expression += ".pdf"
                 save_fig.savefig(expression, bbox_inches="tight", dpi=200)
                 plt.close(save_fig)
@@ -2629,7 +2630,7 @@ class pol_map(object):
         def submit_dump(expression):
             ax_text_dump.set(visible=False)
             if expression != "":
-                if not expression[-4:] in [".txt", ".dat"]:
+                if expression[-4:] not in [".txt", ".dat"]:
                     expression += ".txt"
                 np.savetxt(expression, self.data_dump)
                 text_dump.set_val("")
@@ -2730,6 +2731,10 @@ class pol_map(object):
     @property
     def PA(self):
         return self.Stokes["POL_ANG"].data
+
+    @property
+    def s_PA(self):
+        return self.Stokes["POL_ANG_ERR"].data
 
     @property
     def data_mask(self):
@@ -2911,11 +2916,60 @@ class pol_map(object):
                 headwidth=0.0,
                 headlength=0.0,
                 headaxislength=0.0,
-                width=0.4,
-                linewidth=0.8,
+                width=0.3,
+                linewidth=0.6,
                 color="white",
                 edgecolor="black",
             )
+            if self.pa_err:
+                XY_U_err1, XY_V_err1 = (
+                    P_cut * np.cos(np.pi / 2.0 + (self.PA + 3.0 * self.s_PA) * np.pi / 180.0),
+                    P_cut * np.sin(np.pi / 2.0 + (self.PA + 3.0 * self.s_PA) * np.pi / 180.0),
+                )
+                XY_U_err2, XY_V_err2 = (
+                    P_cut * np.cos(np.pi / 2.0 + (self.PA - 3.0 * self.s_PA) * np.pi / 180.0),
+                    P_cut * np.sin(np.pi / 2.0 + (self.PA - 3.0 * self.s_PA) * np.pi / 180.0),
+                )
+                if hasattr(self, "quiver_err1"):
+                    self.quiver_err1.remove()
+                if hasattr(self, "quiver_err2"):
+                    self.quiver_err2.remove()
+                self.quiver_err1 = ax.quiver(
+                    X[:: self.step_vec, :: self.step_vec],
+                    Y[:: self.step_vec, :: self.step_vec],
+                    XY_U_err1[:: self.step_vec, :: self.step_vec],
+                    XY_V_err1[:: self.step_vec, :: self.step_vec],
+                    units="xy",
+                    scale=1.0 / scale_vec,
+                    scale_units="xy",
+                    pivot="mid",
+                    headwidth=0.0,
+                    headlength=0.0,
+                    headaxislength=0.0,
+                    width=0.05,
+                    # linewidth=0.5,
+                    color="black",
+                    edgecolor="black",
+                    ls="dashed",
+                )
+                self.quiver_err2 = ax.quiver(
+                    X[:: self.step_vec, :: self.step_vec],
+                    Y[:: self.step_vec, :: self.step_vec],
+                    XY_U_err2[:: self.step_vec, :: self.step_vec],
+                    XY_V_err2[:: self.step_vec, :: self.step_vec],
+                    units="xy",
+                    scale=1.0 / scale_vec,
+                    scale_units="xy",
+                    pivot="mid",
+                    headwidth=0.0,
+                    headlength=0.0,
+                    headaxislength=0.0,
+                    width=0.05,
+                    # linewidth=0.5,
+                    color="black",
+                    edgecolor="black",
+                    ls="dashed",
+                )
             fig.canvas.draw_idle()
             return self.quiver
         else:
@@ -2931,11 +2985,56 @@ class pol_map(object):
                 headwidth=0.0,
                 headlength=0.0,
                 headaxislength=0.0,
-                width=0.4,
-                linewidth=0.8,
+                width=0.3,
+                linewidth=0.6,
                 color="white",
                 edgecolor="black",
             )
+            if self.pa_err:
+                XY_U_err1, XY_V_err1 = (
+                    P_cut * np.cos(np.pi / 2.0 + (self.PA + 3.0 * self.s_PA) * np.pi / 180.0),
+                    P_cut * np.sin(np.pi / 2.0 + (self.PA + 3.0 * self.s_PA) * np.pi / 180.0),
+                )
+                XY_U_err2, XY_V_err2 = (
+                    P_cut * np.cos(np.pi / 2.0 + (self.PA - 3.0 * self.s_PA) * np.pi / 180.0),
+                    P_cut * np.sin(np.pi / 2.0 + (self.PA - 3.0 * self.s_PA) * np.pi / 180.0),
+                )
+                ax.quiver(
+                    X[:: self.step_vec, :: self.step_vec],
+                    Y[:: self.step_vec, :: self.step_vec],
+                    XY_U_err1[:: self.step_vec, :: self.step_vec],
+                    XY_V_err1[:: self.step_vec, :: self.step_vec],
+                    units="xy",
+                    scale=1.0 / scale_vec,
+                    scale_units="xy",
+                    pivot="mid",
+                    headwidth=0.0,
+                    headlength=0.0,
+                    headaxislength=0.0,
+                    width=0.05,
+                    # linewidth=0.5,
+                    color="black",
+                    edgecolor="black",
+                    ls="dashed",
+                )
+                ax.quiver(
+                    X[:: self.step_vec, :: self.step_vec],
+                    Y[:: self.step_vec, :: self.step_vec],
+                    XY_U_err2[:: self.step_vec, :: self.step_vec],
+                    XY_V_err2[:: self.step_vec, :: self.step_vec],
+                    units="xy",
+                    scale=1.0 / scale_vec,
+                    scale_units="xy",
+                    pivot="mid",
+                    headwidth=0.0,
+                    headlength=0.0,
+                    headaxislength=0.0,
+                    width=0.05,
+                    # linewidth=0.5,
+                    color="black",
+                    edgecolor="black",
+                    ls="dashed",
+                )
             fig.canvas.draw_idle()
 
     def pol_int(self, fig=None, ax=None):
@@ -3114,23 +3213,24 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Interactively plot the pipeline products")
-    parser.add_argument("-f", "--file", metavar="path", required=False, help="the full or relative path to the data product", type=str, default=None)
+    parser.add_argument("-f", "--file", metavar="path", required=False, help="The full or relative path to the data product", type=str, default=None)
     parser.add_argument(
-        "-p", "--snrp", metavar="snrp_cut", required=False, help="the cut in signal-to-noise for the polarization degree", type=float, default=3.0
+        "-p", "--snrp", metavar="snrp_cut", required=False, help="The cut in signal-to-noise for the polarization degree", type=float, default=3.0
     )
-    parser.add_argument("-i", "--snri", metavar="snri_cut", required=False, help="the cut in signal-to-noise for the intensity", type=float, default=3.0)
+    parser.add_argument("-i", "--snri", metavar="snri_cut", required=False, help="The cut in signal-to-noise for the intensity", type=float, default=3.0)
     parser.add_argument(
         "-st", "--step-vec", metavar="step_vec", required=False, help="Quantity of vectors to be shown, 1 is all, 2 is every other, etc.", type=int, default=1
     )
     parser.add_argument(
         "-sc", "--scale-vec", metavar="scale_vec", required=False, help="Size of the 100% polarization vector in pixel units", type=float, default=3.0
     )
-    parser.add_argument("-l", "--lim", metavar="flux_lim", nargs=2, required=False, help="limits for the intensity map", default=None)
+    parser.add_argument("-pa", "--pang-err", action="store_true", required=False, help="Whether the polarization angle uncertainties should be displayed")
+    parser.add_argument("-l", "--lim", metavar="flux_lim", nargs=2, required=False, help="Limits for the intensity map", default=None)
     args = parser.parse_args()
 
     if args.file is not None:
         Stokes_UV = fits.open(args.file, mode="readonly")
-        p = pol_map(Stokes_UV, SNRp_cut=args.snrp, SNRi_cut=args.snri, step_vec=args.step_vec, scale_vec=args.scale_vec, flux_lim=args.lim)
+        p = pol_map(Stokes_UV, SNRp_cut=args.snrp, SNRi_cut=args.snri, step_vec=args.step_vec, scale_vec=args.scale_vec, flux_lim=args.lim, pa_err=args.pang_err)
 
     else:
-        print("python3 plots.py -f <path_to_reduced_fits> -p <SNRp_cut> -i <SNRi_cut> -st <step_vec> -sc <scale_vec> -l <flux_lim>")
+        print("python3 plots.py -f <path_to_reduced_fits> -p <SNRp_cut> -i <SNRi_cut> -st <step_vec> -sc <scale_vec> -l <flux_lim> -pa <pa_err>")
