@@ -1,5 +1,6 @@
 #!/usr/bin/python
-from getopt import getopt, error as get_error
+from getopt import error as get_error
+from getopt import getopt
 from sys import argv
 
 arglist = argv[1:]
@@ -24,7 +25,7 @@ try:
         elif curr_arg in ("-i", "--snri"):
             SNRi_cut = int(curr_val)
         elif curr_arg in ("-l", "--lim"):
-            flux_lim = list("".join(curr_val).split(','))
+            flux_lim = list("".join(curr_val).split(","))
 except get_error as err:
     print(str(err))
 

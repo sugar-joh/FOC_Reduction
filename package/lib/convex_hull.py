@@ -3,6 +3,7 @@ Library functions for graham algorithm implementation (find the convex hull of a
 """
 
 from copy import deepcopy
+
 import numpy as np
 
 
@@ -16,23 +17,23 @@ def clean_ROI(image):
     row, col = np.indices(shape)
 
     for i in range(0, shape[0]):
-        r = row[i, :][image[i, :] > 0.]
-        c = col[i, :][image[i, :] > 0.]
+        r = row[i, :][image[i, :] > 0.0]
+        c = col[i, :][image[i, :] > 0.0]
         if len(r) > 1 and len(c) > 1:
             H.append((r[0], c[0]))
             H.append((r[-1], c[-1]))
     H = np.array(H)
     for j in range(0, shape[1]):
-        r = row[:, j][image[:, j] > 0.]
-        c = col[:, j][image[:, j] > 0.]
+        r = row[:, j][image[:, j] > 0.0]
+        c = col[:, j][image[:, j] > 0.0]
         if len(r) > 1 and len(c) > 1:
             J.append((r[0], c[0]))
             J.append((r[-1], c[-1]))
     J = np.array(J)
     xmin = np.min([H[:, 1].min(), J[:, 1].min()])
-    xmax = np.max([H[:, 1].max(), J[:, 1].max()])+1
+    xmax = np.max([H[:, 1].max(), J[:, 1].max()]) + 1
     ymin = np.min([H[:, 0].min(), J[:, 0].min()])
-    ymax = np.max([H[:, 0].max(), J[:, 0].max()])+1
+    ymax = np.max([H[:, 0].max(), J[:, 0].max()]) + 1
     return np.array([xmin, xmax, ymin, ymax])
 
 
@@ -81,7 +82,7 @@ def distance(A, B):
         Euclidian distance between A, B.
     """
     x, y = vector(A, B)
-    return np.sqrt(x ** 2 + y ** 2)
+    return np.sqrt(x**2 + y**2)
 
 
 # Define lexicographic and composition order
@@ -174,8 +175,8 @@ def partition(s, left, right, order):
             temp = deepcopy(s[i])
             s[i] = deepcopy(s[j])
             s[j] = deepcopy(temp)
-    temp = deepcopy(s[i+1])
-    s[i+1] = deepcopy(s[right])
+    temp = deepcopy(s[i + 1])
+    s[i + 1] = deepcopy(s[right])
     s[right] = deepcopy(temp)
     return i + 1
 
@@ -206,16 +207,32 @@ def sort_angles_distances(Omega, s):
     Sort the list of points 's' for the composition order given reference point
     Omega.
     """
-    def order(A, B): return comp(Omega, A, B)
+
+    def order(A, B):
+        return comp(Omega, A, B)
+
     quicksort(s, order)
 
 
 # Define fuction for stacks (use here python lists with stack operations).
-def empty_stack(): return []
-def stack(S, A): S.append(A)
-def unstack(S): S.pop()
-def stack_top(S): return S[-1]
-def stack_sub_top(S): return S[-2]
+def empty_stack():
+    return []
+
+
+def stack(S, A):
+    S.append(A)
+
+
+def unstack(S):
+    S.pop()
+
+
+def stack_top(S):
+    return S[-1]
+
+
+def stack_sub_top(S):
+    return S[-2]
 
 
 # Alignement handling
@@ -299,7 +316,7 @@ def convex_hull(H):
         return S
 
 
-def image_hull(image, step=5, null_val=0., inside=True):
+def image_hull(image, step=5, null_val=0.0, inside=True):
     """
     Compute the convex hull of a 2D image and return the 4 relevant coordinates
     of the maximum included rectangle (ie. crop image to maximum rectangle).
@@ -331,7 +348,7 @@ def image_hull(image, step=5, null_val=0., inside=True):
     H = []
     shape = np.array(image.shape)
     row, col = np.indices(shape)
-    for i in range(0, int(min(shape)/2), step):
+    for i in range(0, int(min(shape) / 2), step):
         r1, r2 = row[i, :][image[i, :] > null_val], row[-i, :][image[-i, :] > null_val]
         c1, c2 = col[i, :][image[i, :] > null_val], col[-i, :][image[-i, :] > null_val]
         if r1.shape[0] > 1:
@@ -349,10 +366,10 @@ def image_hull(image, step=5, null_val=0., inside=True):
     # S1 = S[x_min*y_max][np.argmax(S[x_min*y_max][:, 1])]
     # S2 = S[x_max*y_min][np.argmin(S[x_max*y_min][:, 1])]
     # S3 = S[x_max*y_max][np.argmax(S[x_max*y_max][:, 0])]
-    S0 = S[x_min*y_min][np.abs(0-S[x_min*y_min].sum(axis=1)).min() == np.abs(0-S[x_min*y_min].sum(axis=1))][0]
-    S1 = S[x_min*y_max][np.abs(shape[1]-S[x_min*y_max].sum(axis=1)).min() == np.abs(shape[1]-S[x_min*y_max].sum(axis=1))][0]
-    S2 = S[x_max*y_min][np.abs(shape[0]-S[x_max*y_min].sum(axis=1)).min() == np.abs(shape[0]-S[x_max*y_min].sum(axis=1))][0]
-    S3 = S[x_max*y_max][np.abs(shape.sum()-S[x_max*y_max].sum(axis=1)).min() == np.abs(shape.sum()-S[x_max*y_max].sum(axis=1))][0]
+    S0 = S[x_min * y_min][np.abs(0 - S[x_min * y_min].sum(axis=1)).min() == np.abs(0 - S[x_min * y_min].sum(axis=1))][0]
+    S1 = S[x_min * y_max][np.abs(shape[1] - S[x_min * y_max].sum(axis=1)).min() == np.abs(shape[1] - S[x_min * y_max].sum(axis=1))][0]
+    S2 = S[x_max * y_min][np.abs(shape[0] - S[x_max * y_min].sum(axis=1)).min() == np.abs(shape[0] - S[x_max * y_min].sum(axis=1))][0]
+    S3 = S[x_max * y_max][np.abs(shape.sum() - S[x_max * y_max].sum(axis=1)).min() == np.abs(shape.sum() - S[x_max * y_max].sum(axis=1))][0]
     # Get the vertex of the biggest included rectangle
     if inside:
         f0 = np.max([S0[0], S1[0]])
