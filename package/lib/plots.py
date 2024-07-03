@@ -218,7 +218,7 @@ def polarization_map(
     SNRi_cut=3.0,
     flux_lim=None,
     step_vec=1,
-    vec_scale=2.0,
+    scale_vec=2.0,
     savename=None,
     plots_folder="",
     display="default",
@@ -250,9 +250,9 @@ def polarization_map(
         Number of steps between each displayed polarization vector.
         If step_vec = 2, every other vector will be displayed.
         Defaults to 1
-    vec_scale : float, optional
+    scale_vec : float, optional
         Pixel length of displayed 100% polarization vector.
-        If vec_scale = 2, a vector of 50% polarization will be 1 pixel wide.
+        If scale_vec = 2, a vector of 50% polarization will be 1 pixel wide.
         Defaults to 2.
     savename : str, optional
         Name of the figure the map should be saved to. If None, the map won't
@@ -428,9 +428,9 @@ def polarization_map(
     I_diluted_err = np.sqrt(np.sum(stk_cov[0, 0][data_mask]))
 
     P_diluted = Stokes[0].header["P_int"]
-    P_diluted_err = Stokes[0].header["P_int_err"]
+    P_diluted_err = Stokes[0].header["sP_int"]
     PA_diluted = Stokes[0].header["PA_int"]
-    PA_diluted_err = Stokes[0].header["PA_int_err"]
+    PA_diluted_err = Stokes[0].header["sPA_int"]
 
     plt.rcParams.update({"font.size": 12})
     px_size = wcs.wcs.get_cdelt()[0] * 3600.0
@@ -457,7 +457,7 @@ def polarization_map(
         if step_vec == 0:
             poldata[np.isfinite(poldata)] = 1.0 / 2.0
             step_vec = 1
-            vec_scale = 2.0
+            scale_vec = 2.0
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = poldata * np.cos(np.pi / 2.0 + pangdata * np.pi / 180.0), poldata * np.sin(np.pi / 2.0 + pangdata * np.pi / 180.0)
         ax.quiver(
@@ -467,7 +467,7 @@ def polarization_map(
             V[::step_vec, ::step_vec],
             units="xy",
             angles="uv",
-            scale=1.0 / vec_scale,
+            scale=1.0 / scale_vec,
             scale_units="xy",
             pivot="mid",
             headwidth=0.0,
@@ -478,7 +478,7 @@ def polarization_map(
             color="w",
             edgecolor="k",
         )
-        pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color="w")
+        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color="w")
 
         ax.add_artist(pol_sc)
         ax.add_artist(px_sc)
@@ -839,7 +839,7 @@ class overplot_radio(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, vec_scale=2, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, scale_vec=2, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -915,11 +915,11 @@ class overplot_radio(align_maps):
         )
 
         # Display full size polarization vectors
-        if vec_scale is None:
-            self.vec_scale = 2.0
+        if scale_vec is None:
+            self.scale_vec = 2.0
             pol[np.isfinite(pol)] = 1.0 / 2.0
         else:
-            self.vec_scale = vec_scale
+            self.scale_vec = scale_vec
         step_vec = 1
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol * np.cos(np.pi / 2.0 + pang * np.pi / 180.0), pol * np.sin(np.pi / 2.0 + pang * np.pi / 180.0)
@@ -930,7 +930,7 @@ class overplot_radio(align_maps):
             self.V[::step_vec, ::step_vec],
             units="xy",
             angles="uv",
-            scale=1.0 / self.vec_scale,
+            scale=1.0 / self.scale_vec,
             scale_units="xy",
             pivot="mid",
             headwidth=0.0,
@@ -998,7 +998,7 @@ class overplot_radio(align_maps):
         self.ax_overplot.add_artist(north_dir)
         pol_sc = AnchoredSizeBar(
             self.ax_overplot.transData,
-            self.vec_scale,
+            self.scale_vec,
             r"$P$= 100%",
             4,
             pad=0.5,
@@ -1046,7 +1046,7 @@ class overplot_chandra(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, vec_scale=2, zoom=1, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, scale_vec=2, zoom=1, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -1121,11 +1121,11 @@ class overplot_chandra(align_maps):
         )
 
         # Display full size polarization vectors
-        if vec_scale is None:
-            self.vec_scale = 2.0
+        if scale_vec is None:
+            self.scale_vec = 2.0
             pol[np.isfinite(pol)] = 1.0 / 2.0
         else:
-            self.vec_scale = vec_scale
+            self.scale_vec = scale_vec
         step_vec = 1
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol * np.cos(np.pi / 2.0 + pang * np.pi / 180.0), pol * np.sin(np.pi / 2.0 + pang * np.pi / 180.0)
@@ -1136,7 +1136,7 @@ class overplot_chandra(align_maps):
             self.V[::step_vec, ::step_vec],
             units="xy",
             angles="uv",
-            scale=1.0 / self.vec_scale,
+            scale=1.0 / self.scale_vec,
             scale_units="xy",
             pivot="mid",
             headwidth=0.0,
@@ -1200,7 +1200,7 @@ class overplot_chandra(align_maps):
         self.ax_overplot.add_artist(north_dir)
         pol_sc = AnchoredSizeBar(
             self.ax_overplot.transData,
-            self.vec_scale,
+            self.scale_vec,
             r"$P$= 100%",
             4,
             pad=0.5,
@@ -1245,7 +1245,7 @@ class overplot_pol(align_maps):
     Inherit from class align_maps in order to get the same WCS on both maps.
     """
 
-    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, vec_scale=2.0, savename=None, **kwargs):
+    def overplot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, scale_vec=2.0, savename=None, **kwargs):
         self.Stokes_UV = self.map
         self.wcs_UV = self.map_wcs
         # Get Data
@@ -1323,11 +1323,11 @@ class overplot_pol(align_maps):
         )
 
         # Display full size polarization vectors
-        if vec_scale is None:
-            self.vec_scale = 2.0
+        if scale_vec is None:
+            self.scale_vec = 2.0
             pol[np.isfinite(pol)] = 1.0 / 2.0
         else:
-            self.vec_scale = vec_scale
+            self.scale_vec = scale_vec
         step_vec = 1
         px_scale = np.abs(self.wcs_UV.wcs.get_cdelt()[0] / self.other_wcs.wcs.get_cdelt()[0])
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
@@ -1339,7 +1339,7 @@ class overplot_pol(align_maps):
             self.V[::step_vec, ::step_vec],
             units="xy",
             angles="uv",
-            scale=px_scale / self.vec_scale,
+            scale=px_scale / self.scale_vec,
             scale_units="xy",
             pivot="mid",
             headwidth=0.0,
@@ -1395,7 +1395,7 @@ class overplot_pol(align_maps):
         self.ax_overplot.add_artist(north_dir)
         pol_sc = AnchoredSizeBar(
             self.ax_overplot.transData,
-            self.vec_scale / px_scale,
+            self.scale_vec / px_scale,
             r"$P$= 100%",
             4,
             pad=0.5,
@@ -1435,10 +1435,10 @@ class overplot_pol(align_maps):
 
         self.fig_overplot.canvas.draw()
 
-    def plot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, vec_scale=2.0, savename=None, **kwargs) -> None:
+    def plot(self, levels=None, SNRp_cut=3.0, SNRi_cut=3.0, scale_vec=2.0, savename=None, **kwargs) -> None:
         while not self.aligned:
             self.align()
-        self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, vec_scale=vec_scale, savename=savename, **kwargs)
+        self.overplot(levels=levels, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, scale_vec=scale_vec, savename=savename, **kwargs)
         plt.show(block=True)
 
     def add_vector(self, position="center", pol_deg=1.0, pol_ang=0.0, **kwargs):
@@ -1448,7 +1448,7 @@ class overplot_pol(align_maps):
             position = self.other_wcs.world_to_pixel(position)
 
         u, v = pol_deg * np.cos(np.radians(pol_ang) + np.pi / 2.0), pol_deg * np.sin(np.radians(pol_ang) + np.pi / 2.0)
-        for key, value in [["scale", [["scale", self.vec_scale]]], ["width", [["width", 0.1]]], ["color", [["color", "k"]]]]:
+        for key, value in [["scale", [["scale", self.scale_vec]]], ["width", [["width", 0.1]]], ["color", [["color", "k"]]]]:
             try:
                 _ = kwargs[key]
             except KeyError:
@@ -1937,9 +1937,9 @@ class crop_Stokes(crop_map):
 
         for dataset in self.hdul_crop:
             dataset.header["P_int"] = (P_diluted, "Integrated polarization degree")
-            dataset.header["P_int_err"] = (np.ceil(P_diluted_err * 1000.0) / 1000.0, "Integrated polarization degree error")
+            dataset.header["sP_int"] = (np.ceil(P_diluted_err * 1000.0) / 1000.0, "Integrated polarization degree error")
             dataset.header["PA_int"] = (PA_diluted, "Integrated polarization angle")
-            dataset.header["PA_int_err"] = (np.ceil(PA_diluted_err * 10.0) / 10.0, "Integrated polarization angle error")
+            dataset.header["sPA_int"] = (np.ceil(PA_diluted_err * 10.0) / 10.0, "Integrated polarization angle error")
         self.fig.canvas.draw_idle()
 
     @property
@@ -3043,9 +3043,9 @@ class pol_map(object):
             I_reg = self.I.sum()
             I_reg_err = np.sqrt(np.sum(s_I**2))
             P_reg = self.Stokes[0].header["P_int"]
-            P_reg_err = self.Stokes[0].header["P_int_err"]
+            P_reg_err = self.Stokes[0].header["sP_int"]
             PA_reg = self.Stokes[0].header["PA_int"]
-            PA_reg_err = self.Stokes[0].header["PA_int_err"]
+            PA_reg_err = self.Stokes[0].header["sPA_int"]
 
             s_I = np.sqrt(self.IQU_cov[0, 0])
             s_Q = np.sqrt(self.IQU_cov[1, 1])

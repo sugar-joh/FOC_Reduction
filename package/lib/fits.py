@@ -76,7 +76,7 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
 
     # force WCS for POL60 to have same pixel size as POL0 and POL120
     is_pol60 = np.array([head["filtnam1"].lower() == "pol60" for head in headers], dtype=bool)
-    cdelt = np.round(np.array([WCS(head).wcs.cdelt[:2] for head in headers]), 14)
+    cdelt = np.round(np.array([WCS(head).wcs.cdelt[:2] for head in headers]), 10)
     if np.unique(cdelt[np.logical_not(is_pol60)], axis=0).size != 2:
         print(np.unique(cdelt[np.logical_not(is_pol60)], axis=0))
         raise ValueError("Not all images have same pixel size")
@@ -141,19 +141,23 @@ def save_Stokes(
         new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
 
     header = new_wcs.to_header()
-    header["telescop"] = (ref_header["telescop"] if "TELESCOP" in list(ref_header.keys()) else "HST", "telescope used to acquire data")
-    header["instrume"] = (ref_header["instrume"] if "INSTRUME" in list(ref_header.keys()) else "FOC", "identifier for instrument used to acuire data")
-    header["photplam"] = (ref_header["photplam"], "Pivot Wavelength")
-    header["photflam"] = (ref_header["photflam"], "Inverse Sensitivity in DN/sec/cm**2/Angst")
-    header["exptot"] = (exp_tot, "Total exposure time in sec")
-    header["proposid"] = (ref_header["proposid"], "PEP proposal identifier for observation")
-    header["targname"] = (ref_header["targname"], "Target name")
-    header["orientat"] = (ref_header["orientat"], "Angle between North and the y-axis of the image")
-    header["filename"] = (filename, "Original filename")
-    header["P_int"] = (ref_header["P_int"], "Integrated polarization degree")
-    header["P_int_err"] = (ref_header["P_int_err"], "Integrated polarization degree error")
-    header["PA_int"] = (ref_header["PA_int"], "Integrated polarization angle")
-    header["PA_int_err"] = (ref_header["PA_int_err"], "Integrated polarization angle error")
+    header["TELESCOP"] = (ref_header["telescop"] if "TELESCOP" in list(ref_header.keys()) else "HST", "telescope used to acquire data")
+    header["INSTRUME"] = (ref_header["instrume"] if "INSTRUME" in list(ref_header.keys()) else "FOC", "identifier for instrument used to acuire data")
+    header["PHOTPLAM"] = (ref_header["photplam"], "Pivot Wavelength")
+    header["PHOTFLAM"] = (ref_header["photflam"], "Inverse Sensitivity in DN/sec/cm**2/Angst")
+    header["EXPTOT"] = (exp_tot, "Total exposure time in sec")
+    header["PROPOSID"] = (ref_header["proposid"], "PEP proposal identifier for observation")
+    header["TARGNAME"] = (ref_header["targname"], "Target name")
+    header["ORIENTAT"] = (np.arccos(new_wcs.wcs.pc[0, 0]) * 180.0 / np.pi, "Angle between North and the y-axis of the image")
+    header["FILENAME"] = (filename, "Original filename")
+    header["BKG_TYPE"] = (ref_header["BKG_TYPE"], "Bkg estimation method used during reduction")
+    header["BKG_SUB"] = (ref_header["BKG_SUB"], "Amount of bkg subtracted from images")
+    header["SMOOTH"] = (ref_header["SMOOTH"], "Smoothing method used during reduction")
+    header["SAMPLING"] = (ref_header["SAMPLING"], "Resampling performed during reduction")
+    header["P_INT"] = (ref_header["P_int"], "Integrated polarization degree")
+    header["sP_INT"] = (ref_header["sP_int"], "Integrated polarization degree error")
+    header["PA_INT"] = (ref_header["PA_int"], "Integrated polarization angle")
+    header["sPA_INT"] = (ref_header["sPA_int"], "Integrated polarization angle error")
 
     # Crop Data to mask
     if data_mask.shape != (1, 1):
