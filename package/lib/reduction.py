@@ -1463,10 +1463,10 @@ def compute_Stokes(data_array, error_array, data_mask, headers, FWHM=None, scale
         U_stokes = np.sum([exp*U for exp, U in zip(all_exp, all_U_stokes)],axis=0) / all_exp.sum()
         Stokes_cov = np.zeros((3, 3, I_stokes.shape[0], I_stokes.shape[1]))
         for i in range(3):
-            Stokes_cov[i,i] = np.sum([exp*cov for exp, cov in zip(all_exp, all_Stokes_cov[:,i,i])], axis=0) / all_exp.sum()
+            Stokes_cov[i,i] = np.sum([exp**2*cov for exp, cov in zip(all_exp, all_Stokes_cov[:,i,i])], axis=0) / all_exp.sum()**2
             for j in [x for x in range(3) if x!=i]:
-                Stokes_cov[i,j] = np.sqrt(np.sum([exp*cov**2 for exp, cov in zip(all_exp, all_Stokes_cov[:,i,j])], axis=0) / all_exp.sum())
-                Stokes_cov[j,i] = np.sqrt(np.sum([exp*cov**2 for exp, cov in zip(all_exp, all_Stokes_cov[:,j,i])], axis=0) / all_exp.sum())
+                Stokes_cov[i,j] = np.sqrt(np.sum([exp**2*cov**2 for exp, cov in zip(all_exp, all_Stokes_cov[:,i,j])], axis=0) / all_exp.sum()**2)
+                Stokes_cov[j,i] = np.sqrt(np.sum([exp**2*cov**2 for exp, cov in zip(all_exp, all_Stokes_cov[:,j,i])], axis=0) / all_exp.sum()**2)
 
         # Save values to single header
         header_stokes = all_header_stokes[0]
