@@ -233,24 +233,24 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     # FWHM of FOC have been estimated at about 0.03" across 1500-5000 Angstrom band, which is about 2 detector pixels wide
     # see Jedrzejewski, R.; Nota, A.; Hack, W. J., A Comparison Between FOC and WFPC2
     # Bibcode : 1995chst.conf...10J
-    I_stokes, Q_stokes, U_stokes, Stokes_cov = proj_red.compute_Stokes(
+    I_stokes, Q_stokes, U_stokes, Stokes_cov, header_stokes = proj_red.compute_Stokes(
         data_array, error_array, data_mask, headers, FWHM=smoothing_FWHM, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=transmitcorr
     )
-    I_bkg, Q_bkg, U_bkg, S_cov_bkg = proj_red.compute_Stokes(
+    I_bkg, Q_bkg, U_bkg, S_cov_bkg, header_bkg = proj_red.compute_Stokes(
         background, background_error, np.array(True).reshape(1, 1), headers, FWHM=None, scale=smoothing_scale, smoothing=smoothing_function, transmitcorr=False
     )
 
     # Step 3:
     # Rotate images to have North up
     if rotate_North:
-        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers = proj_red.rotate_Stokes(
-            I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, headers, SNRi_cut=None
+        I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, header_stokes = proj_red.rotate_Stokes(
+            I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, header_stokes, SNRi_cut=None
         )
-        I_bkg, Q_bkg, U_bkg, S_cov_bkg, _, _ = proj_red.rotate_Stokes(I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1, 1), headers, SNRi_cut=None)
+        I_bkg, Q_bkg, U_bkg, S_cov_bkg, _, _ = proj_red.rotate_Stokes(I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1, 1), header_bkg, SNRi_cut=None)
 
     # Compute polarimetric parameters (polarization degree and angle).
-    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, headers)
-    P_bkg, debiased_P_bkg, s_P_bkg, s_P_P_bkg, PA_bkg, s_PA_bkg, s_PA_P_bkg = proj_red.compute_pol(I_bkg, Q_bkg, U_bkg, S_cov_bkg, headers)
+    P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, header_stokes)
+    P_bkg, debiased_P_bkg, s_P_bkg, s_P_P_bkg, PA_bkg, s_PA_bkg, s_PA_P_bkg = proj_red.compute_pol(I_bkg, Q_bkg, U_bkg, S_cov_bkg, header_bkg)
 
     # Step 4:
     # Save image to FITS.
@@ -267,7 +267,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         PA,
         s_PA,
         s_PA_P,
-        headers,
+        header_stokes,
         data_mask,
         figname,
         data_folder=data_folder,
@@ -286,21 +286,21 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     data_mask = Stokes_hdul["data_mask"].data.astype(bool)
     print(
         "F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(
-            headers[0]["photplam"],
+            header_stokes["photplam"],
             *sci_not(
-                Stokes_hdul[0].data[data_mask].sum() * headers[0]["photflam"],
-                np.sqrt(Stokes_hdul[3].data[0, 0][data_mask].sum()) * headers[0]["photflam"],
+                Stokes_hdul[0].data[data_mask].sum() * header_stokes["photflam"],
+                np.sqrt(Stokes_hdul[3].data[0, 0][data_mask].sum()) * header_stokes["photflam"],
                 2,
                 out=int,
             ),
         )
     )
-    print("P_int = {0:.1f} ± {1:.1f} %".format(headers[0]["p_int"] * 100.0, np.ceil(headers[0]["sP_int"] * 1000.0) / 10.0))
-    print("PA_int = {0:.1f} ± {1:.1f} °".format(princ_angle(headers[0]["pa_int"]), princ_angle(np.ceil(headers[0]["sPA_int"] * 10.0) / 10.0)))
+    print("P_int = {0:.1f} ± {1:.1f} %".format(header_stokes["p_int"] * 100.0, np.ceil(header_stokes["sP_int"] * 1000.0) / 10.0))
+    print("PA_int = {0:.1f} ± {1:.1f} °".format(princ_angle(header_stokes["pa_int"]), princ_angle(np.ceil(header_stokes["sPA_int"] * 10.0) / 10.0)))
     #  Background values
     print(
         "F_bkg({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(
-            headers[0]["photplam"], *sci_not(I_bkg[0, 0] * headers[0]["photflam"], np.sqrt(S_cov_bkg[0, 0][0, 0]) * headers[0]["photflam"], 2, out=int)
+            header_stokes["photplam"], *sci_not(I_bkg[0, 0] * header_stokes["photflam"], np.sqrt(S_cov_bkg[0, 0][0, 0]) * header_stokes["photflam"], 2, out=int)
         )
     )
     print("P_bkg = {0:.1f} ± {1:.1f} %".format(debiased_P_bkg[0, 0] * 100.0, np.ceil(s_P_bkg[0, 0] * 1000.0) / 10.0))
