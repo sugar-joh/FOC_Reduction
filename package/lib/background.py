@@ -73,7 +73,7 @@ def display_bkg(data, background, std_bkg, headers, histograms=None, binning=Non
 
     if histograms is not None:
         filt_obs = {"POL0": 0, "POL60": 0, "POL120": 0}
-        fig_h, ax_h = plt.subplots(figsize=(10, 6), constrained_layout=True)
+        fig_h, ax_h = plt.subplots(figsize=(10, 8), constrained_layout=True)
         for i, (hist, bins) in enumerate(zip(histograms, binning)):
             filt_obs[headers[i]["filtnam1"]] += 1
             ax_h.plot(
