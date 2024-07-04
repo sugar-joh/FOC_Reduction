@@ -63,8 +63,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     #  Polarization map output
     SNRp_cut = 3.0  # P measurments with SNR>3
     SNRi_cut = 1.0  # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    flux_lim = 1e-19, 3e-17  # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    scale_vec = 5
+    flux_lim = None  # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
+    scale_vec = 3
     step_vec = 1  # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
 
     # Pipeline start
@@ -421,7 +421,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     elif pxscale.lower() not in ["full", "integrate"]:
         proj_plots.pol_map(Stokes_hdul, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
 
-    outfiles.append(Stokes_hdul[0].header["FILENAME"])
+    outfiles.append("/".join([data_folder, Stokes_hdul[0].header["FILENAME"]+".fits"]))
 
     return outfiles
 

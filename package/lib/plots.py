@@ -3225,7 +3225,7 @@ if __name__ == "__main__":
         "-sc", "--scale-vec", metavar="scale_vec", required=False, help="Size of the 100% polarization vector in pixel units", type=float, default=3.0
     )
     parser.add_argument("-pa", "--pang-err", action="store_true", required=False, help="Whether the polarization angle uncertainties should be displayed")
-    parser.add_argument("-l", "--lim", metavar="flux_lim", nargs=2, required=False, help="Limits for the intensity map", default=None)
+    parser.add_argument("-l", "--lim", metavar="flux_lim", nargs=2, required=False, help="Limits for the intensity map", type=float, default=None)
     parser.add_argument("-pdf", "--static-pdf", metavar="static_pdf", required=False, help="Whether the analysis tool or the static pdfs should be outputed", default=None)
     args = parser.parse_args()
 

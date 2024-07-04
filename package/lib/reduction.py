@@ -797,8 +797,8 @@ def align_data(data_array, headers, error_array=None, data_mask=None, background
         if do_shift:
             shift, error, _ = phase_cross_correlation(ref_data / ref_data.max(), image / image.max(), upsample_factor=upsample_factor)
         else:
-            shift = globals["pol_shift"][headers[i]["filtnam1"].lower()]
-            error = globals["sigma_shift"][headers[i]["filtnam1"].lower()]
+            shift = globals()["pol_shift"][headers[i]["filtnam1"].lower()]
+            error = globals()["sigma_shift"][headers[i]["filtnam1"].lower()]
         # Rescale image to requested output
         rescaled_image[i, res_shift[0] : res_shift[0] + shape[1], res_shift[1] : res_shift[1] + shape[2]] = deepcopy(image)
         rescaled_error[i, res_shift[0] : res_shift[0] + shape[1], res_shift[1] : res_shift[1] + shape[2]] = deepcopy(error_array[i])

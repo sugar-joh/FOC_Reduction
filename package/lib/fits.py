@@ -144,7 +144,7 @@ def save_Stokes(
     header["INSTRUME"] = (header_stokes["instrume"] if "INSTRUME" in list(header_stokes.keys()) else "FOC", "identifier for instrument used to acuire data")
     header["PHOTPLAM"] = (header_stokes["photplam"], "Pivot Wavelength")
     header["PHOTFLAM"] = (header_stokes["photflam"], "Inverse Sensitivity in DN/sec/cm**2/Angst")
-    header["EXPTOT"] = (exp_tot, "Total exposure time in sec")
+    header["EXPTIME"] = (exp_tot, "Total exposure time in sec")
     header["PROPOSID"] = (header_stokes["proposid"], "PEP proposal identifier for observation")
     header["TARGNAME"] = (header_stokes["targname"], "Target name")
     header["ORIENTAT"] = (np.arccos(new_wcs.wcs.pc[0, 0]) * 180.0 / np.pi, "Angle between North and the y-axis of the image")
