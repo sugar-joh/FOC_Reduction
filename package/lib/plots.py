@@ -182,9 +182,11 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     wcs = WCS(Stokes[0]).deepcopy()
 
     # Plot figure
-    plt.rcParams.update({"font.size": 10})
-    fig, (axI, axQ, axU) = plt.subplots(ncols=3, figsize=(20, 6), subplot_kw=dict(projection=wcs))
-    fig.subplots_adjust(hspace=0, wspace=0.75, bottom=0.01, top=0.99, left=0.08, right=0.95)
+    plt.rcParams.update({"font.size": 12})
+    ratiox = max(int(stkI.shape[1]/stkI.shape[0]),1)
+    ratioy = max(int(stkI.shape[0]/stkI.shape[1]),1)
+    fig, (axI, axQ, axU) = plt.subplots(ncols=3, figsize=(20*ratiox, 8*ratioy), subplot_kw=dict(projection=wcs))
+    fig.subplots_adjust(hspace=0, wspace=0.50, bottom=0.01, top=0.99, left=0.07, right=0.97)
     fig.suptitle("I, Q, U Stokes parameters")
 
     imI = axI.imshow(stkI, origin="lower", cmap="inferno")
@@ -320,9 +322,11 @@ def polarization_map(
         print("No pixel with polarization information above requested SNR.")
 
     # Plot the map
-    plt.rcParams.update({"font.size": 10})
+    plt.rcParams.update({"font.size": 12})
     plt.rcdefaults()
-    fig, ax = plt.subplots(figsize=(10, 10), layout="constrained", subplot_kw=dict(projection=wcs))
+    ratiox = max(int(stkI.shape[1]/stkI.shape[0]),1)
+    ratioy = max(int(stkI.shape[0]/stkI.shape[1]),1)
+    fig, ax = plt.subplots(figsize=(10*ratiox, 10*ratioy), layout="constrained", subplot_kw=dict(projection=wcs))
     ax.set(aspect="equal", fc="k")
     # fig.subplots_adjust(hspace=0, wspace=0, left=0.102, right=1.02)
 
@@ -439,17 +443,17 @@ def polarization_map(
         ax.transAxes,
         "E",
         "N",
-        length=-0.08,
-        fontsize=0.025,
+        length=-0.05,
+        fontsize=0.02,
         loc=1,
-        aspect_ratio=-1,
+        aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
         sep_y=0.01,
         sep_x=0.01,
         back_length=0.0,
         head_length=10.0,
         head_width=10.0,
         angle=-Stokes[0].header["orientat"],
-        text_props={"ec": "k", "fc": "w", "alpha": 1, "lw": -0.2},
+        text_props={"ec": "k", "fc": "w", "alpha": 1, "lw": 0.4},
         arrow_props={"ec": "k", "fc": "w", "alpha": 1, "lw": 1},
     )
 
@@ -666,7 +670,7 @@ class align_maps(object):
                 length=-0.08,
                 fontsize=0.03,
                 loc=1,
-                aspect_ratio=-1,
+                aspect_ratio=-(self.map_data.shape[1]/self.map_data.shape[0]),
                 sep_y=0.01,
                 sep_x=0.01,
                 angle=-self.map_header["orientat"],
@@ -724,7 +728,7 @@ class align_maps(object):
                 length=-0.08,
                 fontsize=0.03,
                 loc=1,
-                aspect_ratio=-1,
+                aspect_ratio=-(self.other_data.shape[1]/self.other_data.shape[0]),
                 sep_y=0.01,
                 sep_x=0.01,
                 angle=-self.other_header["orientat"],
@@ -988,7 +992,7 @@ class overplot_radio(align_maps):
             length=-0.08,
             fontsize=0.03,
             loc=1,
-            aspect_ratio=-1,
+            aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
             sep_y=0.01,
             sep_x=0.01,
             angle=-self.Stokes_UV[0].header["orientat"],
@@ -1190,7 +1194,7 @@ class overplot_chandra(align_maps):
             length=-0.08,
             fontsize=0.03,
             loc=1,
-            aspect_ratio=-1,
+            aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
             sep_y=0.01,
             sep_x=0.01,
             angle=-self.Stokes_UV[0].header["orientat"],
@@ -1329,7 +1333,6 @@ class overplot_pol(align_maps):
         else:
             self.scale_vec = scale_vec
         step_vec = 1
-        px_scale = np.abs(self.wcs_UV.wcs.get_cdelt()[0] / self.other_wcs.wcs.get_cdelt()[0])
         self.X, self.Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         self.U, self.V = pol * np.cos(np.pi / 2.0 + pang * np.pi / 180.0), pol * np.sin(np.pi / 2.0 + pang * np.pi / 180.0)
         self.Q = self.ax_overplot.quiver(
@@ -1339,7 +1342,7 @@ class overplot_pol(align_maps):
             self.V[::step_vec, ::step_vec],
             units="xy",
             angles="uv",
-            scale=px_scale / self.scale_vec,
+            scale=1. / self.scale_vec,
             scale_units="xy",
             pivot="mid",
             headwidth=0.0,
@@ -1385,7 +1388,7 @@ class overplot_pol(align_maps):
             length=-0.08,
             fontsize=0.03,
             loc=1,
-            aspect_ratio=-1,
+            aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
             sep_y=0.01,
             sep_x=0.01,
             angle=-self.Stokes_UV[0].header["orientat"],
@@ -1395,7 +1398,7 @@ class overplot_pol(align_maps):
         self.ax_overplot.add_artist(north_dir)
         pol_sc = AnchoredSizeBar(
             self.ax_overplot.transData,
-            self.scale_vec / px_scale,
+            self.scale_vec,
             r"$P$= 100%",
             4,
             pad=0.5,
@@ -1550,7 +1553,7 @@ class align_pol(object):
             length=-0.08,
             fontsize=0.025,
             loc=1,
-            aspect_ratio=-1,
+            aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
             sep_y=0.01,
             sep_x=0.01,
             back_length=0.0,
@@ -1814,6 +1817,8 @@ class crop_map(object):
             # Write cropped map to new HDUList
             self.header_crop = deepcopy(header)
             self.header_crop.update(self.wcs_crop.to_header())
+            if self.header_crop["FILENAME"][-4:] != "crop":
+                self.header_crop["FILENAME"] += "_crop"
             self.hdul_crop = fits.HDUList([fits.PrimaryHDU(self.data_crop, self.header_crop)])
 
             self.rect_selector.clear()
@@ -1936,6 +1941,8 @@ class crop_Stokes(crop_map):
         )
 
         for dataset in self.hdul_crop:
+            if dataset.header["FILENAME"][-4:] != "crop":
+                dataset.header["FILENAME"] += "_crop"
             dataset.header["P_int"] = (P_diluted, "Integrated polarization degree")
             dataset.header["sP_int"] = (np.ceil(P_diluted_err * 1000.0) / 1000.0, "Integrated polarization degree error")
             dataset.header["PA_int"] = (PA_diluted, "Integrated polarization angle")
@@ -2797,10 +2804,10 @@ class pol_map(object):
             ax.transAxes,
             "E",
             "N",
-            length=-0.08,
-            fontsize=0.025,
+            length=-0.05,
+            fontsize=0.02,
             loc=1,
-            aspect_ratio=-1,
+            aspect_ratio=-(self.I.shape[1]/self.I.shape[0]),
             sep_y=0.01,
             sep_x=0.01,
             back_length=0.0,
