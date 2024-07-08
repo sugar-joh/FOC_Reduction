@@ -182,23 +182,23 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     wcs = WCS(Stokes[0]).deepcopy()
 
     # Plot figure
-    plt.rcParams.update({"font.size": 12})
+    plt.rcParams.update({"font.size": 14})
     ratiox = max(int(stkI.shape[1]/stkI.shape[0]),1)
     ratioy = max(int(stkI.shape[0]/stkI.shape[1]),1)
-    fig, (axI, axQ, axU) = plt.subplots(ncols=3, figsize=(20*ratiox, 8*ratioy), subplot_kw=dict(projection=wcs))
+    fig, (axI, axQ, axU) = plt.subplots(ncols=3, figsize=(15*ratiox, 6*ratioy), subplot_kw=dict(projection=wcs))
     fig.subplots_adjust(hspace=0, wspace=0.50, bottom=0.01, top=0.99, left=0.07, right=0.97)
     fig.suptitle("I, Q, U Stokes parameters")
 
     imI = axI.imshow(stkI, origin="lower", cmap="inferno")
-    fig.colorbar(imI, ax=axI, aspect=50, shrink=0.50, pad=0.025, label="counts/sec")
+    fig.colorbar(imI, ax=axI, aspect=30, shrink=0.50, pad=0.025, label="counts/sec")
     axI.set(xlabel="RA", ylabel="DEC", title=r"$I_{stokes}$")
 
     imQ = axQ.imshow(stkQ, origin="lower", cmap="inferno")
-    fig.colorbar(imQ, ax=axQ, aspect=50, shrink=0.50, pad=0.025, label="counts/sec")
+    fig.colorbar(imQ, ax=axQ, aspect=30, shrink=0.50, pad=0.025, label="counts/sec")
     axQ.set(xlabel="RA", ylabel="DEC", title=r"$Q_{stokes}$")
 
     imU = axU.imshow(stkU, origin="lower", cmap="inferno")
-    fig.colorbar(imU, ax=axU, aspect=50, shrink=0.50, pad=0.025, label="counts/sec")
+    fig.colorbar(imU, ax=axU, aspect=30, shrink=0.50, pad=0.025, label="counts/sec")
     axU.set(xlabel="RA", ylabel="DEC", title=r"$U_{stokes}$")
 
     if savename is not None:
@@ -322,13 +322,19 @@ def polarization_map(
         print("No pixel with polarization information above requested SNR.")
 
     # Plot the map
-    plt.rcParams.update({"font.size": 12})
+    plt.rcParams.update({"font.size": 14})
     plt.rcdefaults()
-    ratiox = max(int(stkI.shape[1]/stkI.shape[0]),1)
-    ratioy = max(int(stkI.shape[0]/stkI.shape[1]),1)
-    fig, ax = plt.subplots(figsize=(10*ratiox, 10*ratioy), layout="constrained", subplot_kw=dict(projection=wcs))
-    ax.set(aspect="equal", fc="k")
+    ratiox = max(int(stkI.shape[1]/(stkI.shape[0])),1)
+    ratioy = max(int((stkI.shape[0])/stkI.shape[1]),1)
+    fig, ax = plt.subplots(figsize=(6*ratiox, 6*ratioy), layout="compressed", subplot_kw=dict(projection=wcs))
+    ax.set(aspect="equal", fc="k", ylim=[-stkI.shape[0]*0.10,stkI.shape[0]*1.15])
     # fig.subplots_adjust(hspace=0, wspace=0, left=0.102, right=1.02)
+
+    # ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
+    ax.coords[0].set_axislabel("Right Ascension (J2000)")
+    ax.coords[0].set_axislabel_position("t")
+    ax.coords[0].set_ticklabel_position("t")
+    ax.set_ylabel("Declination (J2000)", labelpad=-1)
 
     if display.lower() in ["intensity"]:
         # If no display selected, show intensity map
@@ -341,7 +347,7 @@ def polarization_map(
         else:
             vmin, vmax = flux_lim
         im = ax.imshow(stkI * convert_flux, norm=LogNorm(vmin, vmax), aspect="equal", cmap="inferno", alpha=1.0)
-        fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
+        fig.colorbar(im, ax=ax, aspect=30, shrink=0.75, pad=0.025, label=r"$F_{\lambda}$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
         levelsI = np.array([0.8, 2.0, 5.0, 10.0, 20.0, 50.0]) / 100.0 * vmax
         print("Total flux contour levels : ", levelsI)
         ax.contour(stkI * convert_flux, levels=levelsI, colors="grey", linewidths=0.5)
@@ -436,9 +442,9 @@ def polarization_map(
     PA_diluted = Stokes[0].header["PA_int"]
     PA_diluted_err = Stokes[0].header["sPA_int"]
 
-    plt.rcParams.update({"font.size": 12})
+    plt.rcParams.update({"font.size": 10})
     px_size = wcs.wcs.get_cdelt()[0] * 3600.0
-    px_sc = AnchoredSizeBar(ax.transData, 1.0 / px_size, "1 arcsec", 3, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color="w")
+    px_sc = AnchoredSizeBar(ax.transData, 1.0 / px_size, "1 arcsec", 3, pad=0.25, sep=5, borderpad=0.25, frameon=False, size_vertical=0.005, color="w")
     north_dir = AnchoredDirectionArrows(
         ax.transAxes,
         "E",
@@ -446,7 +452,7 @@ def polarization_map(
         length=-0.05,
         fontsize=0.02,
         loc=1,
-        aspect_ratio=-(stkI.shape[1]/stkI.shape[0]),
+        aspect_ratio=-(stkI.shape[1]/(stkI.shape[0]*1.25)),
         sep_y=0.01,
         sep_x=0.01,
         back_length=0.0,
@@ -482,7 +488,7 @@ def polarization_map(
             color="w",
             edgecolor="k",
         )
-        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color="w")
+        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.25, sep=5, borderpad=0.25, frameon=False, size_vertical=0.005, color="w")
 
         ax.add_artist(pol_sc)
         ax.add_artist(px_sc)
@@ -524,12 +530,6 @@ def polarization_map(
         x, y, width, height, angle, color = rectangle
         x, y = np.array([x, y]) - np.array(stkI.shape) / 2.0
         ax.add_patch(Rectangle((x, y), width, height, angle=angle, edgecolor=color, fill=False))
-
-    # ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
-    ax.coords[0].set_axislabel("Right Ascension (J2000)")
-    ax.coords[0].set_axislabel_position("t")
-    ax.coords[0].set_ticklabel_position("t")
-    ax.set_ylabel("Declination (J2000)", labelpad=-1)
 
     if savename is not None:
         if savename[-4:] not in [".png", ".jpg", ".pdf"]:
