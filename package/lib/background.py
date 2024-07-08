@@ -258,7 +258,7 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
 
         # Substract background
-        if subtract_error > 0:
+        if np.abs(subtract_error) > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
             n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
@@ -367,7 +367,7 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
 
         # Substract background
-        if subtract_error > 0:
+        if np.abs(subtract_error) > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
             n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
@@ -464,7 +464,7 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15, 15), subtract_error=True
         n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
 
         # Substract background
-        if subtract_error > 0.0:
+        if np.abs(subtract_error) > 0:
             n_data_array[i][mask] = n_data_array[i][mask] - bkg
             n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
