@@ -157,8 +157,8 @@ def combine_Stokes(infiles):
 def main(infiles, target=None, output_dir="./data/"):
     """ """
     from lib.fits import save_Stokes
-    from lib.reduction import compute_pol
     from lib.plots import pol_map
+    from lib.reduction import compute_pol, rotate_Stokes
 
     if target is None:
         target = input("Target name:\n>")
@@ -167,48 +167,38 @@ def main(infiles, target=None, output_dir="./data/"):
     data_folder = prod[0][0]
     files = [p[1] for p in prod]
 
+    # Reduction parameters
+    kwargs = {}
+    #  Polarization map output
+    kwargs["SNRp_cut"] = 3.0
+    kwargs["SNRi_cut"] = 1.0
+    kwargs["flux_lim"] = 1e-19, 3e-17
+    kwargs["scale_vec"] = 5
+    kwargs["step_vec"] = 1
+
     if not same_reduction(infiles):
         from FOC_reduction import main as FOC_reduction
 
-        # Reduction parameters
-        kwargs = {}
-        # Background estimation
-        kwargs["error_sub_type"] = "freedman-diaconis"  # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-        kwargs["subtract_error"] = 0.7
-
-        # Data binning
-        kwargs["pxsize"] = 0.1
-        kwargs["pxscale"] = "arcsec"  # pixel, arcsec or full
-
-        # Smoothing
-        kwargs["smoothing_function"] = "combine"  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-        kwargs["smoothing_FWHM"] = 0.2  # If None, no smoothing is done
-        kwargs["smoothing_scale"] = "arcsec"  # pixel or arcsec
-
-        #  Polarization map output
-        kwargs["SNRp_cut"] = 3.0  # P measurments with SNR>3
-        kwargs["SNRi_cut"] = 1.0  # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-        kwargs["flux_lim"] = 1e-19, 3e-17  # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-        kwargs["scale_vec"] = 5
-        kwargs["step_vec"] = (
-            1  # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
-        )
         grouped_infiles = same_obs(files, data_folder)
 
         new_infiles = []
         for i, group in enumerate(grouped_infiles):
             new_infiles.append(
-                FOC_reduction(target=target + "-" + str(i + 1), infiles=["/".join([data_folder, file]) for file in group], interactive=True, **kwargs)
+                FOC_reduction(target=target + "-" + str(i + 1), infiles=["/".join([data_folder, file]) for file in group], interactive=True)[0]
             )
 
         infiles = new_infiles
 
-    I_combined, Q_combined, U_combined, IQU_cov_combined, data_mask_combined, header_combined = combine_Stokes(infiles)
+    I_combined, Q_combined, U_combined, IQU_cov_combined, data_mask_combined, header_combined = combine_Stokes(infiles=infiles)
+    I_combined, Q_combined, U_combined, IQU_cov_combined, data_mask_combined, header_combined = rotate_Stokes(
+        I_stokes=I_combined, Q_stokes=Q_combined, U_stokes=U_combined, Stokes_cov=IQU_cov_combined, data_mask=data_mask_combined, header_stokes=header_combined
+    )
+
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = compute_pol(
         I_stokes=I_combined, Q_stokes=Q_combined, U_stokes=U_combined, Stokes_cov=IQU_cov_combined, header_stokes=header_combined
     )
     filename = header_combined["FILENAME"]
-    figname = "_".join([target, filename[filename.find("FOC_"):], "combined"])
+    figname = "_".join([target, filename[filename.find("FOC_") :], "combined"])
     Stokes_combined = save_Stokes(
         I_stokes=I_combined,
         Q_stokes=Q_combined,
@@ -228,9 +218,9 @@ def main(infiles, target=None, output_dir="./data/"):
         return_hdul=True,
     )
 
-    pol_map(Stokes_combined)
+    pol_map(Stokes_combined, **kwargs)
 
-    return "/".join([data_folder, figname+".fits"])
+    return "/".join([data_folder, figname + ".fits"])
 
 
 if __name__ == "__main__":

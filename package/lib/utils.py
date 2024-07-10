@@ -45,3 +45,18 @@ def sci_not(v, err, rnd=1, out=str):
         return output[0] + r")e{0}".format(-power)
     else:
         return *output[1:], -power
+
+def wcs_PA(PC21, PC22):
+    """
+    Return the position angle in degrees to the North direction of a wcs
+    from the values of coefficient of its transformation matrix.
+    """
+    if (abs(PC21) > abs(PC22)) and (PC21 >= 0):
+        orient = -np.arccos(PC22) * 180.0 / np.pi
+    elif (abs(PC21) > abs(PC22)) and (PC21 < 0):
+        orient = np.arccos(PC22) * 180.0 / np.pi
+    elif (abs(PC21) < abs(PC22)) and (PC22 >= 0):
+        orient = np.arccos(PC22) * 180.0 / np.pi
+    elif (abs(PC21) < abs(PC22)) and (PC22 < 0):
+        orient = -np.arccos(PC22) * 180.0 / np.pi
+    return orient

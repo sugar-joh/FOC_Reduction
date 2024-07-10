@@ -17,7 +17,7 @@ from lib.utils import princ_angle, sci_not
 from matplotlib.colors import LogNorm
 
 
-def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False, **kwargs):
+def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
     deconvolve = False
@@ -36,12 +36,12 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Background estimation
     error_sub_type = "freedman-diaconis"  # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.7
+    subtract_error = 1.0
     display_bkg = False
 
     # Data binning
-    pxsize = 0.1
-    pxscale = "arcsec"  # pixel, arcsec or full
+    pxsize = 2
+    pxscale = "px"  # pixel, arcsec or full
     rebin_operation = "sum"  # sum or average
 
     # Alignement
@@ -54,8 +54,8 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     # Smoothing
     smoothing_function = "combine"  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = 0.2  # If None, no smoothing is done
-    smoothing_scale = "arcsec"  # pixel or arcsec
+    smoothing_FWHM = 2.0    # If None, no smoothing is done
+    smoothing_scale = "px"  # pixel or arcsec
 
     # Rotation
     rotate_North = True
@@ -64,31 +64,10 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     SNRp_cut = 3.0  # P measurments with SNR>3
     SNRi_cut = 1.0  # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
     flux_lim = None  # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    scale_vec = 3
+    scale_vec = 5
     step_vec = 1  # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
 
     # Pipeline start
-    # Step 0:
-    #  Get parameters from kwargs
-    for key, value in [
-        ["error_sub_type", error_sub_type],
-        ["subtract_error", subtract_error],
-        ["pxsize", pxsize],
-        ["pxscale", pxscale],
-        ["smoothing_function", smoothing_function],
-        ["smoothing_FWHM", smoothing_FWHM],
-        ["smoothing_scale", smoothing_scale],
-        ["SNRp_cut", SNRp_cut],
-        ["SNRi_cut", SNRi_cut],
-        ["flux_lim", flux_lim],
-        ["scale_vec", scale_vec],
-        ["step_vec", step_vec],
-    ]:
-        try:
-            value = kwargs[key]
-        except KeyError:
-            pass
-    rebin = True if pxsize is not None else False
 
     # Step 1:
     #  Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
@@ -119,19 +98,18 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
 
     figname = "_".join([target, "FOC"])
     figtype = ""
-    if rebin:
+    if (pxsize is not None) and not (pxsize == 1 and pxscale.lower() in ["px", "pixel", "pixels"]):
         if pxscale not in ["full"]:
             figtype = "".join(["b", "{0:.2f}".format(pxsize), pxscale])  # additionnal informations
         else:
             figtype = "full"
-    if smoothing_FWHM is not None:
-        figtype += "_" + "".join(
-            ["".join([s[0] for s in smoothing_function.split("_")]), "{0:.2f}".format(smoothing_FWHM), smoothing_scale]
-        )  # additionnal informations
+    if smoothing_FWHM is not None and smoothing_scale is not None:
+        smoothstr = "".join([*[s[0] for s in smoothing_function.split("_")], "{0:.2f}".format(smoothing_FWHM), smoothing_scale])
+        figtype = "_".join([figtype, smoothstr] if figtype != "" else [smoothstr])
     if deconvolve:
-        figtype += "_deconv"
+        figtype = "_".join([figtype, "deconv"] if figtype != "" else ["deconv"])
     if align_center is None:
-        figtype += "_not_aligned"
+        figtype = "_".join([figtype, "not_aligned"] if figtype != "" else ["not_aligned"])
 
     #  Crop data to remove outside blank margins.
     data_array, error_array, headers = proj_red.crop_array(
@@ -159,7 +137,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
     )
 
     # Rotate data to have same orientation
-    rotate_data = np.unique([float(head["ORIENTAT"]) for head in headers]).size != 1
+    rotate_data = np.unique([np.round(float(head["ORIENTAT"]), 3) for head in headers]).size != 1
     if rotate_data:
         ang = np.mean([head["ORIENTAT"] for head in headers])
         for head in headers:
@@ -199,7 +177,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         )
 
     #  Rebin data to desired pixel size.
-    if rebin:
+    if (pxsize is not None) and not (pxsize == 1 and pxscale.lower() in ["px", "pixel", "pixels"]):
         data_array, error_array, headers, Dxy, data_mask = proj_red.rebin_array(
             data_array, error_array, headers, pxsize=pxsize, scale=pxscale, operation=rebin_operation, data_mask=data_mask
         )
@@ -246,7 +224,9 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, header_stokes = proj_red.rotate_Stokes(
             I_stokes, Q_stokes, U_stokes, Stokes_cov, data_mask, header_stokes, SNRi_cut=None
         )
-        I_bkg, Q_bkg, U_bkg, S_cov_bkg, _, _ = proj_red.rotate_Stokes(I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1, 1), header_bkg, SNRi_cut=None)
+        I_bkg, Q_bkg, U_bkg, S_cov_bkg, data_mask_bkg, header_bkg = proj_red.rotate_Stokes(
+            I_bkg, Q_bkg, U_bkg, S_cov_bkg, np.array(True).reshape(1, 1), header_bkg, SNRi_cut=None
+        )
 
     # Compute polarimetric parameters (polarization degree and angle).
     P, debiased_P, s_P, s_P_P, PA, s_PA, s_PA_P = proj_red.compute_pol(I_stokes, Q_stokes, U_stokes, Stokes_cov, header_stokes)
@@ -273,6 +253,7 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         data_folder=data_folder,
         return_hdul=True,
     )
+    outfiles.append("/".join([data_folder, Stokes_hdul[0].header["FILENAME"] + ".fits"]))
 
     # Step 5:
     # crop to desired region of interest (roi)
@@ -281,15 +262,16 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         stokescrop = proj_plots.crop_Stokes(deepcopy(Stokes_hdul), norm=LogNorm())
         stokescrop.crop()
         stokescrop.write_to("/".join([data_folder, figname + ".fits"]))
-        Stokes_hdul, headers = stokescrop.hdul_crop, [dataset.header for dataset in stokescrop.hdul_crop]
+        Stokes_hdul, header_stokes = stokescrop.hdul_crop, stokescrop.hdul_crop[0].header
+        outfiles.append("/".join([data_folder, Stokes_hdul[0].header["FILENAME"] + ".fits"]))
 
     data_mask = Stokes_hdul["data_mask"].data.astype(bool)
     print(
         "F_int({0:.0f} Angs) = ({1} ± {2})e{3} ergs.cm^-2.s^-1.Angs^-1".format(
-            header_stokes["photplam"],
+            header_stokes["PHOTPLAM"],
             *sci_not(
-                Stokes_hdul[0].data[data_mask].sum() * header_stokes["photflam"],
-                np.sqrt(Stokes_hdul[3].data[0, 0][data_mask].sum()) * header_stokes["photflam"],
+                Stokes_hdul[0].data[data_mask].sum() * header_stokes["PHOTFLAM"],
+                np.sqrt(Stokes_hdul[3].data[0, 0][data_mask].sum()) * header_stokes["PHOTFLAM"],
                 2,
                 out=int,
             ),
@@ -420,8 +402,6 @@ def main(target=None, proposal_id=None, infiles=None, output_dir="./data", crop=
         )
     elif pxscale.lower() not in ["full", "integrate"]:
         proj_plots.pol_map(Stokes_hdul, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
-
-    outfiles.append("/".join([data_folder, Stokes_hdul[0].header["FILENAME"]+".fits"]))
 
     return outfiles
 

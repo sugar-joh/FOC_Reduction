@@ -16,6 +16,7 @@ from astropy.io import fits
 from astropy.wcs import WCS
 
 from .convex_hull import clean_ROI
+from .utils import wcs_PA
 
 
 def get_obs_data(infiles, data_folder="", compute_flux=False):
@@ -57,22 +58,20 @@ def get_obs_data(infiles, data_folder="", compute_flux=False):
         if new_wcs.wcs.has_cd() or (new_wcs.wcs.cdelt[:2] == np.array([1.0, 1.0])).all():
             # Update WCS with relevant information
             if new_wcs.wcs.has_cd():
-                old_cd = new_wcs.wcs.cd
                 del new_wcs.wcs.cd
                 keys = list(new_wcs.to_header().keys()) + ["CD1_1", "CD1_2", "CD1_3", "CD2_1", "CD2_2", "CD2_3", "CD3_1", "CD3_2", "CD3_3"]
                 for key in keys:
                     header.remove(key, ignore_missing=True)
-                new_cdelt = np.linalg.eig(old_cd)[0]
-            elif (new_wcs.wcs.cdelt == np.array([1.0, 1.0])).all() and (new_wcs.array_shape in [(512, 512), (1024, 512), (512, 1024), (1024, 1024)]):
-                old_cd = new_wcs.wcs.pc
-            new_wcs.wcs.pc = np.dot(old_cd, np.diag(1.0 / new_cdelt))
+                new_cdelt = np.linalg.eigvals(wcs.wcs.cd)
+                new_cdelt.sort()
+            new_wcs.wcs.pc = wcs.wcs.cd.dot(np.diag(1.0 / new_cdelt))
             new_wcs.wcs.cdelt = new_cdelt
             for key, val in new_wcs.to_header().items():
                 header[key] = val
         try:
             _ = header["ORIENTAT"]
         except KeyError:
-            header["ORIENTAT"] = -np.arccos(new_wcs.wcs.pc[0, 0]) * 180.0 / np.pi
+            header["ORIENTAT"] = wcs_PA(new_wcs.wcs.pc[1, 0], np.diag(new_wcs.wcs.pc).mean())
 
     # force WCS for POL60 to have same pixel size as POL0 and POL120
     is_pol60 = np.array([head["filtnam1"].lower() == "pol60" for head in headers], dtype=bool)
@@ -130,7 +129,6 @@ def save_Stokes(
         Only returned if return_hdul is True.
     """
     # Create new WCS object given the modified images
-    exp_tot = header_stokes['exptime']
     new_wcs = WCS(header_stokes).deepcopy()
 
     if data_mask.shape != (1, 1):
@@ -140,23 +138,23 @@ def save_Stokes(
         new_wcs.wcs.crpix = np.array(new_wcs.wcs.crpix) - vertex[0::-2]
 
     header = new_wcs.to_header()
-    header["TELESCOP"] = (header_stokes["telescop"] if "TELESCOP" in list(header_stokes.keys()) else "HST", "telescope used to acquire data")
-    header["INSTRUME"] = (header_stokes["instrume"] if "INSTRUME" in list(header_stokes.keys()) else "FOC", "identifier for instrument used to acuire data")
-    header["PHOTPLAM"] = (header_stokes["photplam"], "Pivot Wavelength")
-    header["PHOTFLAM"] = (header_stokes["photflam"], "Inverse Sensitivity in DN/sec/cm**2/Angst")
-    header["EXPTIME"] = (exp_tot, "Total exposure time in sec")
-    header["PROPOSID"] = (header_stokes["proposid"], "PEP proposal identifier for observation")
-    header["TARGNAME"] = (header_stokes["targname"], "Target name")
-    header["ORIENTAT"] = (np.arccos(new_wcs.wcs.pc[0, 0]) * 180.0 / np.pi, "Angle between North and the y-axis of the image")
-    header["FILENAME"] = (filename, "Original filename")
+    header["TELESCOP"] = (header_stokes["TELESCOP"] if "TELESCOP" in list(header_stokes.keys()) else "HST", "telescope used to acquire data")
+    header["INSTRUME"] = (header_stokes["INSTRUME"] if "INSTRUME" in list(header_stokes.keys()) else "FOC", "identifier for instrument used to acuire data")
+    header["PHOTPLAM"] = (header_stokes["PHOTPLAM"], "Pivot Wavelength")
+    header["PHOTFLAM"] = (header_stokes["PHOTFLAM"], "Inverse Sensitivity in DN/sec/cm**2/Angst")
+    header["EXPTIME"] = (header_stokes["EXPTIME"], "Total exposure time in sec")
+    header["PROPOSID"] = (header_stokes["PROPOSID"], "PEP proposal identifier for observation")
+    header["TARGNAME"] = (header_stokes["TARGNAME"], "Target name")
+    header["ORIENTAT"] = (header_stokes["ORIENTAT"], "Angle between North and the y-axis of the image")
+    header["FILENAME"] = (filename, "ORIGINAL FILENAME")
     header["BKG_TYPE"] = (header_stokes["BKG_TYPE"], "Bkg estimation method used during reduction")
     header["BKG_SUB"] = (header_stokes["BKG_SUB"], "Amount of bkg subtracted from images")
-    header["SMOOTH"] = (header_stokes["SMOOTH"], "Smoothing method used during reduction")
-    header["SAMPLING"] = (header_stokes["SAMPLING"], "Resampling performed during reduction")
-    header["P_INT"] = (header_stokes["P_int"], "Integrated polarization degree")
-    header["sP_INT"] = (header_stokes["sP_int"], "Integrated polarization degree error")
-    header["PA_INT"] = (header_stokes["PA_int"], "Integrated polarization angle")
-    header["sPA_INT"] = (header_stokes["sPA_int"], "Integrated polarization angle error")
+    header["SMOOTH"] = (header_stokes["SMOOTH"] if "SMOOTH" in list(header_stokes.keys()) else "None", "Smoothing method used during reduction")
+    header["SAMPLING"] = (header_stokes["SAMPLING"] if "SAMPLING" in list(header_stokes.keys()) else "None", "Resampling performed during reduction")
+    header["P_INT"] = (header_stokes["P_INT"], "Integrated polarization degree")
+    header["sP_INT"] = (header_stokes["sP_INT"], "Integrated polarization degree error")
+    header["PA_INT"] = (header_stokes["PA_INT"], "Integrated polarization angle")
+    header["sPA_INT"] = (header_stokes["sPA_INT"], "Integrated polarization angle error")
 
     # Crop Data to mask
     if data_mask.shape != (1, 1):
