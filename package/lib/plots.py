@@ -267,7 +267,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
 
 
 def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_cut=3.,
-                     flux_lim=None, step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default"):
+                     flux_lim=None, step_vec=1, vec_scale=2., savename=None, plots_folder="", display="default", **kwargs):
     """
     Plots polarization map from Stokes HDUList.
     ----------

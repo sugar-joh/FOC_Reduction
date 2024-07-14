@@ -477,17 +477,18 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_type=No
     err_flat = data*0.03
 
     if (sub_type is None):
-        n_data_array, c_error_bkg, headers, background = bkg_hist(
+        n_data_array, c_error_bkg, headers, background, error_bkg = bkg_hist(
             data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
+        
     elif isinstance(sub_type, str):
         if sub_type.lower() in ['auto']:
-            n_data_array, c_error_bkg, headers, background = bkg_fit(
+            n_data_array, c_error_bkg, headers, background, error_bkg = bkg_fit(
                 data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
         else:
-            n_data_array, c_error_bkg, headers, background = bkg_hist(
+            n_data_array, c_error_bkg, headers, background, error_bkg = bkg_hist(
                 data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     elif isinstance(sub_type, tuple):
-        n_data_array, c_error_bkg, headers, background = bkg_mini(
+        n_data_array, c_error_bkg, headers, background, error_bkg = bkg_mini(
             data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
     else:
         print("Warning: Invalid subtype.")
@@ -496,7 +497,7 @@ def get_error(data_array, headers, error_array=None, data_mask=None, sub_type=No
     n_error_array = np.sqrt(err_wav**2+err_psf**2+err_flat**2+c_error_bkg**2)
 
     if return_background:
-        return n_data_array, n_error_array, headers, background
+        return n_data_array, n_error_array, headers, background, error_bkg # return background error as well
     else:
         return n_data_array, n_error_array, headers
 
