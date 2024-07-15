@@ -692,7 +692,7 @@ def align_data(data_array, headers, error_array=None, background=None, upsample_
     full_headers.append(headers[0])
     err_array = np.concatenate((error_array, [np.zeros(ref_data.shape)]), axis=0)
 
-    full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.)
+    # full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.)
 
     data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
@@ -766,7 +766,7 @@ def align_data(data_array, headers, error_array=None, background=None, upsample_
         headers[i].update(headers_wcs[i].to_header())
 
     data_mask = rescaled_mask.all(axis=0)
-    data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
+    # data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
 
     if return_shifts:
         return data_array, error_array, headers, data_mask, shifts, errors

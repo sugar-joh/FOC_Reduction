@@ -41,8 +41,11 @@ prototypes :
 """
 
 from copy import deepcopy
-import numpy as np
 from os.path import join as path_join
+
+from astropy.wcs import WCS
+from astropy.io import fits
+from astropy.coordinates import SkyCoord
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, FancyArrowPatch
 from matplotlib.path import Path
@@ -51,49 +54,48 @@ from matplotlib.colors import LogNorm
 import matplotlib.font_manager as fm
 import matplotlib.patheffects as pe
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar, AnchoredDirectionArrows
-from astropy.wcs import WCS
-from astropy.io import fits
-from astropy.coordinates import SkyCoord
+import numpy as np
 from scipy.ndimage import zoom as sc_zoom
+
 try:
     from .utils import rot2D, princ_angle, sci_not
 except ImportError:
     from utils import rot2D, princ_angle, sci_not
 
-def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, wcs, convert, step_vec=1, vec_scale=2., adaptive_binning=False):
-    def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
-        shape = I_stokes.shape
-        
-        assert shape[0] == shape[1], "Only square images are supported"
-        assert shape[0] % 2 == 0, "Image size must be a power of 2"
-        
-        n = int(np.log2(shape[0]))
-        bin_map = np.zeros(shape)
-        bin_num = 0
-
-        for level in range(n):
-            grid_size = 2**level
-            temp_I = I_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-            temp_Q = Q_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-            temp_U = U_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-            temp_cov = Stokes_cov.reshape(3, 3, int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(3).sum(4)
-            temp_bin_map = bin_map.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
-
-            temp_P = (temp_Q**2 + temp_U**2)**0.5 / temp_I
-            temp_P_err = (1 / temp_I) * np.sqrt((temp_Q**2 * temp_cov[1,1,:,:] + temp_U**2 * temp_cov[2,2,:,:] + 2. * temp_Q * temp_U * temp_cov[1,2,:,:]) / (temp_Q**2 + temp_U**2) + \
-                                                ((temp_Q / temp_I)**2 + (temp_U / temp_I)**2) * temp_cov[0,0,:,:] - \
-                                                    2. * (temp_Q / temp_I) * temp_cov[0,1,:,:] - \
-                                                    2. * (temp_U / temp_I) * temp_cov[0,2,:,:])
-
-            for i in range(int(shape[0]/grid_size)):
-                for j in range(int(shape[1]/grid_size)):
-                    if  (temp_P[i,j] / temp_P_err[i,j] > 3) and (temp_bin_map[i,j] == 0): # the default criterion is 3 sigma in P
-                        bin_num += 1
-                        bin_map[i*grid_size:(i+1)*grid_size,j*grid_size:(j+1)*grid_size] = bin_num
-        
-        return bin_map, bin_num
+def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
+    shape = I_stokes.shape
     
-    if adaptive_binning:
+    assert shape[0] == shape[1], "Only square images are supported"
+    assert shape[0] % 2 == 0, "Image size must be a power of 2"
+    
+    n = int(np.log2(shape[0]))
+    bin_map = np.zeros(shape)
+    bin_num = 0
+
+    for level in range(n):
+        grid_size = 2**level
+        temp_I = I_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_Q = Q_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_U = U_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_cov = Stokes_cov.reshape(3, 3, int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(3).sum(4)
+        temp_bin_map = bin_map.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+
+        temp_P = (temp_Q**2 + temp_U**2)**0.5 / temp_I
+        temp_P_err = (1 / temp_I) * np.sqrt((temp_Q**2 * temp_cov[1,1,:,:] + temp_U**2 * temp_cov[2,2,:,:] + 2. * temp_Q * temp_U * temp_cov[1,2,:,:]) / (temp_Q**2 + temp_U**2) + \
+                                            ((temp_Q / temp_I)**2 + (temp_U / temp_I)**2) * temp_cov[0,0,:,:] - \
+                                                2. * (temp_Q / temp_I) * temp_cov[0,1,:,:] - \
+                                                2. * (temp_U / temp_I) * temp_cov[0,2,:,:])
+
+        for i in range(int(shape[0]/grid_size)):
+            for j in range(int(shape[1]/grid_size)):
+                if  (temp_P[i,j] / temp_P_err[i,j] > 3) and (temp_bin_map[i,j] == 0): # the default criterion is 3 sigma in P
+                    bin_num += 1
+                    bin_map[i*grid_size:(i+1)*grid_size,j*grid_size:(j+1)*grid_size] = bin_num
+    
+    return bin_map, bin_num
+
+def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., vec_scale=2., optimal_binning=False):
+    if optimal_binning:
         bin_map, bin_num = adaptive_binning(stkI, stkQ, stkU, stk_cov)
         
         for i in range(1, bin_num+1):
@@ -114,14 +116,14 @@ def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, wcs, convert, 
                         np.sqrt(bin_U**2 * bin_cov[1,1] + bin_Q**2 * bin_cov[2,2] - 2. * bin_Q * bin_U * bin_cov[1,2])
 
             ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata), poldata * np.sin(np.pi/2.+pangdata), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='white')
-            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+3*pangdata_err), poldata * np.sin(np.pi/2.+pangdata+3*pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
-            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-3*pangdata_err), poldata * np.sin(np.pi/2.+pangdata-3*pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+pangdata_err), poldata * np.sin(np.pi/2.+pangdata+pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-pangdata_err), poldata * np.sin(np.pi/2.+pangdata-pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
 
     else:
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
         ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
-        
+
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
     """
@@ -157,7 +159,7 @@ def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder=""
     nb_obs = np.max([np.sum([head['filtnam1'] == curr_pol for head in headers]) for curr_pol in ['POL0', 'POL60', 'POL120']])
     shape = np.array((3, nb_obs))
     fig, ax = plt.subplots(shape[0], shape[1], figsize=(3*shape[1], 3*shape[0]), dpi=200, layout='constrained',
-                           sharex=True, sharey=True)
+                            sharex=True, sharey=True)
     r_pol = dict(pol0=0, pol60=1, pol120=2)
     c_pol = dict(pol0=0, pol60=0, pol120=0)
     for i, (data, head) in enumerate(zip(data_array, headers)):
@@ -318,7 +320,11 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         The figure and ax created for interactive contour maps.
     """
     # Get data
+    optimal_binning = kwargs.get('optimal_binning', False)
+    
     stkI = Stokes['I_stokes'].data.copy()
+    stkQ = Stokes['Q_stokes'].data.copy()
+    stkU = Stokes['U_stokes'].data.copy()
     stk_cov = Stokes['IQU_cov_matrix'].data.copy()
     pol = Stokes['Pol_deg_debiased'].data.copy()
     pol_err = Stokes['Pol_deg_err'].data.copy()
@@ -428,7 +434,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         display = 's_i'
         if (SNRi > SNRi_cut).any():
             vmin, vmax = 1./2.*np.median(np.sqrt(stk_cov[0, 0][stk_cov[0, 0] > 0.]) *
-                                         convert_flux), np.max(np.sqrt(stk_cov[0, 0][stk_cov[0, 0] > 0.])*convert_flux)
+                                        convert_flux), np.max(np.sqrt(stk_cov[0, 0][stk_cov[0, 0] > 0.])*convert_flux)
             im = ax.imshow(np.sqrt(stk_cov[0, 0])*convert_flux, norm=LogNorm(vmin, vmax), aspect='equal', cmap='inferno_r', alpha=1.)
         else:
             im = ax.imshow(np.sqrt(stk_cov[0, 0])*convert_flux, aspect='equal', cmap='inferno', alpha=1.)
@@ -486,10 +492,11 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
             poldata[np.isfinite(poldata)] = 1./2.
             step_vec = 1
             vec_scale = 2.
-        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
-        U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
-        ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
-                  scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
+        # X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        # U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
+        # ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
+        #             scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
+        plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=step_vec, vec_scale=vec_scale, optimal_binning=optimal_binning)
         pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
@@ -510,7 +517,7 @@ def polarization_map(Stokes, data_mask=None, rectangle=None, SNRp_cut=3., SNRi_c
         x, y, width, height, angle, color = rectangle
         x, y = np.array([x, y]) - np.array(stkI.shape)/2.
         ax.add_patch(Rectangle((x, y), width, height, angle=angle,
-                               edgecolor=color, fill=False))
+                                edgecolor=color, fill=False))
 
     # ax.coords.grid(True, color='white', ls='dotted', alpha=0.5)
     ax.coords[0].set_axislabel('Right Ascension (J2000)')
@@ -562,9 +569,9 @@ class align_maps(object):
         self.other_convert, self.other_unit = (float(self.other_header['photflam']), r"$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$") if "PHOTFLAM" in list(
             self.other_header.keys()) else (1., self.other_header['bunit'] if 'BUNIT' in list(self.other_header.keys()) else "Arbitray Units")
         self.map_observer = "/".join([self.map_header['telescop'], self.map_header['instrume']]
-                                     ) if "INSTRUME" in list(self.map_header.keys()) else self.map_header['telescop']
+                                    ) if "INSTRUME" in list(self.map_header.keys()) else self.map_header['telescop']
         self.other_observer = "/".join([self.other_header['telescop'], self.other_header['instrume']]
-                                       ) if "INSTRUME" in list(self.other_header.keys()) else self.other_header['telescop']
+                                    ) if "INSTRUME" in list(self.other_header.keys()) else self.other_header['telescop']
 
         plt.rcParams.update({'font.size': 10})
         fontprops = fm.FontProperties(size=16)
