@@ -251,23 +251,13 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         weights = 1 / chi2**2
         weights /= weights.sum()
 
-
-        bkg = np.sum(weights*(coeff[:, 1]+np.abs(coeff[:, 2]) * 0.01)) # why not just use 0.01
-
+        bkg = np.sum(weights*(coeff[:, 1]+np.abs(coeff[:, 2]) * subtract_error))
         error_bkg[i] *= bkg
-
-        # n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
-
-        # Substract background
-        # if subtract_error > 0:
-        #     n_data_array[i][mask] = n_data_array[i][mask] - bkg
-        #     n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
-
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
     
-    if subtract_error > 0:
+    if np.abs(subtract_error) > 0:
         n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
 
     if display:
@@ -366,22 +356,13 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         popt, pcov = curve_fit(gauss, binning[-1], hist, p0=p0)
         coeff.append(popt)
 
-        bkg = popt[1]+np.abs(popt[2]) * 0.01 # why not just use 0.01
-
+        bkg = popt[1] + np.abs(popt[2]) * subtract_error
         error_bkg[i] *= bkg
-
-        # n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
-
-        # Substract background
-        # if subtract_error > 0:
-        #     n_data_array[i][mask] = n_data_array[i][mask] - bkg
-        #     n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
-
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
     
-    if subtract_error > 0:
+    if np.abs(subtract_error) > 0:
         n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
 
     if display:
@@ -469,21 +450,13 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15, 15), subtract_error=True
         sub_image = image[minima[0] : minima[0] + sub_shape[0], minima[1] : minima[1] + sub_shape[1]]
         # bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
 
-        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)*0.01 if subtract_error > 0 else np.sqrt(np.sum(sub_image**2)/sub_image.size)
+        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)*subtract_error if subtract_error > 0 else np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_bkg[i] *= bkg
-
-        # n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
-
-        # Substract background
-        # if subtract_error > 0.:
-        #     n_data_array[i][mask] = n_data_array[i][mask] - bkg
-        #     n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3*bkg)] = 1e-3*bkg
-
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
 
-    if subtract_error > 0:
+    if np.abs(subtract_error) > 0:
         n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
     
     if display:
