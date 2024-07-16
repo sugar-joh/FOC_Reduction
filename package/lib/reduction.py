@@ -691,7 +691,7 @@ def rebin_array(data_array, error_array, headers, pxsize=2, scale="px", operatio
 
 
 def align_data(
-    data_array, headers, error_array=None, data_mask=None, background=None, upsample_factor=1.0, ref_data=None, ref_center=None, return_shifts=False
+    data_array, headers, error_array=None, data_mask=None, background=None, upsample_factor=1.0, ref_data=None, ref_center=None, return_shifts=False, optimal_binning=False
 ):
     """
     Align images in data_array using cross correlation, and rescale them to
@@ -770,13 +770,13 @@ def align_data(
     full_headers.append(headers[0])
     err_array = np.concatenate((error_array, [np.zeros(ref_data.shape)]), axis=0)
 
-
-    if data_mask is None:
-        full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.0)
-    else:
-        full_array, err_array, data_mask, full_headers = crop_array(
-            full_array, full_headers, err_array, data_mask=data_mask, step=5, inside=False, null_val=0.0
-        )
+    if not optimal_binning:
+        if data_mask is None:
+            full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.0)
+        else:
+            full_array, err_array, data_mask, full_headers = crop_array(
+                full_array, full_headers, err_array, data_mask=data_mask, step=5, inside=False, null_val=0.0
+            )
 
     data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
@@ -855,8 +855,9 @@ def align_data(
         headers[i].update(headers_wcs[i].to_header())
 
     data_mask = rescaled_mask.all(axis=0)
-    # data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
-
+    
+    if not optimal_binning:
+        data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
 
     if return_shifts:
         return data_array, error_array, headers, data_mask, shifts, errors

@@ -167,7 +167,7 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
 
         # Step 3: Align and rescale images with oversampling. (has to disable croping in align_data function)
         _data_array, _error_array, _headers, _, shifts, error_shifts = proj_red.align_data(_data_array, _headers, error_array=_error_array, background=_background,
-                                                                                                upsample_factor=10, ref_center=align_center, return_shifts=True)
+                                                                                                upsample_factor=10, ref_center=align_center, return_shifts=True, optimal_binning=True)
         print("Image shifts: {} \nShifts uncertainty: {}".format(shifts, error_shifts))
         _data_mask = np.ones(_data_array[0].shape, dtype=bool)
         
