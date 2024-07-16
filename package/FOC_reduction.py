@@ -22,16 +22,17 @@ from lib.utils import sci_not, princ_angle
 
 
 
+
 def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir="./data", crop=False, interactive=False):
     # Reduction parameters
     # Deconvolution
     deconvolve = False
     if deconvolve:
         # from lib.deconvolve import from_file_psf
-        psf = 'gaussian'  # Can be user-defined as well
+        psf = "gaussian"  # Can be user-defined as well
         # psf = from_file_psf(data_folder+psf_file)
         psf_FWHM = 3.1
-        psf_scale = 'px'
+        psf_scale = "px"
         psf_shape = None  # (151, 151)
         iterations = 1
         algo = "conjgrad"
@@ -40,18 +41,20 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
     display_crop = False
 
     # Background estimation
-    error_sub_type = 'freedman-diaconis'   # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
-    subtract_error = 0.01
+
+    error_sub_type = "freedman-diaconis"  # sqrt, sturges, rice, scott, freedman-diaconis (default) or shape (example (51, 51))
+    subtract_error = 1.0
+
     display_bkg = False
 
     # Data binning
-    rebin = True
     pxsize = 2
-    px_scale = 'px'         # pixel, arcsec or full
-    rebin_operation = 'sum'     # sum or average
+    pxscale = "px"  # pixel, arcsec or full
+    rebin_operation = "sum"  # sum or average
 
     # Alignement
-    align_center = 'center'          # If None will not align the images
+    align_center = "center"  # If None will not align the images
+
     display_align = False
     display_data = False
 
@@ -59,20 +62,19 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
     transmitcorr = True
 
     # Smoothing
-    smoothing_function = 'combine'  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
-    smoothing_FWHM = None          # If None, no smoothing is done
-    smoothing_scale = 'px'      # pixel or arcsec
+    smoothing_function = "combine"  # gaussian_after, weighted_gaussian_after, gaussian, weighted_gaussian or combine
+    smoothing_FWHM = 2.0    # If None, no smoothing is done
+    smoothing_scale = "px"  # pixel or arcsec
 
     # Rotation
-    rotate_data = False             # rotation to North convention can give erroneous results
-    rotate_stokes = True
+    rotate_North = True
 
     #  Polarization map output
-    SNRp_cut = 3.    # P measurments with SNR>3
-    SNRi_cut = 3.    # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
-    flux_lim = None    # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
-    vec_scale = 5
-    step_vec = 1    # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
+    SNRp_cut = 3.0  # P measurments with SNR>3
+    SNRi_cut = 1.0  # I measurments with SNR>30, which implies an uncertainty in P of 4.7%.
+    flux_lim = None  # lowest and highest flux displayed on plot, defaults to bkg and maximum in cut if None
+    scale_vec = 5
+    step_vec = 1  # plot all vectors in the array. if step_vec = 2, then every other vector will be plotted if step_vec = 0 then all vectors are displayed at full length
 
     # Adaptive binning
     # in order to perfrom optimal binning, there are several steps to follow:
@@ -85,9 +87,10 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
     optimize = False
     
     # Pipeline start
+
     # Step 1:
     #  Get data from fits files and translate to flux in erg/cm²/s/Angstrom.
-    
+
     if data_dir is None:
         if infiles is not None:
             prod = np.array([["/".join(filepath.split('/')[:-1]), filepath.split('/')[-1]] for filepath in infiles], dtype=str)
@@ -114,6 +117,7 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
                 target = input("Target name:\n>")
         
         data_array, headers = proj_fits.get_obs_data(infiles, data_folder=data_folder, compute_flux=True)
+
     try:
         plots_folder = data_folder.replace("data", "plots")
     except ValueError:
@@ -123,18 +127,20 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
 
     figname = "_".join([target, "FOC"])
     figtype = ""
-    if rebin:
-        if px_scale not in ['full']:
-            figtype = "".join(["b", "{0:.2f}".format(pxsize), px_scale])    # additionnal informations
+    if (pxsize is not None) and not (pxsize == 1 and pxscale.lower() in ["px", "pixel", "pixels"]):
+        if pxscale not in ["full"]:
+            figtype = "".join(["b", "{0:.2f}".format(pxsize), pxscale])  # additionnal informations
         else:
             figtype = "full"
-    if smoothing_FWHM is not None:
-        figtype += "_"+"".join(["".join([s[0] for s in smoothing_function.split("_")]),
-                                "{0:.2f}".format(smoothing_FWHM), smoothing_scale])    # additionnal informations
+
+    if smoothing_FWHM is not None and smoothing_scale is not None:
+        smoothstr = "".join([*[s[0] for s in smoothing_function.split("_")], "{0:.2f}".format(smoothing_FWHM), smoothing_scale])
+        figtype = "_".join([figtype, smoothstr] if figtype != "" else [smoothstr])
+
     if deconvolve:
-        figtype += "_deconv"
+        figtype = "_".join([figtype, "deconv"] if figtype != "" else ["deconv"])
     if align_center is None:
-        figtype += "_not_aligned"
+        figtype = "_".join([figtype, "not_aligned"] if figtype != "" else ["not_aligned"])
     
     if optimal_binning:
         options = {'optimize': optimize, 'optimal_binning': True}
@@ -337,11 +343,13 @@ def main(target=None, proposal_id=None, data_dir=None, infiles=None, output_dir=
         elif px_scale.lower() not in ['full', 'integrate']:
             proj_plots.pol_map(Stokes_test, SNRp_cut=SNRp_cut, SNRi_cut=SNRi_cut, flux_lim=flux_lim)
 
-    return 0
+
+    return outfiles
 
 
 if __name__ == "__main__":
     import argparse
+
 
     parser = argparse.ArgumentParser(description='Query MAST for target products')
     parser.add_argument('-t', '--target', metavar='targetname', required=False, help='the name of the target', type=str, default=None)

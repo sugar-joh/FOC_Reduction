@@ -28,8 +28,8 @@ prototypes :
 """
 
 import numpy as np
-from scipy.signal import convolve
 from astropy.io import fits
+from scipy.signal import convolve
 
 
 def abs2(x):
@@ -37,9 +37,9 @@ def abs2(x):
     if np.iscomplexobj(x):
         x_re = x.real
         x_im = x.imag
-        return x_re*x_re + x_im*x_im
+        return x_re * x_re + x_im * x_im
     else:
-        return x*x
+        return x * x
 
 
 def zeropad(arr, shape):
@@ -53,7 +53,7 @@ def zeropad(arr, shape):
     diff = np.asarray(shape) - np.asarray(arr.shape)
     if diff.min() < 0:
         raise ValueError("output dimensions must be larger or equal input dimensions")
-    offset = diff//2
+    offset = diff // 2
     z = np.zeros(shape, dtype=arr.dtype)
     if rank == 1:
         i0 = offset[0]
@@ -115,10 +115,10 @@ def zeropad(arr, shape):
 
 
 def gaussian2d(x, y, sigma):
-    return np.exp(-(x**2+y**2)/(2*sigma**2))/(2*np.pi*sigma**2)
+    return np.exp(-(x**2 + y**2) / (2 * sigma**2)) / (2 * np.pi * sigma**2)
 
 
-def gaussian_psf(FWHM=1., shape=(5, 5)):
+def gaussian_psf(FWHM=1.0, shape=(5, 5)):
     """
     Define the gaussian Point-Spread-Function of chosen shape and FWHM.
     ----------
@@ -136,13 +136,13 @@ def gaussian_psf(FWHM=1., shape=(5, 5)):
        Kernel containing the weights of the desired gaussian PSF.
     """
     # Compute standard deviation from FWHM
-    stdev = FWHM/(2.*np.sqrt(2.*np.log(2.)))
+    stdev = FWHM / (2.0 * np.sqrt(2.0 * np.log(2.0)))
 
     # Create kernel of desired shape
-    x, y = np.meshgrid(np.arange(-shape[0]/2, shape[0]/2), np.arange(-shape[1]/2, shape[1]/2))
+    x, y = np.meshgrid(np.arange(-shape[0] / 2, shape[0] / 2), np.arange(-shape[1] / 2, shape[1] / 2))
     kernel = gaussian2d(x, y, stdev)
 
-    return kernel/kernel.sum()
+    return kernel / kernel.sum()
 
 
 def from_file_psf(filename):
@@ -164,7 +164,7 @@ def from_file_psf(filename):
         if isinstance(psf, np.ndarray) or len(psf) != 2:
             raise ValueError("Invalid PSF image in PrimaryHDU at {0:s}".format(filename))
     # Return the normalized Point Spread Function
-    kernel = psf/psf.max()
+    kernel = psf / psf.max()
     return kernel
 
 
@@ -199,14 +199,14 @@ def wiener(image, psf, alpha=0.1, clip=True):
     ft_y = np.fft.fftn(im_deconv)
     ft_h = np.fft.fftn(np.fft.ifftshift(psf))
 
-    ft_x = ft_h.conj()*ft_y / (abs2(ft_h) + alpha)
+    ft_x = ft_h.conj() * ft_y / (abs2(ft_h) + alpha)
     im_deconv = np.fft.ifftn(ft_x).real
 
     if clip:
         im_deconv[im_deconv > 1] = 1
         im_deconv[im_deconv < -1] = -1
 
-    return im_deconv/im_deconv.max()
+    return im_deconv / im_deconv.max()
 
 
 def van_cittert(image, psf, alpha=0.1, iterations=20, clip=True, filter_epsilon=None):
@@ -241,12 +241,12 @@ def van_cittert(image, psf, alpha=0.1, iterations=20, clip=True, filter_epsilon=
     im_deconv = image.copy()
 
     for _ in range(iterations):
-        conv = convolve(im_deconv, psf, mode='same')
+        conv = convolve(im_deconv, psf, mode="same")
         if filter_epsilon:
             relative_blur = np.where(conv < filter_epsilon, 0, image - conv)
         else:
             relative_blur = image - conv
-        im_deconv += alpha*relative_blur
+        im_deconv += alpha * relative_blur
 
     if clip:
         im_deconv[im_deconv > 1] = 1
@@ -290,12 +290,12 @@ def richardson_lucy(image, psf, iterations=20, clip=True, filter_epsilon=None):
     psf_mirror = np.flip(psf)
 
     for _ in range(iterations):
-        conv = convolve(im_deconv, psf, mode='same')
+        conv = convolve(im_deconv, psf, mode="same")
         if filter_epsilon:
             relative_blur = np.where(conv < filter_epsilon, 0, image / conv)
         else:
             relative_blur = image / conv
-        im_deconv *= convolve(relative_blur, psf_mirror, mode='same')
+        im_deconv *= convolve(relative_blur, psf_mirror, mode="same")
 
     if clip:
         im_deconv[im_deconv > 1] = 1
@@ -335,12 +335,12 @@ def one_step_gradient(image, psf, iterations=20, clip=True, filter_epsilon=None)
     psf_mirror = np.flip(psf)
 
     for _ in range(iterations):
-        conv = convolve(im_deconv, psf, mode='same')
+        conv = convolve(im_deconv, psf, mode="same")
         if filter_epsilon:
             relative_blur = np.where(conv < filter_epsilon, 0, image - conv)
         else:
             relative_blur = image - conv
-        im_deconv += convolve(relative_blur, psf_mirror, mode='same')
+        im_deconv += convolve(relative_blur, psf_mirror, mode="same")
 
     if clip:
         im_deconv[im_deconv > 1] = 1
@@ -387,20 +387,20 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
     if error is None:
         wgt = np.ones(image.shape)
     else:
-        wgt = image/error
+        wgt = image / error
         wgt /= wgt.max()
 
     def W(x):
         """Define W operator : apply weights"""
-        return wgt*x
+        return wgt * x
 
     def H(x):
         """Define H operator : convolution with PSF"""
-        return np.fft.ifftn(ft_h*np.fft.fftn(x)).real
+        return np.fft.ifftn(ft_h * np.fft.fftn(x)).real
 
     def Ht(x):
         """Define Ht operator : transpose of H"""
-        return np.fft.ifftn(ft_h.conj()*np.fft.fftn(x)).real
+        return np.fft.ifftn(ft_h.conj() * np.fft.fftn(x)).real
 
     def DtD(x):
         """Returns the result of D'.D.x where D is a (multi-dimensional)
@@ -444,7 +444,7 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
 
     def A(x):
         """Define symetric positive semi definite operator A"""
-        return Ht(W(H(x)))+alpha*DtD(x)
+        return Ht(W(H(x))) + alpha * DtD(x)
 
     # Define obtained vector A.x = b
     b = Ht(W(image))
@@ -458,7 +458,7 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
     r = np.copy(b)
     x = np.zeros(b.shape, dtype=b.dtype)
     rho = inner(r, r)
-    epsilon = np.max([0., 1e-5*np.sqrt(rho)])
+    epsilon = np.max([0.0, 1e-5 * np.sqrt(rho)])
 
     # Conjugate gradient iterations.
     beta = 0.0
@@ -476,26 +476,25 @@ def conjgrad(image, psf, alpha=0.1, error=None, iterations=20):
         if beta == 0.0:
             p = r
         else:
-            p = r + beta*p
+            p = r + beta * p
 
         # Make optimal step along search direction.
         q = A(p)
         gamma = inner(p, q)
         if gamma <= 0.0:
             raise ValueError("Operator A is not positive definite")
-        alpha = rho/gamma
-        x += alpha*p
-        r -= alpha*q
+        alpha = rho / gamma
+        x += alpha * p
+        r -= alpha * q
         rho_prev, rho = rho, inner(r, r)
-        beta = rho/rho_prev
+        beta = rho / rho_prev
 
     # Return normalized solution
-    im_deconv = x/x.max()
+    im_deconv = x / x.max()
     return im_deconv
 
 
-def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
-                  filter_epsilon=None, algo='richardson'):
+def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True, filter_epsilon=None, algo="richardson"):
     """
     Prepare an image for deconvolution using a chosen algorithm and return
     results.
@@ -537,27 +536,23 @@ def deconvolve_im(image, psf, alpha=0.1, error=None, iterations=20, clip=True,
     """
     # Normalize image to highest pixel value
     pxmax = image[np.isfinite(image)].max()
-    if pxmax == 0.:
+    if pxmax == 0.0:
         raise ValueError("Invalid image")
-    norm_image = image/pxmax
+    norm_image = image / pxmax
 
     # Deconvolve normalized image
-    if algo.lower() in ['wiener', 'wiener simple']:
+    if algo.lower() in ["wiener", "wiener simple"]:
         norm_deconv = wiener(image=norm_image, psf=psf, alpha=alpha, clip=clip)
-    elif algo.lower() in ['van-cittert', 'vancittert', 'cittert']:
-        norm_deconv = van_cittert(image=norm_image, psf=psf, alpha=alpha,
-                                  iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
-    elif algo.lower() in ['1grad', 'one_step_grad', 'one step grad']:
-        norm_deconv = one_step_gradient(image=norm_image, psf=psf,
-                                        iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
-    elif algo.lower() in ['conjgrad', 'conj_grad', 'conjugate gradient']:
-        norm_deconv = conjgrad(image=norm_image, psf=psf, alpha=alpha,
-                                error=error, iterations=iterations)
+    elif algo.lower() in ["van-cittert", "vancittert", "cittert"]:
+        norm_deconv = van_cittert(image=norm_image, psf=psf, alpha=alpha, iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
+    elif algo.lower() in ["1grad", "one_step_grad", "one step grad"]:
+        norm_deconv = one_step_gradient(image=norm_image, psf=psf, iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
+    elif algo.lower() in ["conjgrad", "conj_grad", "conjugate gradient"]:
+        norm_deconv = conjgrad(image=norm_image, psf=psf, alpha=alpha, error=error, iterations=iterations)
     else:  # Defaults to Richardson-Lucy
-        norm_deconv = richardson_lucy(image=norm_image, psf=psf,
-                                      iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
+        norm_deconv = richardson_lucy(image=norm_image, psf=psf, iterations=iterations, clip=clip, filter_epsilon=filter_epsilon)
 
     # Output deconvolved image with original pxmax value
-    im_deconv = pxmax*norm_deconv
+    im_deconv = pxmax * norm_deconv
 
     return im_deconv
