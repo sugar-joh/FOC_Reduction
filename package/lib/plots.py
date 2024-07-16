@@ -99,7 +99,7 @@ def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
     
     return bin_map, bin_num
 
-def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., vec_scale=2., optimal_binning=False):
+def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., scale_vec=2., optimal_binning=False):
     if optimal_binning:
         bin_map, bin_num = adaptive_binning(stkI, stkQ, stkU, stk_cov)
         
@@ -120,14 +120,14 @@ def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., v
             pangdata_err = (1 / (2. *(bin_Q**2 + bin_U**2))) * \
                         np.sqrt(bin_U**2 * bin_cov[1,1] + bin_Q**2 * bin_cov[2,2] - 2. * bin_Q * bin_U * bin_cov[1,2])
 
-            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata), poldata * np.sin(np.pi/2.+pangdata), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='white')
-            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+pangdata_err), poldata * np.sin(np.pi/2.+pangdata+pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
-            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-pangdata_err), poldata * np.sin(np.pi/2.+pangdata-pangdata_err), units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata), poldata * np.sin(np.pi/2.+pangdata), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='white')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+pangdata_err), poldata * np.sin(np.pi/2.+pangdata+pangdata_err), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-pangdata_err), poldata * np.sin(np.pi/2.+pangdata-pangdata_err), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
 
     else:
         X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
         U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
-        ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
+        ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
 
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
@@ -545,14 +545,10 @@ def polarization_map(
         if step_vec == 0:
             poldata[np.isfinite(poldata)] = 1.0 / 2.0
             step_vec = 1
-            vec_scale = 2.
-        # X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
-        # U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
-        # ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv',
-        #             scale=1./vec_scale, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
-        plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=step_vec, vec_scale=vec_scale, optimal_binning=optimal_binning)
-        pol_sc = AnchoredSizeBar(ax.transData, vec_scale, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
+            scale_vec = 2.
 
+        plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=step_vec, scale_vec=scale_vec, optimal_binning=optimal_binning)
+        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
         ax.add_artist(px_sc)
