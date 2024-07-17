@@ -251,23 +251,18 @@ def bkg_fit(data, error, mask, headers, subtract_error=True, display=False, save
         weights = 1 / chi2**2
         weights /= weights.sum()
 
-        bkg = np.sum(weights * (coeff[:, 1] + np.abs(coeff[:, 2]) * subtract_error))
-
+        bkg = np.sum(weights*(coeff[:, 1]+np.abs(coeff[:, 2]) * subtract_error))
         error_bkg[i] *= bkg
-
-        n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
-
-        # Substract background
-        if np.abs(subtract_error) > 0:
-            n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
+    
+    if np.abs(subtract_error) > 0:
+        n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
 
     if display:
         display_bkg(data, background, std_bkg, headers, histograms=histograms, binning=binning, coeff=coeff, savename=savename, plots_folder=plots_folder)
-    return n_data_array, n_error_array, headers, background
+    return n_data_array, n_error_array, headers, background, error_bkg
 
 
 def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, display=False, savename=None, plots_folder=""):
@@ -360,23 +355,19 @@ def bkg_hist(data, error, mask, headers, sub_type=None, subtract_error=True, dis
         # popt, pcov = curve_fit(gausspol, binning[-1], hist, p0=p0)
         popt, pcov = curve_fit(gauss, binning[-1], hist, p0=p0)
         coeff.append(popt)
+
         bkg = popt[1] + np.abs(popt[2]) * subtract_error
-
         error_bkg[i] *= bkg
-
-        n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
-
-        # Substract background
-        if np.abs(subtract_error) > 0:
-            n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
+    
+    if np.abs(subtract_error) > 0:
+        n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
 
     if display:
         display_bkg(data, background, std_bkg, headers, histograms=histograms, binning=binning, coeff=coeff, savename=savename, plots_folder=plots_folder)
-    return n_data_array, n_error_array, headers, background
+    return n_data_array, n_error_array, headers, background, error_bkg
 
 
 def bkg_mini(data, error, mask, headers, sub_shape=(15, 15), subtract_error=True, display=False, savename=None, plots_folder=""):
@@ -458,19 +449,28 @@ def bkg_mini(data, error, mask, headers, sub_shape=(15, 15), subtract_error=True
         # Compute error : root mean square of the background
         sub_image = image[minima[0] : minima[0] + sub_shape[0], minima[1] : minima[1] + sub_shape[1]]
         # bkg =  np.std(sub_image)    # Previously computed using standard deviation over the background
-        bkg = np.sqrt(np.sum(sub_image**2) / sub_image.size) * subtract_error if subtract_error > 0 else np.sqrt(np.sum(sub_image**2) / sub_image.size)
+
+        bkg = np.sqrt(np.sum(sub_image**2)/sub_image.size)*subtract_error if subtract_error > 0 else np.sqrt(np.sum(sub_image**2)/sub_image.size)
         error_bkg[i] *= bkg
-
-        n_error_array[i] = np.sqrt(n_error_array[i] ** 2 + error_bkg[i] ** 2)
-
-        # Substract background
-        if np.abs(subtract_error) > 0:
-            n_data_array[i][mask] = n_data_array[i][mask] - bkg
-            n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * bkg)] = 1e-3 * bkg
 
         std_bkg[i] = image[np.abs(image - bkg) / bkg < 1.0].std()
         background[i] = bkg
 
+    if np.abs(subtract_error) > 0:
+        n_data_array, n_error_array, background, error_bkg = subtract_bkg(n_data_array, n_error_array, mask, background, error_bkg)
+    
     if display:
         display_bkg(data, background, std_bkg, headers, rectangle=rectangle, savename=savename, plots_folder=plots_folder)
-    return n_data_array, n_error_array, headers, background
+    return n_data_array, n_error_array, headers, background, error_bkg
+
+def subtract_bkg(data, error, mask, background, error_bkg):
+    assert data.ndim == 3, "Input data must have more than 1 image."
+    
+    n_data_array, n_error_array = deepcopy(data), deepcopy(error)
+    
+    for i in range(data.shape[0]):
+        n_data_array[i][mask] = n_data_array[i][mask] - background[i]
+        n_data_array[i][np.logical_and(mask, n_data_array[i] <= 1e-3 * background[i])] = 1e-3 * background[i]
+        n_error_array[i] = np.sqrt(n_error_array[i]**2 + error_bkg[i]**2)
+    
+    return n_data_array, n_error_array, background, error_bkg

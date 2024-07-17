@@ -43,6 +43,7 @@ prototypes :
 from copy import deepcopy
 from os.path import join as path_join
 
+
 import matplotlib.font_manager as fm
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
@@ -58,12 +59,79 @@ from mpl_toolkits.axes_grid1.anchored_artists import (
     AnchoredDirectionArrows,
     AnchoredSizeBar,
 )
+
 from scipy.ndimage import zoom as sc_zoom
 
 try:
     from .utils import princ_angle, rot2D, sci_not
 except ImportError:
     from utils import princ_angle, rot2D, sci_not
+
+def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
+    shape = I_stokes.shape
+    
+    assert shape[0] == shape[1], "Only square images are supported"
+    assert shape[0] % 2 == 0, "Image size must be a power of 2"
+    
+    n = int(np.log2(shape[0]))
+    bin_map = np.zeros(shape)
+    bin_num = 0
+
+    for level in range(n):
+        grid_size = 2**level
+        temp_I = I_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_Q = Q_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_U = U_stokes.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+        temp_cov = Stokes_cov.reshape(3, 3, int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(3).sum(4)
+        temp_bin_map = bin_map.reshape(int(shape[0]/grid_size), grid_size, int(shape[1]/grid_size), grid_size).sum(1).sum(2)
+
+        temp_P = (temp_Q**2 + temp_U**2)**0.5 / temp_I
+        temp_P_err = (1 / temp_I) * np.sqrt((temp_Q**2 * temp_cov[1,1,:,:] + temp_U**2 * temp_cov[2,2,:,:] + 2. * temp_Q * temp_U * temp_cov[1,2,:,:]) / (temp_Q**2 + temp_U**2) + \
+                                            ((temp_Q / temp_I)**2 + (temp_U / temp_I)**2) * temp_cov[0,0,:,:] - \
+                                                2. * (temp_Q / temp_I) * temp_cov[0,1,:,:] - \
+                                                2. * (temp_U / temp_I) * temp_cov[0,2,:,:])
+
+        for i in range(int(shape[0]/grid_size)):
+            for j in range(int(shape[1]/grid_size)):
+                if  (temp_P[i,j] / temp_P_err[i,j] > 3) and (temp_bin_map[i,j] == 0): # the default criterion is 3 sigma in P
+                    bin_num += 1
+                    bin_map[i*grid_size:(i+1)*grid_size,j*grid_size:(j+1)*grid_size] = bin_num
+    
+    return bin_map, bin_num
+
+def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., scale_vec=2., optimal_binning=False):
+    if optimal_binning:
+        bin_map, bin_num = adaptive_binning(stkI, stkQ, stkU, stk_cov)
+        shape = stkI.shape
+        
+        for i in range(1, bin_num+1):
+            bin = np.where(bin_map==i)
+            x_center, y_center = np.mean(bin, axis=1)
+            
+            if not (20 < x_center < shape[0]-20 and 20 < y_center < shape[1]-20): # avoid plotting vectors on the edges of the image
+                continue
+
+            bin_I = np.sum(stkI[bin])
+            bin_Q = np.sum(stkQ[bin])
+            bin_U = np.sum(stkU[bin])
+            bin_cov = np.zeros((3,3))
+            for i in range(3):
+                for j in range(3):
+                    bin_cov[i,j] = np.sum(stk_cov[i,j][bin])
+
+            poldata = np.sqrt(bin_Q**2 + bin_U**2) / bin_I
+            pangdata = 0.5 * np.arctan2(bin_U, bin_Q)
+            pangdata_err = (1 / (2. *(bin_Q**2 + bin_U**2))) * \
+                        np.sqrt(bin_U**2 * bin_cov[1,1] + bin_Q**2 * bin_cov[2,2] - 2. * bin_Q * bin_U * bin_cov[1,2])
+
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata), poldata * np.sin(np.pi/2.+pangdata), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='white', edgecolor='white')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata+pangdata_err), poldata * np.sin(np.pi/2.+pangdata+pangdata_err), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+            ax.quiver(y_center, x_center, poldata * np.cos(np.pi/2.+pangdata-pangdata_err), poldata * np.sin(np.pi/2.+pangdata-pangdata_err), units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.1, linewidth=0.5, color='black', edgecolor='black', ls='dashed')
+
+    else:
+        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
+        U, V = poldata*np.cos(np.pi/2.+pangdata*np.pi/180.), poldata*np.sin(np.pi/2.+pangdata*np.pi/180.)
+        ax.quiver(X[::step_vec, ::step_vec], Y[::step_vec, ::step_vec], U[::step_vec, ::step_vec], V[::step_vec, ::step_vec], units='xy', angles='uv', scale=1./scale_vec, scale_units='xy', pivot='mid', headwidth=0., headlength=0., headaxislength=0., width=0.5, linewidth=0.75, color='w', edgecolor='k')
 
 
 def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder="", **kwargs):
@@ -99,7 +167,10 @@ def plot_obs(data_array, headers, rectangle=None, savename=None, plots_folder=""
     plt.rcParams.update({"font.size": 10})
     nb_obs = np.max([np.sum([head["filtnam1"] == curr_pol for head in headers]) for curr_pol in ["POL0", "POL60", "POL120"]])
     shape = np.array((3, nb_obs))
-    fig, ax = plt.subplots(shape[0], shape[1], figsize=(3 * shape[1], 3 * shape[0]), dpi=200, layout="constrained", sharex=True, sharey=True)
+
+    fig, ax = plt.subplots(shape[0], shape[1], figsize=(3*shape[1], 3*shape[0]), dpi=200, layout='constrained',
+                            sharex=True, sharey=True)
+
     r_pol = dict(pol0=0, pol60=1, pol120=2)
     c_pol = dict(pol0=0, pol60=0, pol120=0)
     for i, (data, head) in enumerate(zip(data_array, headers)):
@@ -212,6 +283,7 @@ def plot_Stokes(Stokes, savename=None, plots_folder=""):
     return 0
 
 
+
 def polarization_map(
     Stokes,
     data_mask=None,
@@ -224,7 +296,9 @@ def polarization_map(
     savename=None,
     plots_folder="",
     display="default",
+    **kwargs
 ):
+
     """
     Plots polarization map from Stokes HDUList.
     ----------
@@ -275,11 +349,17 @@ def polarization_map(
         The figure and ax created for interactive contour maps.
     """
     # Get data
-    stkI = Stokes["I_stokes"].data.copy()
-    stk_cov = Stokes["IQU_cov_matrix"].data.copy()
-    pol = Stokes["Pol_deg_debiased"].data.copy()
-    pol_err = Stokes["Pol_deg_err"].data.copy()
-    pang = Stokes["Pol_ang"].data.copy()
+
+    optimal_binning = kwargs.get('optimal_binning', False)
+    
+    stkI = Stokes['I_stokes'].data.copy()
+    stkQ = Stokes['Q_stokes'].data.copy()
+    stkU = Stokes['U_stokes'].data.copy()
+    stk_cov = Stokes['IQU_cov_matrix'].data.copy()
+    pol = Stokes['Pol_deg_debiased'].data.copy()
+    pol_err = Stokes['Pol_deg_err'].data.copy()
+    pang = Stokes['Pol_ang'].data.copy()
+
     try:
         if data_mask is None:
             data_mask = Stokes["Data_mask"].data.astype(bool).copy()
@@ -392,11 +472,13 @@ def polarization_map(
         # Display intensity error map
         display = "s_i"
         if (SNRi > SNRi_cut).any():
+
             vmin, vmax = (
                 1.0 / 2.0 * np.median(np.sqrt(stk_cov[0, 0][stk_cov[0, 0] > 0.0]) * convert_flux),
                 np.max(np.sqrt(stk_cov[0, 0][stk_cov[0, 0] > 0.0]) * convert_flux),
             )
             im = ax.imshow(np.sqrt(stk_cov[0, 0]) * convert_flux, norm=LogNorm(vmin, vmax), aspect="equal", cmap="inferno_r", alpha=1.0)
+
         else:
             im = ax.imshow(np.sqrt(stk_cov[0, 0]) * convert_flux, aspect="equal", cmap="inferno", alpha=1.0)
         fig.colorbar(im, ax=ax, aspect=50, shrink=0.75, pad=0.025, label=r"$\sigma_I$ [$ergs \cdot cm^{-2} \cdot s^{-1} \cdot \AA^{-1}$]")
@@ -467,28 +549,10 @@ def polarization_map(
         if step_vec == 0:
             poldata[np.isfinite(poldata)] = 1.0 / 2.0
             step_vec = 1
-            scale_vec = 2.0
-        X, Y = np.meshgrid(np.arange(stkI.shape[1]), np.arange(stkI.shape[0]))
-        U, V = poldata * np.cos(np.pi / 2.0 + pangdata * np.pi / 180.0), poldata * np.sin(np.pi / 2.0 + pangdata * np.pi / 180.0)
-        ax.quiver(
-            X[::step_vec, ::step_vec],
-            Y[::step_vec, ::step_vec],
-            U[::step_vec, ::step_vec],
-            V[::step_vec, ::step_vec],
-            units="xy",
-            angles="uv",
-            scale=1.0 / scale_vec,
-            scale_units="xy",
-            pivot="mid",
-            headwidth=0.0,
-            headlength=0.0,
-            headaxislength=0.0,
-            width=0.5,
-            linewidth=0.75,
-            color="w",
-            edgecolor="k",
-        )
-        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.25, sep=5, borderpad=0.25, frameon=False, size_vertical=0.005, color="w")
+            scale_vec = 2.
+
+        plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=step_vec, scale_vec=scale_vec, optimal_binning=optimal_binning)
+        pol_sc = AnchoredSizeBar(ax.transData, scale_vec, r"$P$= 100 %", 4, pad=0.5, sep=5, borderpad=0.5, frameon=False, size_vertical=0.005, color='w')
 
         ax.add_artist(pol_sc)
         ax.add_artist(px_sc)
@@ -528,6 +592,7 @@ def polarization_map(
     # Display instrument FOV
     if rectangle is not None:
         x, y, width, height, angle, color = rectangle
+
         x, y = np.array([x, y]) - np.array(stkI.shape) / 2.0
         ax.add_patch(Rectangle((x, y), width, height, angle=angle, edgecolor=color, fill=False))
 
@@ -590,6 +655,7 @@ class align_maps(object):
         )
 
         plt.rcParams.update({"font.size": 10})
+
         fontprops = fm.FontProperties(size=16)
         self.fig_align = plt.figure(figsize=(20, 10))
         self.map_ax = self.fig_align.add_subplot(121, projection=self.map_wcs)

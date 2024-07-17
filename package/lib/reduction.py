@@ -528,27 +528,25 @@ def get_error(
     # estimated to less than 3%
     err_flat = data * 0.03
 
-    if sub_type is None:
-        n_data_array, c_error_bkg, headers, background = bkg_hist(
-            data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder
-        )
+
+    if (sub_type is None):
+        n_data_array, c_error_bkg, headers, background, error_bkg = bkg_hist(
+            data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
         sub_type, subtract_error = "histogram ", str(int(subtract_error > 0.0))
     elif isinstance(sub_type, str):
-        if sub_type.lower() in ["auto"]:
-            n_data_array, c_error_bkg, headers, background = bkg_fit(
-                data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder
-            )
+        if sub_type.lower() in ['auto']:
+            n_data_array, c_error_bkg, headers, background, error_bkg = bkg_fit(
+                data, error, mask, headers, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
             sub_type, subtract_error = "histogram fit ", "mean+%.1fsigma" % subtract_error if subtract_error != 0.0 else 0.0
         else:
-            n_data_array, c_error_bkg, headers, background = bkg_hist(
-                data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder
-            )
+            n_data_array, c_error_bkg, headers, background, error_bkg = bkg_hist(
+                data, error, mask, headers, sub_type=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
             sub_type, subtract_error = "histogram ", "mean+%.1fsigma" % subtract_error if subtract_error != 0.0 else 0.0
     elif isinstance(sub_type, tuple):
-        n_data_array, c_error_bkg, headers, background = bkg_mini(
-            data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder
-        )
+        n_data_array, c_error_bkg, headers, background, error_bkg = bkg_mini(
+            data, error, mask, headers, sub_shape=sub_type, subtract_error=subtract_error, display=display, savename=savename, plots_folder=plots_folder)
         sub_type, subtract_error = "minimal flux ", "mean+%.1fsigma" % subtract_error if subtract_error != 0.0 else 0.0
+
     else:
         print("Warning: Invalid subtype.")
 
@@ -560,7 +558,7 @@ def get_error(
     n_error_array = np.sqrt(err_wav**2 + err_psf**2 + err_flat**2 + c_error_bkg**2)
 
     if return_background:
-        return n_data_array, n_error_array, headers, background
+        return n_data_array, n_error_array, headers, background, error_bkg # return background error as well
     else:
         return n_data_array, n_error_array, headers
 
@@ -693,7 +691,7 @@ def rebin_array(data_array, error_array, headers, pxsize=2, scale="px", operatio
 
 
 def align_data(
-    data_array, headers, error_array=None, data_mask=None, background=None, upsample_factor=1.0, ref_data=None, ref_center=None, return_shifts=False
+    data_array, headers, error_array=None, data_mask=None, background=None, upsample_factor=1.0, ref_data=None, ref_center=None, return_shifts=False, optimal_binning=False
 ):
     """
     Align images in data_array using cross correlation, and rescale them to
@@ -772,12 +770,13 @@ def align_data(
     full_headers.append(headers[0])
     err_array = np.concatenate((error_array, [np.zeros(ref_data.shape)]), axis=0)
 
-    if data_mask is None:
-        full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.0)
-    else:
-        full_array, err_array, data_mask, full_headers = crop_array(
-            full_array, full_headers, err_array, data_mask=data_mask, step=5, inside=False, null_val=0.0
-        )
+    if not optimal_binning:
+        if data_mask is None:
+            full_array, err_array, full_headers = crop_array(full_array, full_headers, err_array, step=5, inside=False, null_val=0.0)
+        else:
+            full_array, err_array, data_mask, full_headers = crop_array(
+                full_array, full_headers, err_array, data_mask=data_mask, step=5, inside=False, null_val=0.0
+            )
 
     data_array, ref_data, headers = full_array[:-1], full_array[-1], full_headers[:-1]
     error_array = err_array[:-1]
@@ -856,7 +855,9 @@ def align_data(
         headers[i].update(headers_wcs[i].to_header())
 
     data_mask = rescaled_mask.all(axis=0)
-    data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01 * background)
+    
+    if not optimal_binning:
+        data_array, error_array, data_mask, headers = crop_array(rescaled_image, headers, rescaled_error, data_mask, null_val=0.01*background)
 
     if return_shifts:
         return data_array, error_array, headers, data_mask, shifts, errors
