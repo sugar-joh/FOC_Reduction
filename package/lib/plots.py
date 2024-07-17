@@ -102,10 +102,14 @@ def adaptive_binning(I_stokes, Q_stokes, U_stokes, Stokes_cov):
 def plot_quiver(ax, stkI, stkQ, stkU, stk_cov, poldata, pangdata, step_vec=1., scale_vec=2., optimal_binning=False):
     if optimal_binning:
         bin_map, bin_num = adaptive_binning(stkI, stkQ, stkU, stk_cov)
+        shape = stkI.shape
         
         for i in range(1, bin_num+1):
             bin = np.where(bin_map==i)
             x_center, y_center = np.mean(bin, axis=1)
+            
+            if not (20 < x_center < shape[0]-20 and 20 < y_center < shape[1]-20): # avoid plotting vectors on the edges of the image
+                continue
 
             bin_I = np.sum(stkI[bin])
             bin_Q = np.sum(stkQ[bin])
